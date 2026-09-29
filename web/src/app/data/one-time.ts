@@ -33,6 +33,40 @@ export interface OneTimeConsumption {
   createdAt: string;
 }
 
+/** A one-time consumption as the Ledger returns it after a create (201) or a change. */
+export interface OneTimeRecord {
+  id: number;
+  substanceId: number;
+  name: string | null;
+  quantity: string;
+  totalPrice: string;
+  occurredAt: string;
+  note: string | null;
+  clientRef: string | null;
+  createdAt: string;
+  deletedAt: string | null;
+}
+
+/** Body of POST /api/substances/:id/one-time-consumptions: `totalPrice` or `unitPrice` (× quantity). */
+export interface CreateOneTimeInput {
+  quantity: string;
+  totalPrice?: string;
+  unitPrice?: string;
+  name?: string | null;
+  occurredAt?: string;
+  note?: string | null;
+}
+
+/** Body of PATCH /api/one-time-consumptions/:id: only what changes; null clears the name or the note. */
+export interface UpdateOneTimeInput {
+  quantity?: string;
+  totalPrice?: string;
+  unitPrice?: string;
+  name?: string | null;
+  occurredAt?: string;
+  note?: string | null;
+}
+
 /** `?limit=&before=` of the paginated histories: a page never splits an instant. */
 export interface HistoryPage {
   limit?: number;
