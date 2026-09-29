@@ -1,0 +1,16 @@
+/* The document scrolls, as before the sidebar: the container grows with its page (no inner
+   scrolling), so a page window can still stop the document scrolling underneath it. */
+.shell {
+  min-height: 100dvh;
+  overflow: visible;
+}
+
+.sidebar {
+  width: 240px;
+}
+
+/* The button sits at the toolbar's edge, the title after it. */
+.menu {
+  margin-left: -8px;
+  margin-right: 8px;
+}

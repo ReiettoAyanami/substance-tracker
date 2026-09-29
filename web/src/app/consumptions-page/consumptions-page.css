@@ -1,0 +1,6 @@
+/* One column, like the substances page: full width on a phone, at most 720 px on desktop. */
+.consumptions {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 16px;
+}

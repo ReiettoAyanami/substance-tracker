@@ -38,7 +38,7 @@ function writePriceMode(substanceId: number, mode: PriceMode): void {
 }
 
 /**
- * One substance on the home (design-frontend.md, "substance card"). Presentational: the substance
+ * One substance on the substances page (design-frontend.md, "substance card"). Presentational: the substance
  * and its card summary come in, every number is the API's; it only formats them. Its ⋮ menu asks
  * the parent to edit or delete the substance.
  */

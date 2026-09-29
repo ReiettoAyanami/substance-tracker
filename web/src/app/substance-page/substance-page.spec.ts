@@ -60,18 +60,18 @@ const batchesOf = (substanceId: number): SubstanceBatches => ({
   ],
 });
 
-/** The home's order: Birra (4), Caffè (1), Erba (3). */
-const homeOrder = [substance(4, 'Birra'), substance(1, 'Caffè'), substance(3, 'Erba')];
+/** The list's order: Birra (4), Caffè (1), Erba (3). */
+const listOrder = [substance(4, 'Birra'), substance(1, 'Caffè'), substance(3, 'Erba')];
 
 describe('SubstancePage', () => {
   let harness: RouterTestingHarness;
 
-  /** Opens a URL the way a direct link or a refresh does, with the home's data. */
+  /** Opens a URL the way a direct link or a refresh does, with the list's data. */
   async function open(url: string): Promise<HTMLElement> {
     harness = await RouterTestingHarness.create(url);
     const backend = TestBed.inject(HttpTestingController);
     backend.expectOne('/api/settings').flush(settings);
-    backend.expectOne('/api/substances').flush(homeOrder);
+    backend.expectOne('/api/substances').flush(listOrder);
     await harness.fixture.whenStable();
     return harness.routeNativeElement!;
   }
@@ -98,10 +98,10 @@ describe('SubstancePage', () => {
     });
   });
 
-  it('shows the substance of the link over the home, with its position in the home order', async () => {
+  it('shows the substance of the link over the list, with its position in the list order', async () => {
     await open('/substances/1');
 
-    expect(document.querySelectorAll('app-home app-substance-card').length).toBe(4); // 3 in the list + 1 in the page
+    expect(document.querySelectorAll('app-substances-page app-substance-card').length).toBe(4); // 3 in the list + 1 in the page
     expect(text(page()?.querySelector('app-substance-card .name'))).toBe('Caffè');
     expect(text(page()?.querySelector('.position'))).toBe('2 / 3');
   });
@@ -113,7 +113,7 @@ describe('SubstancePage', () => {
     expect(text(page()?.querySelector('app-one-time-list .total'))).toBe('No consumptions');
   });
 
-  it('closes onto the home when its substance is deleted from its card', async () => {
+  it('closes onto the list when its substance is deleted from its card', async () => {
     await open('/substances/1');
     page()!.querySelector<HTMLButtonElement>('app-substance-card button.more')!.click();
     await harness.fixture.whenStable();
@@ -132,13 +132,13 @@ describe('SubstancePage', () => {
       await harness.fixture.whenStable();
     }
 
-    expect(TestBed.inject(Router).url).toBe('/');
+    expect(TestBed.inject(Router).url).toBe('/substances');
     expect(page()).toBeNull();
-    const names = Array.from(document.querySelectorAll('app-home app-substance-card .name')).map(text);
+    const names = Array.from(document.querySelectorAll('app-substances-page app-substance-card .name')).map(text);
     expect(names).toEqual(['Birra', 'Erba']);
   });
 
-  it('goes to the next and previous substance of the home order, replacing the route (back still closes)', async () => {
+  it('goes to the next and previous substance of the list order, replacing the route (back still closes)', async () => {
     await open('/substances/1');
     const button = (label: string) => page()!.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`)!;
     const entries = history.length;
@@ -159,25 +159,25 @@ describe('SubstancePage', () => {
     expect(history.length).toBe(entries);
   });
 
-  it('from a direct link, X and a tap on the backdrop close it onto the home', async () => {
+  it('from a direct link, X and a tap on the backdrop close it onto the list', async () => {
     await open('/substances/1');
     const back = vi.spyOn(TestBed.inject(Location), 'back');
 
     page()!.querySelector<HTMLButtonElement>('button[aria-label="Close"]')!.click();
     await harness.fixture.whenStable();
-    expect(TestBed.inject(Router).url).toBe('/');
+    expect(TestBed.inject(Router).url).toBe('/substances');
     expect(page()).toBeNull();
 
     await harness.navigateByUrl('/substances/3');
     page()!.querySelector<HTMLElement>('.backdrop')!.click();
     await harness.fixture.whenStable();
-    expect(TestBed.inject(Router).url).toBe('/');
+    expect(TestBed.inject(Router).url).toBe('/substances');
     expect(back).not.toHaveBeenCalled();
   });
 
-  it('opens from a card of the home; closing then goes back in history, also after prev/next', async () => {
-    await open('/');
-    const erba = Array.from(document.querySelectorAll<HTMLElement>('app-home app-substance-card')).find(
+  it('opens from a card of the list; closing then goes back in history, also after prev/next', async () => {
+    await open('/substances');
+    const erba = Array.from(document.querySelectorAll<HTMLElement>('app-substances-page app-substance-card')).find(
       (card) => text(card.querySelector('.name')) === 'Erba',
     )!;
     erba.querySelector<HTMLElement>('.last-purchase')!.click();
@@ -192,7 +192,7 @@ describe('SubstancePage', () => {
     expect(back).toHaveBeenCalledTimes(1);
   });
 
-  it('says so when the substance is not in the home (an old link, an archived substance)', async () => {
+  it('says so when the substance is not in the list (an old link, an archived substance)', async () => {
     await open('/substances/99');
 
     expect(text(page()?.querySelector('.missing'))).toBe('Substance not found');

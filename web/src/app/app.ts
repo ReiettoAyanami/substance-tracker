@@ -1,8 +1,17 @@
+import { BreakpointObserver } from '@angular/cdk/layout';
 import { Component, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatSidenav, MatSidenavModule } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRouteSnapshot, NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter, map } from 'rxjs';
+
+import { Sidebar } from './sidebar/sidebar';
+
+/** From this width the sidebar stays open at the side (Material 3's "expanded" window class). */
+export const WIDE_SCREEN = '(min-width: 840px)';
 
 /** The title of the deepest active route that has one. */
 function routeTitle(route: ActivatedRouteSnapshot): string {
@@ -11,15 +20,27 @@ function routeTitle(route: ActivatedRouteSnapshot): string {
   return title;
 }
 
-/** App shell (design-frontend.md): the top bar with the current route's title, and the routes. */
+/**
+ * App shell (design-frontend.md): the sidebar with the pages, the top bar with the current route's
+ * title, and the routes. On a wide screen the sidebar stays open at the side; on a narrow one it is
+ * a drawer, opened from the top bar and closed after a tap on a link.
+ */
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, MatToolbarModule],
+  imports: [MatButtonModule, MatIconModule, MatSidenavModule, MatToolbarModule, RouterOutlet, Sidebar],
   templateUrl: './app.html',
-  styleUrl: './app.css'
+  styleUrl: './app.css',
 })
 export class App {
   private readonly router = inject(Router);
+
+  /** The sidebar stays at the side. BreakpointObserver answers at once, then on every change. */
+  protected readonly wide = toSignal(
+    inject(BreakpointObserver)
+      .observe(WIDE_SCREEN)
+      .pipe(map((state) => state.matches)),
+    { requireSync: true },
+  );
 
   protected readonly title = toSignal(
     this.router.events.pipe(
@@ -28,4 +49,18 @@ export class App {
     ),
     { initialValue: '' },
   );
+
+  /**
+   * The menu button opens the drawer. Its origin goes with it: closing gives the focus back to the
+   * button, with a focus ring only when the drawer was opened from the keyboard (a click from a
+   * keyboard has detail 0).
+   */
+  protected openSidebar(sidebar: MatSidenav, click: MouseEvent): void {
+    void sidebar.open(click.detail === 0 ? 'keyboard' : 'mouse');
+  }
+
+  /** A link of the sidebar was tapped: the drawer closes; at the side the sidebar stays. */
+  protected navigated(sidebar: MatSidenav): void {
+    if (!this.wide()) void sidebar.close();
+  }
 }

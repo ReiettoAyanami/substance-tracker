@@ -1,5 +1,5 @@
 /* One column of cards: full width on a phone (16 px gutters), at most 720 px on desktop. */
-.home {
+.substances {
   display: flex;
   flex-direction: column;
   gap: 12px;

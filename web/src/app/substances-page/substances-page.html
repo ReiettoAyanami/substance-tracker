@@ -1,5 +1,5 @@
 @let current = list.state();
-<main class="home">
+<main class="substances">
   @switch (current.status) {
     @case ('loaded') {
       @for (substance of current.substances; track substance.id) {
@@ -29,5 +29,5 @@
   <app-add-button label="Add substance" (pressed)="actions.add()" />
 }
 
-<!-- The substance page (child route substances/:id, step 4) opens here, over the home. -->
+<!-- The substance page (child route substances/:id) opens here, over the list. -->
 <router-outlet />

@@ -6,7 +6,7 @@ import { provideRouter } from '@angular/router';
 
 import { errorInterceptor } from '../data/error-interceptor';
 import { Substance } from '../data/substance';
-import { Home } from './home';
+import { SubstancesPage } from './substances-page';
 
 const settings = { timezone: 'Europe/Rome', dayStartsAt: '00:00:00', currency: 'EUR' };
 
@@ -34,8 +34,8 @@ function substance(id: number, name: string): Substance {
   };
 }
 
-describe('Home', () => {
-  let fixture: ComponentFixture<Home>;
+describe('SubstancesPage', () => {
+  let fixture: ComponentFixture<SubstancesPage>;
   let backend: HttpTestingController;
 
   const names = () =>
@@ -45,7 +45,7 @@ describe('Home', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [Home],
+      imports: [SubstancesPage],
       providers: [
         provideHttpClient(withInterceptors([errorInterceptor])),
         provideHttpClientTesting(),
@@ -55,7 +55,7 @@ describe('Home', () => {
       ],
     }).compileComponents();
     backend = TestBed.inject(HttpTestingController);
-    fixture = TestBed.createComponent(Home);
+    fixture = TestBed.createComponent(SubstancesPage);
     await fixture.whenStable();
   });
 

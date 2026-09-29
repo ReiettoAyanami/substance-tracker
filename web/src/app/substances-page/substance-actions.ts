@@ -14,9 +14,9 @@ interface DialogHistoryState {
 }
 
 /**
- * What can be done to a substance, from the home and from its page: add, edit, delete. It opens
- * the dialogs (each one does its own request) and keeps the home's list in step with their answer.
- * Provided by the Home, next to the SubstanceList.
+ * What can be done to a substance, from the substances page and from its own page: add, edit,
+ * delete. It opens the dialogs (each one does its own request) and keeps the list in step with
+ * their answer. Provided by the SubstancesPage, next to the SubstanceList.
  */
 @Injectable()
 export class SubstanceActions {

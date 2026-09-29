@@ -1,7 +1,8 @@
-/* The darkened home behind the window (design-frontend.md, "backdrop"). */
+/* The darkened list behind the window (design-frontend.md, "backdrop"). A sidebar at the side stays
+   out of it, visible and usable (--app-sidebar-width comes from the app shell; 0 on a phone). */
 .backdrop {
   position: fixed;
-  inset: 0;
+  inset: 0 0 0 var(--app-sidebar-width, 0px);
   z-index: 20;
   background-color: color-mix(in srgb, var(--mat-sys-scrim) 40%, transparent);
 }
@@ -65,15 +66,16 @@ app-substance-card {
   color: var(--mat-sys-on-surface-variant);
 }
 
-/* Desktop: a centred window, with < and > outside it and the position at the top. */
+/* Desktop: a window centred over the content (right of a sidebar at the side), with < and >
+   outside it and the position at the top. */
 @media (min-width: 600px) {
   .window {
     inset: auto;
     top: 50%;
-    left: 50%;
+    left: calc(50% + var(--app-sidebar-width, 0px) / 2);
     translate: -50% -50%;
-    /* as wide as the home: its card as wide as theirs (720 px, plus 2 x 24 of padding) */
-    width: min(768px, calc(100vw - 176px));
+    /* as wide as the list: its card as wide as theirs (720 px, plus 2 x 24 of padding) */
+    width: min(768px, calc(100vw - var(--app-sidebar-width, 0px) - 176px));
     max-height: calc(100dvh - 64px);
     padding: 56px 24px 24px;
     overflow: visible;

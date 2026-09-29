@@ -1,3 +1,26 @@
-<mat-toolbar>{{ title() }}</mat-toolbar>
+<!-- --app-sidebar-width: the room the sidebar takes at the side, for the windows centred over the content. -->
+<mat-sidenav-container class="shell" [style.--app-sidebar-width]="wide() ? '240px' : '0px'">
+  <mat-sidenav
+    #sidebar
+    class="sidebar"
+    fixedInViewport
+    [mode]="wide() ? 'side' : 'over'"
+    [opened]="wide()"
+    [disableClose]="wide()"
+  >
+    <app-sidebar (navigated)="navigated(sidebar)" />
+  </mat-sidenav>
 
-<router-outlet />
+  <mat-sidenav-content>
+    <mat-toolbar>
+      @if (!wide()) {
+        <button mat-icon-button type="button" class="menu" aria-label="Menu" (click)="openSidebar(sidebar, $event)">
+          <mat-icon>menu</mat-icon>
+        </button>
+      }
+      <span class="title">{{ title() }}</span>
+    </mat-toolbar>
+
+    <router-outlet />
+  </mat-sidenav-content>
+</mat-sidenav-container>

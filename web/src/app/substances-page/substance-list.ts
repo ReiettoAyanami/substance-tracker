@@ -8,15 +8,16 @@ import { SettingsApi } from '../data/settings-api';
 import { Substance } from '../data/substance';
 import { LOCALE } from '../locale';
 
-/** The home's list: nothing yet, the substances (API order) with the settings, or why not. */
+/** The substances page's list: nothing yet, the substances (API order) with the settings, or why not. */
 export type SubstanceListState =
   | { status: 'loading' }
   | { status: 'loaded'; settings: Settings; substances: Substance[] }
   | { status: 'failed'; error: ApiError };
 
 /**
- * The substances shown by the home, loaded once. Provided by the Home component (not root), so the
- * substance page, its child route, reads the same list and the same order for prev/next.
+ * The substances shown by the substances page, loaded once. Provided by the SubstancesPage
+ * component (not root), so the substance page, its child route, reads the same list and the same
+ * order for prev/next.
  */
 @Injectable()
 export class SubstanceList {
