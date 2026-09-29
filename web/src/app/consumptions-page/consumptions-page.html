@@ -1,2 +1,25 @@
-<!-- The consumption cards, the filters and the "+" come with the next steps of the roadmap. -->
-<main class="consumptions"></main>
+<main class="consumptions">
+  <div class="page-actions">
+    <!-- It opens the consumption form, which comes with step 8 of the roadmap. -->
+    <button mat-mini-fab type="button" class="add" aria-label="Add consumption" disabled>
+      <mat-icon>add</mat-icon>
+    </button>
+  </div>
+
+  @if (error(); as why) {
+    <p class="error">Could not load the consumptions: {{ why }}</p>
+  } @else if (list(); as shown) {
+    @for (item of shown.items; track item.type + ':' + item.id) {
+      <app-consumption-card [consumption]="item" [settings]="shown.settings" />
+    } @empty {
+      <p class="empty">No consumptions</p>
+    }
+
+    @if (hasMore()) {
+      <button mat-button type="button" class="show-more" [disabled]="loadingMore()" (click)="showMore()">Show more</button>
+    }
+    @if (moreFailed()) {
+      <p class="more-error" role="alert">Could not load more consumptions</p>
+    }
+  }
+</main>

@@ -10,6 +10,17 @@ import { of } from 'rxjs';
 
 import { App } from './app';
 import { routes } from './app.routes';
+import { ReportsApi } from './data/reports-api';
+import { SettingsApi } from './data/settings-api';
+
+/** The pages' data: the shell is tested here, not what the pages show. */
+const pageData = [
+  { provide: ReportsApi, useValue: { listConsumptions: () => of([]) } },
+  {
+    provide: SettingsApi,
+    useValue: { getSettings: () => of({ timezone: 'Europe/Rome', dayStartsAt: '00:00:00', currency: 'EUR' }) },
+  },
+];
 
 describe('App', () => {
   /** The app on a wide screen (the sidebar at the side) or a narrow one (a drawer). */
@@ -23,6 +34,7 @@ describe('App', () => {
         // jsdom has no animation events: the drawer opens and closes at once
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: BreakpointObserver, useValue: { observe: () => of({ matches: screen === 'wide', breakpoints: {} }) } },
+        ...pageData,
       ],
     });
     const fixture = TestBed.createComponent(App);

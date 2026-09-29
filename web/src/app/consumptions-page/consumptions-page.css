@@ -1,6 +1,41 @@
-/* One column, like the substances page: full width on a phone, at most 720 px on desktop. */
+/* One column, like the substances page: full width on a phone (16 px gutters), at most 720 px on desktop. */
 .consumptions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   max-width: 720px;
   margin: 0 auto;
-  padding: 16px;
+  padding: 16px 16px calc(24px + env(safe-area-inset-bottom, 0px));
+}
+
+/* The "+" at the top right of the page, above the list (and, later, the filters). */
+.page-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.show-more {
+  align-self: center;
+}
+
+.empty,
+.error {
+  margin: 48px 0;
+  text-align: center;
+  font: var(--mat-sys-body-large);
+}
+
+.empty {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.error,
+.more-error {
+  color: var(--mat-sys-error);
+}
+
+.more-error {
+  margin: 0;
+  text-align: center;
+  font: var(--mat-sys-body-medium);
 }
