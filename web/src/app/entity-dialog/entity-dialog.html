@@ -1,0 +1,23 @@
+<mat-dialog-content>
+  @if (chooser) {
+    <mat-form-field appearance="outline" class="kind">
+      <mat-label>New</mat-label>
+      <mat-select [value]="kind()" (selectionChange)="kind.set($event.value)">
+        @for (option of data.kinds; track option) {
+          <mat-option [value]="option">{{ labels[option] }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  }
+
+  @switch (kind()) {
+    @case ('substance') {
+      <app-substance-form
+        [substance]="data.edit?.substance ?? null"
+        [showTitle]="!chooser"
+        (saved)="savedSubstance($event)"
+        (cancelled)="cancel()"
+      />
+    }
+  }
+</mat-dialog-content>

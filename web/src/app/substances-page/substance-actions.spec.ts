@@ -1,4 +1,5 @@
 import { Location, PlatformLocation } from '@angular/common';
+import { ApplicationRef } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
@@ -13,7 +14,7 @@ describe('SubstanceActions', () => {
   let location: Location;
 
   const cancel = () =>
-    Array.from(document.querySelectorAll<HTMLButtonElement>('app-substance-form-dialog button')).find(
+    Array.from(document.querySelectorAll<HTMLButtonElement>('app-substance-form button')).find(
       (b) => b.textContent?.trim() === 'Cancel',
     )!;
 
@@ -39,6 +40,7 @@ describe('SubstanceActions', () => {
     const closed = actions.add();
     expect(location.getState()).toEqual({ dialog: true });
 
+    await TestBed.inject(ApplicationRef).whenStable(); // the dialog draws its form
     cancel().click();
     await closed;
     expect(location.getState()).not.toEqual({ dialog: true });
@@ -50,7 +52,7 @@ describe('SubstanceActions', () => {
 
     TestBed.inject(PlatformLocation).back(); // the browser's back, not the app's
     await closed;
-    expect(document.querySelector('app-substance-form-dialog')).toBeNull();
+    expect(document.querySelector('app-substance-form')).toBeNull();
     expect(back).not.toHaveBeenCalled();
   });
 });

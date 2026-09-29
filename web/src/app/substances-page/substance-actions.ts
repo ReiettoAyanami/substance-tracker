@@ -5,7 +5,7 @@ import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
 
 import { DeleteSubstanceDialog } from '../delete-substance-dialog/delete-substance-dialog';
 import { Substance } from '../data/substance';
-import { SubstanceFormData, SubstanceFormDialog } from '../substance-form-dialog/substance-form-dialog';
+import { EntityDialog, EntityDialogData, EntityDialogResult } from '../entity-dialog/entity-dialog';
 import { SubstanceList } from './substance-list';
 
 /** Marks the history entry pushed while a dialog is open. */
@@ -24,18 +24,24 @@ export class SubstanceActions {
   private readonly dialog = inject(MatDialog);
   private readonly location = inject(Location);
 
-  /** The empty substance form; the created substance joins the list in its place. */
+  /** The entity dialog with the empty substance form; the created substance joins the list in its place. */
   async add(): Promise<void> {
-    const created = await this.open<SubstanceFormDialog, SubstanceFormData, Substance>(SubstanceFormDialog, {});
-    if (created) this.list.add(created);
+    const result = await this.open<EntityDialog, EntityDialogData, EntityDialogResult>(
+      EntityDialog,
+      { kinds: ['substance'] },
+      { ariaLabel: 'New substance' },
+    );
+    if (result?.kind === 'substance') this.list.add(result.substance);
   }
 
   /** The substance form filled in with the substance; the changed one replaces it in the list. */
   async edit(substance: Substance): Promise<void> {
-    const changed = await this.open<SubstanceFormDialog, SubstanceFormData, Substance>(SubstanceFormDialog, {
-      substance,
-    });
-    if (changed) this.list.replace(changed);
+    const result = await this.open<EntityDialog, EntityDialogData, EntityDialogResult>(
+      EntityDialog,
+      { kinds: ['substance'], edit: { kind: 'substance', substance } },
+      { ariaLabel: 'Edit substance' },
+    );
+    if (result?.kind === 'substance') this.list.replace(result.substance);
   }
 
   /** Asks, then deletes. True once the substance is deleted and gone from the list. */

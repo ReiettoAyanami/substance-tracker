@@ -119,7 +119,7 @@ describe('SubstancesPage', () => {
 
     fixture.nativeElement.querySelector('app-add-button button[aria-label="Add substance"]').click();
     await fixture.whenStable();
-    const form = document.querySelector('app-substance-form-dialog')!;
+    const form = document.querySelector('app-substance-form')!;
     expect(form).not.toBeNull();
 
     for (const [field, value] of [['name', 'Caffè'], ['unit', 'capsula']]) {
@@ -132,7 +132,7 @@ describe('SubstancesPage', () => {
     await fixture.whenStable();
 
     await settle();
-    expect(document.querySelector('app-substance-form-dialog')).toBeNull();
+    expect(document.querySelector('app-substance-form')).toBeNull();
     expect(names()).toEqual(['Birra', 'Caffè', 'Erba']);
   });
 
@@ -142,7 +142,7 @@ describe('SubstancesPage', () => {
     await fixture.whenStable();
 
     await menu('Birra', 'Edit');
-    const form = document.querySelector('app-substance-form-dialog')!;
+    const form = document.querySelector('app-substance-form')!;
     const name = form.querySelector<HTMLInputElement>('input[formControlName="name"]')!;
     expect(name.value).toBe('Birra');
     name.value = 'Tabacco';
@@ -153,7 +153,7 @@ describe('SubstancesPage', () => {
     req.flush(substance(4, 'Tabacco'));
     await settle();
 
-    expect(document.querySelector('app-substance-form-dialog')).toBeNull();
+    expect(document.querySelector('app-substance-form')).toBeNull();
     expect(names()).toEqual(['Erba', 'Tabacco']);
   });
 
