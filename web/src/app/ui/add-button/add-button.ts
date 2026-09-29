@@ -13,7 +13,7 @@ import { MatIconModule } from '@angular/material/icon';
   styleUrl: './add-button.css',
 })
 export class AddButton {
-  /** What the button does, for screen readers (e.g. "Aggiungi sostanza"). */
+  /** What the button does, for screen readers (e.g. "Add substance"). */
   readonly label = input.required<string>();
   readonly pressed = output<void>();
 }

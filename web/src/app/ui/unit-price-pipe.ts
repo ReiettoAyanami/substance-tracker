@@ -1,12 +1,11 @@
 import { Pipe, PipeTransform } from '@angular/core';
 
-/** UI language of the app. */
-const LOCALE = 'it-IT';
+import { LOCALE } from '../locale';
 
 /**
  * A unit price as the app shows it everywhere (card, batch bar tooltip): a decimal string from the
  * API, rounded to cents only here (design.md: "rounded to cents only when displayed"), in the
- * currency of the settings, per unit: "0,33 €/sigaretta". "—" when there is no price.
+ * currency of the settings, per unit: "€0.33/sigaretta". "—" when there is no price.
  */
 @Pipe({
   name: 'unitPrice',

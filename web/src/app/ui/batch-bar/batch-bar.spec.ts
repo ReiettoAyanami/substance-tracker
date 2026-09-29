@@ -43,7 +43,7 @@ describe('BatchBar', () => {
     await fixture.whenStable();
 
     const shown = document.querySelector('.batch-bar-tooltip');
-    expect(shown?.textContent?.split('\n').map(text)).toEqual(['Lavazza', '0,35 €/capsula']);
+    expect(shown?.textContent?.split('\n').map(text)).toEqual(['Lavazza', '€0.35/capsula']);
   });
 
   it('anchors the tooltip to the mouse and moves it with the mouse', async () => {
@@ -61,11 +61,11 @@ describe('BatchBar', () => {
     expect(setOrigin).toHaveBeenCalledWith({ x: 40, y: 22 });
   });
 
-  it('calls a batch without a name "Lotto senza nome"', async () => {
+  it('calls a batch without a name "Unnamed batch"', async () => {
     await render(null, '0.320000');
 
     const tooltip = fixture.debugElement.query(By.directive(MatTooltip)).injector.get(MatTooltip);
-    expect(tooltip.message.split('\n').map(text)).toEqual(['Lotto senza nome', '0,32 €/capsula']);
+    expect(tooltip.message.split('\n').map(text)).toEqual(['Unnamed batch', '€0.32/capsula']);
   });
 
   it('keeps the click after a long press on touch to itself; a tap and a mouse click go through', async () => {

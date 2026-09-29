@@ -34,10 +34,10 @@ describe('DeleteSubstanceDialog', () => {
 
   afterEach(() => backend.verify());
 
-  it('asks about the substance by name, deletes it on Elimina and closes with true on the 204', async () => {
-    expect(element().querySelector('h2')?.textContent?.trim()).toBe('Eliminare «Caffè»?');
+  it('asks about the substance by name, deletes it on Delete and closes with true on the 204', async () => {
+    expect(element().querySelector('h2')?.textContent?.trim()).toBe('Delete “Caffè”?');
 
-    button('Elimina').click();
+    button('Delete').click();
     await fixture.whenStable();
     const req = backend.expectOne('/api/substances/7');
     expect(req.request.method).toBe('DELETE');
@@ -47,29 +47,29 @@ describe('DeleteSubstanceDialog', () => {
     expect(closedWith).toEqual([true]);
   });
 
-  it('disables Elimina on the first tap: a double tap sends one request', async () => {
-    button('Elimina').click();
-    button('Elimina').click();
+  it('disables Delete on the first tap: a double tap sends one request', async () => {
+    button('Delete').click();
+    button('Delete').click();
     await fixture.whenStable();
 
-    expect(button('Elimina').disabled).toBe(true);
+    expect(button('Delete').disabled).toBe(true);
     backend.expectOne('/api/substances/7').flush(null, { status: 204, statusText: 'No Content' });
   });
 
-  it('on an error stays open, says why, and Elimina works again', async () => {
-    button('Elimina').click();
+  it('on an error stays open, says why, and Delete works again', async () => {
+    button('Delete').click();
     backend.expectOne('/api/substances/7').flush(null, { status: 500, statusText: 'Internal Server Error' });
     await fixture.whenStable();
 
     expect(closedWith).toEqual([]);
     expect(element().querySelector('.error')?.textContent?.trim()).toBe(
-      'Impossibile eliminare: Internal Server Error (500)',
+      'Could not delete: Internal Server Error (500)',
     );
-    expect(button('Elimina').disabled).toBe(false);
+    expect(button('Delete').disabled).toBe(false);
   });
 
-  it('closes with nothing on Annulla', async () => {
-    button('Annulla').click();
+  it('closes with nothing on Cancel', async () => {
+    button('Cancel').click();
 
     backend.expectNone('/api/substances/7');
     expect(closedWith).toEqual([undefined]);

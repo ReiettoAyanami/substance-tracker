@@ -7,7 +7,7 @@ export const routes: Routes = [
   {
     path: '',
     component: Home,
-    title: 'Sostanze',
+    title: 'Substances',
     // The substance page is a child of the home, so the home stays rendered underneath it and a
     // direct link or a refresh on /substances/5 rebuilds the home below (design-frontend.md).
     children: [{ path: 'substances/:id', component: SubstancePage }],

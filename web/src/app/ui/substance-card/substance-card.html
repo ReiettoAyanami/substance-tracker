@@ -10,7 +10,7 @@
         mat-icon-button
         type="button"
         class="more"
-        [attr.aria-label]="'Azioni su ' + substance().name"
+        [attr.aria-label]="'Actions for ' + substance().name"
         [matMenuTriggerFor]="actions"
         (click)="$event.stopPropagation()"
       >
@@ -20,11 +20,11 @@
     <mat-menu #actions="matMenu" xPosition="before">
       <button mat-menu-item type="button" (click)="edit.emit()">
         <mat-icon>edit</mat-icon>
-        <span>Modifica</span>
+        <span>Edit</span>
       </button>
       <button mat-menu-item type="button" (click)="remove.emit()">
         <mat-icon>delete</mat-icon>
-        <span>Elimina</span>
+        <span>Delete</span>
       </button>
     </mat-menu>
 
@@ -34,13 +34,13 @@
       <mat-button-toggle-group
         class="price-mode"
         hideSingleSelectionIndicator
-        aria-label="Prezzo per unità"
+        aria-label="Price per unit"
         [value]="mode()"
         (change)="choose($event.value)"
         (click)="$event.stopPropagation()"
       >
-        <mat-button-toggle value="last">ultimo</mat-button-toggle>
-        <mat-button-toggle value="avg">medio</mat-button-toggle>
+        <mat-button-toggle value="last">last</mat-button-toggle>
+        <mat-button-toggle value="avg">avg</mat-button-toggle>
       </mat-button-toggle-group>
     </div>
 

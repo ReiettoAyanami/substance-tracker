@@ -4,11 +4,11 @@
     class="window"
     role="dialog"
     aria-modal="true"
-    [attr.aria-label]="view.found ? view.substance.name : 'Sostanza non trovata'"
+    [attr.aria-label]="view.found ? view.substance.name : 'Substance not found'"
     cdkTrapFocus
     [cdkTrapFocusAutoCapture]="true"
   >
-    <button mat-icon-button type="button" class="close" aria-label="Chiudi" (click)="close()">
+    <button mat-icon-button type="button" class="close" aria-label="Close" (click)="close()">
       <mat-icon>close</mat-icon>
     </button>
     @if (view.found) {
@@ -27,7 +27,7 @@
           mat-icon-button
           type="button"
           class="previous"
-          aria-label="Sostanza precedente"
+          aria-label="Previous substance"
           [disabled]="view.previous === null"
           (click)="go(view.previous!)"
         >
@@ -38,7 +38,7 @@
           mat-icon-button
           type="button"
           class="next"
-          aria-label="Sostanza successiva"
+          aria-label="Next substance"
           [disabled]="view.next === null"
           (click)="go(view.next!)"
         >
@@ -46,7 +46,7 @@
         </button>
       </nav>
     } @else {
-      <p class="missing">Sostanza non trovata</p>
+      <p class="missing">Substance not found</p>
     }
   </section>
 }

@@ -109,8 +109,8 @@ describe('SubstancePage', () => {
   it('shows the total of the active batches and of the one-time consumptions below the card', async () => {
     await open('/substances/1');
 
-    expect(text(page()?.querySelector('app-batch-list .total'))).toBe('1 lotto · 4 / 10 g');
-    expect(text(page()?.querySelector('app-one-time-list .total'))).toBe('Nessun consumo');
+    expect(text(page()?.querySelector('app-batch-list .total'))).toBe('1 batch · 4 / 10 g');
+    expect(text(page()?.querySelector('app-one-time-list .total'))).toBe('No consumptions');
   });
 
   it('closes onto the home when its substance is deleted from its card', async () => {
@@ -118,11 +118,11 @@ describe('SubstancePage', () => {
     page()!.querySelector<HTMLButtonElement>('app-substance-card button.more')!.click();
     await harness.fixture.whenStable();
     Array.from(document.querySelectorAll<HTMLButtonElement>('.mat-mdc-menu-item'))
-      .find((b) => b.textContent?.includes('Elimina'))!
+      .find((b) => b.textContent?.includes('Delete'))!
       .click();
     await harness.fixture.whenStable();
     Array.from(document.querySelectorAll<HTMLButtonElement>('app-delete-substance-dialog button'))
-      .find((b) => b.textContent?.trim() === 'Elimina')!
+      .find((b) => b.textContent?.trim() === 'Delete')!
       .click();
     TestBed.inject(HttpTestingController)
       .expectOne('/api/substances/1')
@@ -143,19 +143,19 @@ describe('SubstancePage', () => {
     const button = (label: string) => page()!.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`)!;
     const entries = history.length;
 
-    button('Sostanza successiva').click();
+    button('Next substance').click();
     await harness.fixture.whenStable();
     expect(TestBed.inject(Router).url).toBe('/substances/3');
     expect(text(page()?.querySelector('app-substance-card .name'))).toBe('Erba');
     expect(text(page()?.querySelector('.position'))).toBe('3 / 3');
-    expect(button('Sostanza successiva').disabled).toBe(true);
+    expect(button('Next substance').disabled).toBe(true);
 
-    button('Sostanza precedente').click();
+    button('Previous substance').click();
     await harness.fixture.whenStable();
-    button('Sostanza precedente').click();
+    button('Previous substance').click();
     await harness.fixture.whenStable();
     expect(TestBed.inject(Router).url).toBe('/substances/4');
-    expect(button('Sostanza precedente').disabled).toBe(true);
+    expect(button('Previous substance').disabled).toBe(true);
     expect(history.length).toBe(entries);
   });
 
@@ -163,7 +163,7 @@ describe('SubstancePage', () => {
     await open('/substances/1');
     const back = vi.spyOn(TestBed.inject(Location), 'back');
 
-    page()!.querySelector<HTMLButtonElement>('button[aria-label="Chiudi"]')!.click();
+    page()!.querySelector<HTMLButtonElement>('button[aria-label="Close"]')!.click();
     await harness.fixture.whenStable();
     expect(TestBed.inject(Router).url).toBe('/');
     expect(page()).toBeNull();
@@ -186,17 +186,17 @@ describe('SubstancePage', () => {
     expect(text(page()?.querySelector('app-substance-card .name'))).toBe('Erba');
 
     const back = vi.spyOn(TestBed.inject(Location), 'back');
-    page()!.querySelector<HTMLButtonElement>('button[aria-label="Sostanza precedente"]')!.click();
+    page()!.querySelector<HTMLButtonElement>('button[aria-label="Previous substance"]')!.click();
     await harness.fixture.whenStable();
-    page()!.querySelector<HTMLButtonElement>('button[aria-label="Chiudi"]')!.click();
+    page()!.querySelector<HTMLButtonElement>('button[aria-label="Close"]')!.click();
     expect(back).toHaveBeenCalledTimes(1);
   });
 
   it('says so when the substance is not in the home (an old link, an archived substance)', async () => {
     await open('/substances/99');
 
-    expect(text(page()?.querySelector('.missing'))).toBe('Sostanza non trovata');
+    expect(text(page()?.querySelector('.missing'))).toBe('Substance not found');
     expect(page()?.querySelector('app-substance-card')).toBeNull();
-    expect(page()?.querySelector('button[aria-label="Chiudi"]')).not.toBeNull();
+    expect(page()?.querySelector('button[aria-label="Close"]')).not.toBeNull();
   });
 });

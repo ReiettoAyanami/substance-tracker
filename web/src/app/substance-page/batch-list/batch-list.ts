@@ -6,12 +6,10 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { ApiError } from '../../data/api-error';
 import { ReportsApi } from '../../data/reports-api';
 import { Settings } from '../../data/settings';
+import { LOCALE } from '../../locale';
 import { IdentityColorPipe } from '../../ui/identity-color-pipe';
 import { StockBar } from '../../ui/stock-bar/stock-bar';
 import { UnitPricePipe } from '../../ui/unit-price-pipe';
-
-/** UI language of the app. */
-const LOCALE = 'it-IT';
 
 /** What a batch's share is of: the stock by quantity, or its value. */
 type ShareMode = 'quantity' | 'value';
@@ -89,13 +87,13 @@ export class BatchList {
     if (failure) {
       // The interceptor's ApiError is not an Error: the resource wraps it, as its cause.
       const error = (failure.cause ?? failure) as Partial<ApiError>;
-      return `Impossibile caricare i lotti${error.status ? ` (${error.status})` : ''}`;
+      return `Could not load the batches${error.status ? ` (${error.status})` : ''}`;
     }
     if (!this.batches.hasValue()) return '…';
     const { batches, stock, stockBarMax } = this.batches.value();
-    if (batches.length === 0) return 'Nessun lotto attivo';
+    if (batches.length === 0) return 'No active batches';
     const quantity = this.formats().quantity;
-    const count = batches.length === 1 ? '1 lotto' : `${batches.length} lotti`;
+    const count = batches.length === 1 ? '1 batch' : `${batches.length} batches`;
     return `${count} · ${this.exact(quantity, stock)} / ${this.exact(quantity, stockBarMax)} ${this.unit()}`;
   });
 
@@ -112,7 +110,7 @@ export class BatchList {
       left: `${this.exact(formats.quantity, batch.remaining)} / ${this.exact(formats.quantity, batch.quantity)} ${this.unit()}`,
       totalPrice: this.exact(formats.money, batch.totalPrice),
       share: `${this.exact(formats.share, byValue ? batch.shareByValue : batch.shareByQuantity)} ${
-        byValue ? 'del valore' : 'della scorta'
+        byValue ? 'of the value' : 'of the stock'
       }`,
     }));
   });

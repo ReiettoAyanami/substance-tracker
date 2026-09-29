@@ -19,7 +19,7 @@ export class StockBar {
   readonly segments = input.required<StockBarSegment[]>();
   /** stockBarMax of the card summary (decimal string). */
   readonly max = input.required<string>();
-  /** What the bar says to a screen reader (e.g. "Scorta: 272 capsule"). */
+  /** What the bar says to a screen reader (e.g. "Stock: 272 capsula"). */
   readonly label = input('');
   /** Unit of the substance, for the batches' price per unit. */
   readonly unit = input.required<string>();

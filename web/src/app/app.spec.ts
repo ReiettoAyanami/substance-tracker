@@ -20,7 +20,7 @@ describe('App', () => {
     await fixture.whenStable();
 
     const page = fixture.nativeElement as HTMLElement;
-    expect(page.querySelector('mat-toolbar')?.textContent?.trim()).toBe('Sostanze');
+    expect(page.querySelector('mat-toolbar')?.textContent?.trim()).toBe('Substances');
     expect(page.querySelector('app-home')).not.toBeNull();
   });
 });

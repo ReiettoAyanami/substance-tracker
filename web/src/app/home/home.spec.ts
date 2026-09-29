@@ -90,7 +90,7 @@ describe('Home', () => {
     expect(names()).toEqual(['Birra', 'Caffè', 'Erba']);
   });
 
-  it('says "Nessuna sostanza" when there are none, and not while loading', async () => {
+  it('says "No substances" when there are none, and not while loading', async () => {
     const empty = () => fixture.nativeElement.querySelector('.empty')?.textContent?.trim();
     expect(empty()).toBeUndefined();
 
@@ -98,7 +98,7 @@ describe('Home', () => {
     backend.expectOne('/api/substances').flush([]);
     await fixture.whenStable();
 
-    expect(empty()).toBe('Nessuna sostanza');
+    expect(empty()).toBe('No substances');
     expect(names()).toEqual([]);
   });
 
@@ -108,7 +108,7 @@ describe('Home', () => {
     await fixture.whenStable();
 
     const error = fixture.nativeElement.querySelector('.error')?.textContent?.replace(/\s+/g, ' ').trim();
-    expect(error).toBe('Impossibile caricare le sostanze: Internal Server Error (500)');
+    expect(error).toBe('Could not load the substances: Internal Server Error (500)');
     expect(fixture.nativeElement.querySelector('.empty')).toBeNull();
   });
 
@@ -117,7 +117,7 @@ describe('Home', () => {
     backend.expectOne('/api/substances').flush([substance(4, 'Birra'), substance(3, 'Erba')]);
     await fixture.whenStable();
 
-    fixture.nativeElement.querySelector('app-add-button button[aria-label="Aggiungi sostanza"]').click();
+    fixture.nativeElement.querySelector('app-add-button button[aria-label="Add substance"]').click();
     await fixture.whenStable();
     const form = document.querySelector('app-substance-form-dialog')!;
     expect(form).not.toBeNull();
@@ -141,7 +141,7 @@ describe('Home', () => {
     backend.expectOne('/api/substances').flush([substance(4, 'Birra'), substance(3, 'Erba')]);
     await fixture.whenStable();
 
-    await menu('Birra', 'Modifica');
+    await menu('Birra', 'Edit');
     const form = document.querySelector('app-substance-form-dialog')!;
     const name = form.querySelector<HTMLInputElement>('input[formControlName="name"]')!;
     expect(name.value).toBe('Birra');
@@ -157,7 +157,7 @@ describe('Home', () => {
     expect(names()).toEqual(['Erba', 'Tabacco']);
   });
 
-  it('deletes a substance from its ⋮ menu after asking; Annulla keeps it', async () => {
+  it('deletes a substance from its ⋮ menu after asking; Cancel keeps it', async () => {
     backend.expectOne('/api/settings').flush(settings);
     backend.expectOne('/api/substances').flush([substance(4, 'Birra'), substance(3, 'Erba')]);
     await fixture.whenStable();
@@ -166,14 +166,14 @@ describe('Home', () => {
         (b) => b.textContent?.trim() === label,
       )!;
 
-    await menu('Birra', 'Elimina');
-    confirmButton('Annulla').click();
+    await menu('Birra', 'Delete');
+    confirmButton('Cancel').click();
     await settle();
     backend.expectNone('/api/substances/4');
     expect(names()).toEqual(['Birra', 'Erba']);
 
-    await menu('Birra', 'Elimina');
-    confirmButton('Elimina').click();
+    await menu('Birra', 'Delete');
+    confirmButton('Delete').click();
     const req = backend.expectOne('/api/substances/4');
     expect(req.request.method).toBe('DELETE');
     req.flush(null, { status: 204, statusText: 'No Content' });

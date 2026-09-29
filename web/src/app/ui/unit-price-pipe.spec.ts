@@ -6,11 +6,11 @@ describe('UnitPricePipe', () => {
   const plain = (value: string) => value.replace(/\s/g, ' ');
 
   it('rounds to cents, in the currency of the settings, per unit', () => {
-    expect(plain(pipe.transform('0.325000', 'EUR', 'sigaretta'))).toBe('0,33 €/sigaretta');
+    expect(plain(pipe.transform('0.325000', 'EUR', 'sigaretta'))).toBe('€0.33/sigaretta');
   });
 
   it('rounds half up on the decimal digits (1.005 → 1,01, where toFixed or Math.round give 1.00)', () => {
-    expect(plain(pipe.transform('1.005000', 'EUR', 'g'))).toBe('1,01 €/g');
+    expect(plain(pipe.transform('1.005000', 'EUR', 'g'))).toBe('€1.01/g');
   });
 
   it('is "—" when there is no price', () => {

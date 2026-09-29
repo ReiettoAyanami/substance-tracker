@@ -14,7 +14,7 @@ describe('SubstanceActions', () => {
 
   const cancel = () =>
     Array.from(document.querySelectorAll<HTMLButtonElement>('app-substance-form-dialog button')).find(
-      (b) => b.textContent?.trim() === 'Annulla',
+      (b) => b.textContent?.trim() === 'Cancel',
     )!;
 
   beforeEach(() => {

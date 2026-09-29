@@ -33,18 +33,18 @@ const decimalText: ValidatorFn = (control) =>
 /** The message under a field for its first error, in the UI language. */
 function messageFor(errors: ValidationErrors | null): string | null {
   if (!errors) return null;
-  if (errors['required']) return 'Obbligatorio';
-  if (errors['decimal']) return 'Numero non valido (es. 6 o 0,5)';
+  if (errors['required']) return 'Required';
+  if (errors['decimal']) return 'Not a valid number (e.g. 6 or 0.5)';
   if (errors['server']) return errors['server'];
   return null;
 }
 
-/** A decimal as typed ("1,20" or "1.20") as the API wants it ("1.20"); empty → left out. */
+/** A decimal as typed ("1.20", or "1,20" from a keyboard with a comma) as the API wants it ("1.20"); empty → left out. */
 const decimal = (typed: string) => (typed.trim() === '' ? undefined : typed.trim().replace(',', '.'));
 
-/** A decimal string of the API ("20.000", "0.500") as lenzi would type it ("20", "0,5"). */
+/** A decimal string of the API ("20.000", "0.500") as lenzi would type it ("20", "0.5"). */
 const asTyped = (value: string | null | undefined) =>
-  value == null ? '' : value.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '').replace('.', ',');
+  value == null ? '' : value.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
 
 /**
  * The form that creates a substance (design-frontend.md, "substance form dialog"), or edits one
@@ -130,7 +130,7 @@ export class SubstanceFormDialog {
     });
     if (error.fieldErrors.length === 0 || unplaced.length > 0) {
       const detail = unplaced.map((e) => e.message).join('; ') || error.title;
-      this.formError.set(`Impossibile salvare: ${detail}${error.status ? ` (${error.status})` : ''}`);
+      this.formError.set(`Could not save: ${detail}${error.status ? ` (${error.status})` : ''}`);
     }
   }
 }

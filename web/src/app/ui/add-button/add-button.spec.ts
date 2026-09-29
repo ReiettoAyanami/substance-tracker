@@ -10,7 +10,7 @@ describe('AddButton', () => {
       imports: [AddButton],
     }).compileComponents();
     fixture = TestBed.createComponent(AddButton);
-    fixture.componentRef.setInput('label', 'Aggiungi sostanza');
+    fixture.componentRef.setInput('label', 'Add substance');
     await fixture.whenStable();
   });
 
@@ -19,7 +19,7 @@ describe('AddButton', () => {
     fixture.componentInstance.pressed.subscribe(() => pressed++);
 
     const button: HTMLButtonElement = fixture.nativeElement.querySelector('button');
-    expect(button.getAttribute('aria-label')).toBe('Aggiungi sostanza');
+    expect(button.getAttribute('aria-label')).toBe('Add substance');
     expect(button.querySelector('mat-icon')?.textContent?.trim()).toBe('add');
 
     button.click();

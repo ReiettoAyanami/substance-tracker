@@ -72,8 +72,8 @@ describe('OneTimeList', () => {
   it('closed, is the total: how many, how much and what they cost', async () => {
     await render();
 
-    expect(text(element().querySelector('mat-panel-title'))).toBe('Una tantum');
-    expect(text(element().querySelector('.total'))).toBe('2 consumi · 4 bottiglia · 18,00 €');
+    expect(text(element().querySelector('mat-panel-title'))).toBe('One-time');
+    expect(text(element().querySelector('.total'))).toBe('2 consumptions · 4 bottiglia · €18.00');
   });
 
   it('opens into one item per consumption, newest first, with its name, day, quantity and price', async () => {
@@ -81,10 +81,10 @@ describe('OneTimeList', () => {
     element().querySelector<HTMLElement>('mat-expansion-panel-header')!.click();
     await fixture.whenStable();
 
-    expect(texts('.item-name')).toEqual(['Bar sotto casa', 'Senza nome']);
-    expect(texts('.when')).toEqual(['27 set 2026', '26 set 2026']);
+    expect(texts('.item-name')).toEqual(['Bar sotto casa', 'Unnamed']);
+    expect(texts('.when')).toEqual(['27 Sept 2026', '26 Sept 2026']);
     expect(texts('.quantity')).toEqual(['2 bottiglia', '2 bottiglia']);
-    expect(texts('.price')).toEqual(['9,00 €', '9,00 €']);
+    expect(texts('.price')).toEqual(['€9.00', '€9.00']);
     expect(texts('.note')).toEqual(['con Luca']);
     expect(element().querySelector('.more')).toBeNull(); // a page that is not full is the last one
   });
@@ -98,7 +98,7 @@ describe('OneTimeList', () => {
     await render();
 
     const more = element().querySelector<HTMLButtonElement>('.more')!;
-    expect(text(more)).toBe('Mostra altri');
+    expect(text(more)).toBe('Show more');
     more.click();
     await fixture.whenStable();
 
@@ -112,7 +112,7 @@ describe('OneTimeList', () => {
     pageAnswer = () => [];
     await render();
 
-    expect(text(element().querySelector('.total'))).toBe('Nessun consumo');
+    expect(text(element().querySelector('.total'))).toBe('No consumptions');
     expect(element().querySelector('mat-expansion-panel-header')!.getAttribute('aria-disabled')).toBe('true');
   });
 });

@@ -43,12 +43,12 @@ describe('StockBar', () => {
   });
 
   it('is an image with the label it is given; with no batches the track is empty', async () => {
-    fixture.componentRef.setInput('label', 'Scorta: 0 bustine');
+    fixture.componentRef.setInput('label', 'Stock: 0 bustine');
     const segments = await render([], '0.000');
 
     const track: HTMLElement = fixture.nativeElement.querySelector('.track');
     expect(segments.length).toBe(0);
     expect(track.getAttribute('role')).toBe('img');
-    expect(track.getAttribute('aria-label')).toBe('Scorta: 0 bustine');
+    expect(track.getAttribute('aria-label')).toBe('Stock: 0 bustine');
   });
 });

@@ -22,7 +22,7 @@ export class DeleteSubstanceDialog {
   private readonly dialog = inject<MatDialogRef<DeleteSubstanceDialog, true>>(MatDialogRef);
   protected readonly substance = inject<Substance>(MAT_DIALOG_DATA);
 
-  /** The request is out: Elimina is disabled (no double submit). */
+  /** The request is out: Delete is disabled (no double submit). */
   protected readonly deleting = signal(false);
   protected readonly error = signal<string | null>(null);
 
@@ -35,7 +35,7 @@ export class DeleteSubstanceDialog {
       next: () => this.dialog.close(true),
       error: (error: ApiError) => {
         this.deleting.set(false);
-        this.error.set(`Impossibile eliminare: ${error.title}${error.status ? ` (${error.status})` : ''}`);
+        this.error.set(`Could not delete: ${error.title}${error.status ? ` (${error.status})` : ''}`);
       },
     });
   }

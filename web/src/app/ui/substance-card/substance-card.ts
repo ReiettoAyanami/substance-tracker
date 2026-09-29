@@ -7,12 +7,10 @@ import { MatMenuModule } from '@angular/material/menu';
 
 import { Settings } from '../../data/settings';
 import { Substance } from '../../data/substance';
+import { LOCALE } from '../../locale';
 import { IdentityColorPipe } from '../identity-color-pipe';
 import { StockBar } from '../stock-bar/stock-bar';
 import { UnitPricePipe } from '../unit-price-pipe';
-
-/** UI language of the app. */
-const LOCALE = 'it-IT';
 
 /** Which unit price the card shows: the last batch's, or the average of the stock. */
 type PriceMode = 'last' | 'avg';
@@ -66,9 +64,9 @@ export class SubstanceCard {
   readonly settings = input.required<Settings>();
   /** The card was tapped (outside the toggle and the menu): the id of its substance. */
   readonly tapped = output<number>();
-  /** "Modifica" in the ⋮ menu. */
+  /** "Edit" in the ⋮ menu. */
   readonly edit = output<void>();
-  /** "Elimina" in the ⋮ menu. */
+  /** "Delete" in the ⋮ menu. */
   readonly remove = output<void>();
 
   protected readonly mode = linkedSignal<PriceMode>(() => readPriceMode(this.substance().id));
@@ -101,7 +99,7 @@ export class SubstanceCard {
   protected readonly stockLabel = computed(() => {
     const quantity = new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 3 });
     const stock = quantity.format(this.substance().summary.stock as unknown as number);
-    return `Scorta: ${stock} ${this.substance().unit}`;
+    return `Stock: ${stock} ${this.substance().unit}`;
   });
 
   protected choose(mode: PriceMode): void {

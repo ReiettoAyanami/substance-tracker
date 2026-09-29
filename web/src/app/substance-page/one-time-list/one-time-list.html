@@ -1,6 +1,6 @@
 <mat-expansion-panel class="panel" [disabled]="!openable()">
   <mat-expansion-panel-header>
-    <mat-panel-title>Una tantum</mat-panel-title>
+    <mat-panel-title>One-time</mat-panel-title>
     <mat-panel-description class="total">{{ total() }}</mat-panel-description>
   </mat-expansion-panel-header>
 
@@ -8,7 +8,7 @@
     @for (row of rows(); track row.item.id) {
       <li class="item">
         <div class="item-title">
-          <span class="item-name" [class.unnamed]="!row.item.name">{{ row.item.name ?? 'Senza nome' }}</span>
+          <span class="item-name" [class.unnamed]="!row.item.name">{{ row.item.name ?? 'Unnamed' }}</span>
           <span class="when">{{ row.when }}</span>
         </div>
         <div class="facts">
@@ -24,10 +24,10 @@
 
   @if (hasMore()) {
     <button mat-button type="button" class="more" [disabled]="loadingMore()" (click)="showMore()">
-      Mostra altri
+      Show more
     </button>
   }
   @if (moreFailed()) {
-    <p class="error" role="alert">Impossibile caricare altri consumi</p>
+    <p class="error" role="alert">Could not load more consumptions</p>
   }
 </mat-expansion-panel>

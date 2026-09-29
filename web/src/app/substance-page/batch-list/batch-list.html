@@ -1,19 +1,19 @@
 <mat-expansion-panel class="panel" [disabled]="rows().length === 0">
   <mat-expansion-panel-header>
-    <mat-panel-title>Lotti attivi</mat-panel-title>
+    <mat-panel-title>Active batches</mat-panel-title>
     <mat-panel-description class="total">{{ total() }}</mat-panel-description>
   </mat-expansion-panel-header>
 
   <div class="share-mode">
-    <span>Quota</span>
+    <span>Share</span>
     <mat-button-toggle-group
       hideSingleSelectionIndicator
-      aria-label="Quota del lotto"
+      aria-label="Batch share"
       [value]="shareMode()"
       (change)="chooseShare($event.value)"
     >
-      <mat-button-toggle value="quantity">quantità</mat-button-toggle>
-      <mat-button-toggle value="value">valore</mat-button-toggle>
+      <mat-button-toggle value="quantity">quantity</mat-button-toggle>
+      <mat-button-toggle value="value">value</mat-button-toggle>
     </mat-button-toggle-group>
   </div>
 
@@ -22,13 +22,13 @@
       <li class="batch">
         <div class="batch-title">
           <span class="dot" [style.background-color]="row.batch.id | identityColor: 'batch'"></span>
-          <span class="batch-name">{{ row.batch.name ?? 'Lotto senza nome' }}</span>
+          <span class="batch-name">{{ row.batch.name ?? 'Unnamed batch' }}</span>
           <span class="bought">{{ row.bought }}</span>
         </div>
         <app-stock-bar
           [segments]="row.segments"
           [max]="row.batch.quantity"
-          [label]="'Rimasti ' + row.left"
+          [label]="'Remaining: ' + row.left"
           [unit]="unit()"
           [currency]="settings().currency"
         />
@@ -36,7 +36,7 @@
           <span class="left">{{ row.left }}</span>
           <span class="share">{{ row.share }}</span>
           <span class="prices">
-            {{ row.batch.unitPrice | unitPrice: settings().currency : unit() }} · totale {{ row.totalPrice }}
+            {{ row.batch.unitPrice | unitPrice: settings().currency : unit() }} · total {{ row.totalPrice }}
           </span>
         </div>
       </li>

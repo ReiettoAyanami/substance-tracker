@@ -89,8 +89,8 @@ describe('SubstanceFormDialog', () => {
     await save();
 
     backend.expectNone('/api/substances');
-    expect(errorUnder('name')).toBe('Obbligatorio');
-    expect(errorUnder('unit')).toBe('Obbligatorio');
+    expect(errorUnder('name')).toBe('Required');
+    expect(errorUnder('unit')).toBe('Required');
     expect(errorUnder('refillQuantity')).toBeUndefined();
     expect(closedWith).toEqual([]);
   });
@@ -102,7 +102,7 @@ describe('SubstanceFormDialog', () => {
     await save();
 
     backend.expectNone('/api/substances');
-    expect(errorUnder('refillQuantity')).toBe('Numero non valido (es. 6 o 0,5)');
+    expect(errorUnder('refillQuantity')).toBe('Not a valid number (e.g. 6 or 0.5)');
   });
 
   it('on a 400 stays open with the error under its field, and Save works again', async () => {
@@ -138,7 +138,7 @@ describe('SubstanceFormDialog', () => {
 
     expect(closedWith).toEqual([]);
     expect(element().querySelector('.form-error')?.textContent?.trim()).toBe(
-      'Impossibile salvare: Internal Server Error (500)',
+      'Could not save: Internal Server Error (500)',
     );
   });
 
@@ -153,10 +153,10 @@ describe('SubstanceFormDialog', () => {
     fixture = TestBed.createComponent(SubstanceFormDialog);
     await fixture.whenStable();
 
-    expect(element().querySelector('h2')?.textContent?.trim()).toBe('Modifica sostanza');
+    expect(element().querySelector('h2')?.textContent?.trim()).toBe('Edit substance');
     const value = (field: string) =>
       element().querySelector<HTMLInputElement>(`input[formControlName="${field}"]`)!.value;
-    expect([value('name'), value('unit'), value('refillQuantity')]).toEqual(['Caffè', 'capsula', '12,5']);
+    expect([value('name'), value('unit'), value('refillQuantity')]).toEqual(['Caffè', 'capsula', '12.5']);
 
     await type('name', 'Caffè Lavazza');
     await type('refillQuantity', '');
@@ -175,9 +175,9 @@ describe('SubstanceFormDialog', () => {
     expect(closedWith).toEqual([changed]);
   });
 
-  it('closes with nothing on Annulla', async () => {
+  it('closes with nothing on Cancel', async () => {
     await type('name', 'Birra');
-    const cancel = Array.from(element().querySelectorAll('button')).find((b) => b.textContent?.trim() === 'Annulla')!;
+    const cancel = Array.from(element().querySelectorAll('button')).find((b) => b.textContent?.trim() === 'Cancel')!;
     cancel.click();
     await fixture.whenStable();
 

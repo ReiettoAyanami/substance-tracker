@@ -69,14 +69,14 @@ describe('SubstanceCard', () => {
     const dot: HTMLElement = card.querySelector('.dot')!;
     expect(dot.style.backgroundColor).toBe(new IdentityColorPipe().transform(2, 'substance'));
     expect(text(card.querySelector('.name'))).toBe('Sigarette');
-    expect(text(card.querySelector('.price-value'))).toBe('0,33 €/sigaretta');
+    expect(text(card.querySelector('.price-value'))).toBe('€0.33/sigaretta');
   });
 
   it('rounds half up on the decimal digits (1.005 → 1,01, where toFixed or Math.round give 1.00)', async () => {
     const lastBatch = { id: 1, name: null, occurredAt: '2026-09-01T10:00:00Z', totalPrice: '1.01', unitPrice: '1.005000' };
     const card = await render(substance(3, { lastBatch }));
 
-    expect(text(card.querySelector('.price-value'))).toBe('1,01 €/sigaretta');
+    expect(text(card.querySelector('.price-value'))).toBe('€1.01/sigaretta');
   });
 
   it('switches to the average unit price and remembers the choice for that substance only', async () => {
@@ -84,16 +84,16 @@ describe('SubstanceCard', () => {
       Array.from(card.querySelectorAll<HTMLButtonElement>('.price-mode button')).find((b) => text(b) === label)!;
 
     let card = await render(cigarettes);
-    toggle(card, 'medio').click();
+    toggle(card, 'avg').click();
     await fixture.whenStable();
-    expect(text(card.querySelector('.price-value'))).toBe('0,31 €/sigaretta');
+    expect(text(card.querySelector('.price-value'))).toBe('€0.31/sigaretta');
 
     card = await render(cigarettes); // e.g. after a reload
-    expect(text(card.querySelector('.price-value'))).toBe('0,31 €/sigaretta');
-    expect(toggle(card, 'medio').getAttribute('aria-checked')).toBe('true');
+    expect(text(card.querySelector('.price-value'))).toBe('€0.31/sigaretta');
+    expect(toggle(card, 'avg').getAttribute('aria-checked')).toBe('true');
 
     card = await render({ ...cigarettes, id: 5 }); // another substance keeps the default
-    expect(text(card.querySelector('.price-value'))).toBe('0,33 €/sigaretta');
+    expect(text(card.querySelector('.price-value'))).toBe('€0.33/sigaretta');
   });
 
   it('shows "—" when the chosen price does not exist (no batches; average with stock 0)', async () => {
@@ -113,10 +113,10 @@ describe('SubstanceCard', () => {
     // 22:30 UTC on August 31 is 00:30 on September 1 in Europe/Rome
     const lastBatch = { id: 1, name: null, occurredAt: '2026-08-31T22:30:00Z', totalPrice: '7.20', unitPrice: '1.200000' };
     let card = await render(substance(1, { lastBatch }));
-    expect(text(card.querySelector('.last-purchase'))).toBe('1 set 2026');
+    expect(text(card.querySelector('.last-purchase'))).toBe('1 Sept 2026');
 
     card = await render(substance(4)); // created 2026-08-01T10:00:00Z
-    expect(text(card.querySelector('.last-purchase'))).toBe('1 ago 2026');
+    expect(text(card.querySelector('.last-purchase'))).toBe('1 Aug 2026');
   });
 
   it('is tapped anywhere (and via its name button from the keyboard), but not through the toggle', async () => {
@@ -144,13 +144,13 @@ describe('SubstanceCard', () => {
       )!;
 
     const more = card.querySelector<HTMLButtonElement>('button.more')!;
-    expect(more.getAttribute('aria-label')).toBe('Azioni su Sigarette');
+    expect(more.getAttribute('aria-label')).toBe('Actions for Sigarette');
     more.click();
     await fixture.whenStable();
-    item('Modifica').click();
+    item('Edit').click();
     more.click();
     await fixture.whenStable();
-    item('Elimina').click();
+    item('Delete').click();
 
     expect(asked).toEqual(['edit', 'remove']);
   });
@@ -161,6 +161,6 @@ describe('SubstanceCard', () => {
     const segments = card.querySelectorAll<HTMLElement>('app-stock-bar .segment');
     expect(segments.length).toBe(1);
     expect(parseFloat(segments[0].style.flexBasis)).toBeCloseTo(40, 6); // 8 of 20
-    expect(card.querySelector('app-stock-bar .track')!.getAttribute('aria-label')).toBe('Scorta: 8 sigaretta');
+    expect(card.querySelector('app-stock-bar .track')!.getAttribute('aria-label')).toBe('Stock: 8 sigaretta');
   });
 });

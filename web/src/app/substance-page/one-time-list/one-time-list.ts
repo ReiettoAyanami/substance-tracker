@@ -7,9 +7,7 @@ import { ApiError } from '../../data/api-error';
 import { OneTimeConsumption } from '../../data/one-time';
 import { ReportsApi } from '../../data/reports-api';
 import { Settings } from '../../data/settings';
-
-/** UI language of the app. */
-const LOCALE = 'it-IT';
+import { LOCALE } from '../../locale';
 
 /** How many one-time consumptions one page shows. */
 const PAGE = 20;
@@ -41,7 +39,7 @@ export class OneTimeList {
     params: () => this.substanceId(),
     stream: ({ params }) => this.reports.listOneTimeConsumptions(params, { limit: PAGE }),
   });
-  /** The pages loaded with "Mostra altri", after the first; none for another substance. */
+  /** The pages loaded with "Show more", after the first; none for another substance. */
   private readonly olderPages = linkedSignal<number, OneTimeConsumption[]>({
     source: this.substanceId,
     computation: () => [],
@@ -83,13 +81,13 @@ export class OneTimeList {
     if (failure) {
       // The interceptor's ApiError is not an Error: the resource wraps it, as its cause.
       const error = (failure.cause ?? failure) as Partial<ApiError>;
-      return `Impossibile caricarli${error.status ? ` (${error.status})` : ''}`;
+      return `Could not load them${error.status ? ` (${error.status})` : ''}`;
     }
     if (!this.stats.hasValue()) return '…';
     const { count, totalQuantity, totalSpent } = this.stats.value();
-    if (count === 0) return 'Nessun consumo';
+    if (count === 0) return 'No consumptions';
     const formats = this.formats();
-    const consumptions = count === 1 ? '1 consumo' : `${count} consumi`;
+    const consumptions = count === 1 ? '1 consumption' : `${count} consumptions`;
     return `${consumptions} · ${this.exact(formats.quantity, totalQuantity)} ${this.unit()} · ${this.exact(formats.money, totalSpent)}`;
   });
 

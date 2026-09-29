@@ -11,12 +11,12 @@
           (remove)="actions.delete(substance)"
         />
       } @empty {
-        <p class="empty">Nessuna sostanza</p>
+        <p class="empty">No substances</p>
       }
     }
     @case ('failed') {
       <p class="error">
-        Impossibile caricare le sostanze: {{ current.error.title }}
+        Could not load the substances: {{ current.error.title }}
         @if (current.error.status) {
           ({{ current.error.status }})
         }
@@ -26,7 +26,7 @@
 </main>
 
 @if (current.status === 'loaded') {
-  <app-add-button label="Aggiungi sostanza" (pressed)="actions.add()" />
+  <app-add-button label="Add substance" (pressed)="actions.add()" />
 }
 
 <!-- The substance page (child route substances/:id, step 4) opens here, over the home. -->

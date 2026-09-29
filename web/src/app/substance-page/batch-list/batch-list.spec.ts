@@ -81,18 +81,18 @@ describe('BatchList', () => {
   it('closed, is the total: how many active batches and their stock out of what was bought', async () => {
     await render();
 
-    expect(text(element().querySelector('mat-panel-title'))).toBe('Lotti attivi');
-    expect(text(element().querySelector('.total'))).toBe('2 lotti · 201 / 300 capsula');
+    expect(text(element().querySelector('mat-panel-title'))).toBe('Active batches');
+    expect(text(element().querySelector('.total'))).toBe('2 batches · 201 / 300 capsula');
   });
 
   it('opens into one sub-card per batch, oldest first, with its own bar, what is left and its prices', async () => {
     await render();
     await expand();
 
-    expect(texts('.batch-name')).toEqual(['Lavazza', 'Lotto senza nome']);
-    expect(texts('.bought')).toEqual(['1 lug 2026', '25 set 2026']);
+    expect(texts('.batch-name')).toEqual(['Lavazza', 'Unnamed batch']);
+    expect(texts('.bought')).toEqual(['1 Jul 2026', '25 Sept 2026']);
     expect(texts('.left')).toEqual(['1 / 100 capsula', '200 / 200 capsula']);
-    expect(texts('.prices')).toEqual(['0,35 €/capsula · totale 35,00 €', '0,32 €/capsula · totale 64,00 €']);
+    expect(texts('.prices')).toEqual(['€0.35/capsula · total €35.00', '€0.32/capsula · total €64.00']);
     const bars = element().querySelectorAll<HTMLElement>('.batch app-stock-bar .segment');
     expect(parseFloat(bars[0].style.flexBasis)).toBeCloseTo(1, 6); // 1 of 100
     expect(parseFloat(bars[1].style.flexBasis)).toBeCloseTo(100, 6);
@@ -101,25 +101,25 @@ describe('BatchList', () => {
   it('shows the share by quantity, or by value once chosen, and remembers the choice', async () => {
     await render();
     await expand();
-    expect(texts('.share')).toEqual(['0,5% della scorta', '99,5% della scorta']);
+    expect(texts('.share')).toEqual(['0.5% of the stock', '99.5% of the stock']);
 
     const toggle = Array.from(element().querySelectorAll<HTMLButtonElement>('.share-mode button')).find(
-      (b) => text(b) === 'valore',
+      (b) => text(b) === 'value',
     )!;
     toggle.click();
     await fixture.whenStable();
-    expect(texts('.share')).toEqual(['0,5% del valore', '99,5% del valore']);
+    expect(texts('.share')).toEqual(['0.5% of the value', '99.5% of the value']);
 
     await render(); // e.g. another substance, or after a reload
     await expand();
-    expect(texts('.share')).toEqual(['0,5% del valore', '99,5% del valore']);
+    expect(texts('.share')).toEqual(['0.5% of the value', '99.5% of the value']);
   });
 
   it('says when there is no active batch, and cannot be opened', async () => {
     answer = () => of({ substanceId: 1, stock: '0.000', stockBarMax: '0.000', batches: [] });
     await render();
 
-    expect(text(element().querySelector('.total'))).toBe('Nessun lotto attivo');
+    expect(text(element().querySelector('.total'))).toBe('No active batches');
     expect(element().querySelector('mat-expansion-panel-header')!.getAttribute('aria-disabled')).toBe('true');
   });
 
@@ -127,6 +127,6 @@ describe('BatchList', () => {
     answer = () => throwError(() => ({ status: 500, title: 'Internal Server Error', detail: '', fieldErrors: [] }) as ApiError);
     await render();
 
-    expect(text(element().querySelector('.total'))).toBe('Impossibile caricare i lotti (500)');
+    expect(text(element().querySelector('.total'))).toBe('Could not load the batches (500)');
   });
 });
