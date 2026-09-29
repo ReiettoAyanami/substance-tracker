@@ -1,0 +1,55 @@
+<mat-card appearance="outlined">
+  <mat-card-content>
+    <div class="title">
+      <span class="dot" [style.background-color]="substance().id | identityColor: 'substance'"></span>
+      <!-- The keyboard way in: Enter on the name is a click that reaches the card. -->
+      <button type="button" class="name">{{ substance().name }}</button>
+      <span class="last-purchase">{{ lastPurchase() }}</span>
+      <!-- The menu's tap never opens the page; its items live in an overlay, outside the card. -->
+      <button
+        mat-icon-button
+        type="button"
+        class="more"
+        [attr.aria-label]="'Azioni su ' + substance().name"
+        [matMenuTriggerFor]="actions"
+        (click)="$event.stopPropagation()"
+      >
+        <mat-icon>more_vert</mat-icon>
+      </button>
+    </div>
+    <mat-menu #actions="matMenu" xPosition="before">
+      <button mat-menu-item type="button" (click)="edit.emit()">
+        <mat-icon>edit</mat-icon>
+        <span>Modifica</span>
+      </button>
+      <button mat-menu-item type="button" (click)="remove.emit()">
+        <mat-icon>delete</mat-icon>
+        <span>Elimina</span>
+      </button>
+    </mat-menu>
+
+    <div class="price">
+      <span class="price-value">{{ price() | unitPrice: settings().currency : substance().unit }}</span>
+      <!-- The toggle's tap never opens the page. -->
+      <mat-button-toggle-group
+        class="price-mode"
+        hideSingleSelectionIndicator
+        aria-label="Prezzo per unità"
+        [value]="mode()"
+        (change)="choose($event.value)"
+        (click)="$event.stopPropagation()"
+      >
+        <mat-button-toggle value="last">ultimo</mat-button-toggle>
+        <mat-button-toggle value="avg">medio</mat-button-toggle>
+      </mat-button-toggle-group>
+    </div>
+
+    <app-stock-bar
+      [segments]="substance().summary.stockBarSegments"
+      [max]="substance().summary.stockBarMax"
+      [label]="stockLabel()"
+      [unit]="substance().unit"
+      [currency]="settings().currency"
+    />
+  </mat-card-content>
+</mat-card>

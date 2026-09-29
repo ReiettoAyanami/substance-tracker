@@ -1,0 +1,82 @@
+:host {
+  display: block;
+}
+
+/* The title stays on one line; the total wraps if it must. */
+mat-panel-title {
+  flex: none;
+}
+
+.total {
+  justify-content: flex-end;
+  font-variant-numeric: tabular-nums;
+}
+
+.items {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* One consumption, drawn like a batch's sub-card. */
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 12px;
+}
+
+.item-title,
+.facts {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.item-name {
+  min-width: 0;
+  font: var(--mat-sys-title-small);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.item-name.unnamed {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.when {
+  flex: none;
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.facts {
+  font: var(--mat-sys-body-medium);
+  font-variant-numeric: tabular-nums;
+}
+
+.note {
+  margin: 0;
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.more {
+  display: block;
+  margin: 12px auto 0;
+}
+
+.error {
+  margin: 8px 0 0;
+  text-align: center;
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-error);
+}

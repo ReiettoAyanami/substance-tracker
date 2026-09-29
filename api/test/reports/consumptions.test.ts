@@ -1,0 +1,334 @@
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { expectProblem, makeApi, type Api } from '../support/api.js';
+
+let api: Api;
+beforeAll(async () => {
+  api = await makeApi();
+});
+afterAll(async () => {
+  await api.app.close();
+});
+
+const C = (c: { id: number }) => ['consumption', c.id];
+const O = (o: { id: number }) => ['one_time', o.id];
+
+/** Beer (Corona at 1.00, Peroni at 1.50, a one-time pint at 5.00) and coffee (Moka at 0.25). */
+async function seedBeerAndCoffee() {
+  const beer = await api.substance({ name: 'beer', unit: 'beer' });
+  const coffee = await api.substance({ name: 'coffee', unit: 'cup' });
+  const corona = await api.batch(beer.id, { name: 'Corona', quantity: 24, totalPrice: 24, occurredAt: '2026-09-01T10:00:00Z' });
+  const peroni = await api.batch(beer.id, { name: 'Peroni', quantity: 6, totalPrice: 9, occurredAt: '2026-09-05T10:00:00Z' });
+  const moka = await api.batch(coffee.id, { quantity: 20, totalPrice: 5, occurredAt: '2026-09-01T08:00:00Z' });
+  const c1 = await api.consume(corona.id, { quantity: 1, occurredAt: '2026-09-02T20:00:00Z' });
+  const c2 = await api.consume(corona.id, { quantity: 3, occurredAt: '2026-09-06T20:00:00Z' });
+  const p1 = await api.consume(peroni.id, { quantity: 2, occurredAt: '2026-09-07T20:00:00Z' });
+  const pub = await api.oneTime(beer.id, { quantity: 1, totalPrice: 5, occurredAt: '2026-09-08T21:00:00Z' });
+  // 22:30 UTC on the 8th is 00:30 on the 9th in Rome.
+  const m1 = await api.consume(moka.id, { quantity: 2, occurredAt: '2026-09-08T22:30:00Z' });
+  return { beer, coffee, corona, peroni, moka, c1, c2, p1, pub, m1 };
+}
+
+describe('GET /api/consumptions', () => {
+  it('lists batch and one-time consumptions of every substance, newest first, deleted ones excluded', async () => {
+    const beer = await api.substance({ name: 'beer', unit: 'beer' });
+    const coffee = await api.substance({ name: 'coffee', unit: 'cup' });
+    const corona = await api.batch(beer.id, { name: 'Corona', quantity: 6, totalPrice: 6, occurredAt: '2026-09-01T10:00:00Z' });
+    const c1 = await api.consume(corona.id, { quantity: 2, occurredAt: '2026-09-02T10:00:00Z', note: 'with friends' });
+    const pub = await api.oneTime(beer.id, { name: 'pub', quantity: 1, totalPrice: 5, occurredAt: '2026-09-03T10:00:00Z' });
+    const cancelled = await api.consume(corona.id, { quantity: 1, occurredAt: '2026-09-04T10:00:00Z' });
+    await api.del(`/api/consumptions/${cancelled.id}`);
+    const cancelledOneTime = await api.oneTime(beer.id, { quantity: 1, totalPrice: 5, occurredAt: '2026-09-04T11:00:00Z' });
+    await api.del(`/api/one-time-consumptions/${cancelledOneTime.id}`);
+    const moka = await api.batch(coffee.id, { quantity: 10, totalPrice: 5, occurredAt: '2026-09-01T08:00:00Z' });
+    const m1 = await api.consume(moka.id, { quantity: 1, occurredAt: '2026-09-05T07:00:00Z' });
+
+    const res = await api.get('/api/consumptions');
+    expect(res.status).toBe(200);
+    expect(res.body.map((c: any) => [c.type, c.id])).toEqual([
+      ['consumption', m1.id],
+      ['one_time', pub.id],
+      ['consumption', c1.id],
+    ]);
+    expect(res.body[0]).toMatchObject({
+      substanceId: coffee.id,
+      substanceName: 'coffee',
+      unit: 'cup',
+      batchId: moka.id,
+      batchName: null,
+      name: null,
+      occurredAt: '2026-09-05T07:00:00Z',
+      quantity: '1.000',
+      unitPrice: '0.500000',
+      cost: '0.50',
+      note: null,
+    });
+    expect(res.body[1]).toMatchObject({
+      substanceId: beer.id,
+      substanceName: 'beer',
+      unit: 'beer',
+      batchId: null,
+      batchName: null,
+      name: 'pub',
+      occurredAt: '2026-09-03T10:00:00Z',
+      quantity: '1.000',
+      unitPrice: '5.000000',
+      cost: '5.00',
+      note: null,
+    });
+    expect(res.body[2]).toMatchObject({
+      batchId: corona.id,
+      batchName: 'Corona',
+      name: null,
+      quantity: '2.000',
+      unitPrice: '1.000000',
+      cost: '2.00',
+      note: 'with friends',
+    });
+  });
+
+  it('gives every consumption of a batch its unit price, even the one that finishes it; a one-time one price ÷ quantity', async () => {
+    const s = await api.substance({ name: 'cigarettes', unit: 'cigarette' });
+    const pack = await api.batch(s.id, { quantity: 20, totalPrice: '6.50', occurredAt: '2026-09-20T10:00:00Z' });
+    await api.consume(pack.id, { quantity: 7, occurredAt: '2026-09-21T20:00:00Z' });
+    await api.consume(pack.id, { quantity: 13, occurredAt: '2026-09-23T20:00:00Z' }); // finishes the pack
+    await api.oneTime(s.id, { quantity: 3, totalPrice: '1.00', occurredAt: '2026-09-24T20:00:00Z' });
+
+    const res = await api.get('/api/consumptions');
+    // Not cost ÷ quantity: 4.22 / 13 = 0.324615 and 2.28 / 7 = 0.325714 would differ.
+    expect(res.body.map((c: any) => [c.quantity, c.cost, c.unitPrice])).toEqual([
+      ['3.000', '1.00', '0.333333'],
+      ['13.000', '4.22', '0.325000'],
+      ['7.000', '2.28', '0.325000'],
+    ]);
+  });
+});
+
+describe('filters of GET /api/consumptions', () => {
+  const list = async (query: string) => {
+    const res = await api.get(`/api/consumptions?${query}`);
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    return res.body.map((c: any) => [c.type, c.id]);
+  };
+  const seed = seedBeerAndCoffee;
+
+  it('by substance', async () => {
+    const { beer, coffee, c1, c2, p1, pub, m1 } = await seed();
+    expect(await list(`substanceId=${beer.id}`)).toEqual([O(pub), C(p1), C(c2), C(c1)]);
+    expect(await list(`substanceId=${coffee.id}`)).toEqual([C(m1)]);
+  });
+
+  it('by batch, which leaves the one-time consumptions out', async () => {
+    const { corona, peroni, c1, c2, p1 } = await seed();
+    expect(await list(`batchId=${corona.id}`)).toEqual([C(c2), C(c1)]);
+    expect(await list(`batchId=${peroni.id}`)).toEqual([C(p1)]);
+  });
+
+  it('by logical days from..to, both included, in Europe/Rome', async () => {
+    const { c1, c2, p1, pub, m1 } = await seed();
+    expect(await list('from=2026-09-06&to=2026-09-08')).toEqual([O(pub), C(p1), C(c2)]);
+    expect(await list('from=2026-09-09')).toEqual([C(m1)]);
+    expect(await list('to=2026-09-02')).toEqual([C(c1)]);
+  });
+
+  it('by unit price and quantity ranges, both ends included', async () => {
+    const { c1, c2, p1, pub, m1 } = await seed();
+    expect(await list('minUnitPrice=1.5')).toEqual([O(pub), C(p1)]);
+    expect(await list('maxUnitPrice=1')).toEqual([C(m1), C(c2), C(c1)]);
+    expect(await list('minUnitPrice=1&maxUnitPrice=1.00')).toEqual([C(c2), C(c1)]);
+    expect(await list('minQuantity=2')).toEqual([C(m1), C(p1), C(c2)]);
+    expect(await list('maxQuantity=1')).toEqual([O(pub), C(c1)]);
+    expect(await list('minQuantity=2&maxQuantity=2')).toEqual([C(m1), C(p1)]);
+  });
+
+  it('keep the delta computed on the whole history of the substance', async () => {
+    const { peroni, p1, pub } = await seed();
+    const byBatch = (await api.get(`/api/consumptions?batchId=${peroni.id}`)).body;
+    expect(byBatch).toMatchObject([{ id: p1.id, deltaQuantity: '-0.3333', deltaUnitPrice: '0.5000' }]); // vs Corona 3 at 1.00
+    const byDay = (await api.get('/api/consumptions?from=2026-09-08&to=2026-09-08')).body;
+    expect(byDay).toMatchObject([{ id: pub.id, deltaQuantity: '-0.5000', deltaUnitPrice: '2.3333' }]); // vs Peroni 2 at 1.50
+  });
+
+  it('combine; a batch of another substance gives an empty list', async () => {
+    const { beer, coffee, corona, c2, p1 } = await seed();
+    expect(await list(`substanceId=${beer.id}&minUnitPrice=1&maxUnitPrice=1.5&minQuantity=2`)).toEqual([C(p1), C(c2)]);
+    expect(await list(`substanceId=${beer.id}&minQuantity=2&from=2026-09-07`)).toEqual([C(p1)]);
+    expect(await list(`substanceId=${coffee.id}&batchId=${corona.id}`)).toEqual([]);
+  });
+});
+
+describe('pages of GET /api/consumptions', () => {
+  const page = async (query: string) => (await api.get(`/api/consumptions?${query}`)).body.map((c: any) => [c.type, c.id]);
+
+  it('follow limit and before, and never split an instant, whatever its kinds', async () => {
+    const s = await api.substance();
+    const b = await api.batch(s.id, { quantity: 100, totalPrice: 100, occurredAt: '2026-09-01T08:00:00Z' });
+    const T = '2026-09-05T20:00:00Z';
+    const early = await api.consume(b.id, { quantity: 1, occurredAt: '2026-09-04T20:00:00Z' });
+    const a = await api.consume(b.id, { quantity: 1, occurredAt: T });
+    const c = await api.consume(b.id, { quantity: 1, occurredAt: T });
+    const o = await api.oneTime(s.id, { quantity: 1, totalPrice: 1, occurredAt: T });
+    const late = await api.oneTime(s.id, { quantity: 1, totalPrice: 1, occurredAt: '2026-09-06T20:00:00Z' });
+
+    // limit 2, but the three consumptions at T come together
+    expect(await page('limit=2')).toEqual([O(late), O(o), C(c), C(a)]);
+    expect(await page(`limit=2&before=${encodeURIComponent(T)}`)).toEqual([C(early)]);
+    expect(await page('limit=2&before=2026-09-04T20:00:00Z')).toEqual([]);
+  });
+
+  it('keep exactly limit rows when nothing ties; limit defaults to 50', async () => {
+    const s = await api.substance();
+    const b = await api.batch(s.id, { quantity: 100, totalPrice: 100, occurredAt: '2026-01-01T00:00:00Z' });
+    for (let i = 0; i < 55; i++) {
+      await api.consume(b.id, { quantity: 1, occurredAt: `2026-02-01T00:${String(i).padStart(2, '0')}:00Z` });
+    }
+    expect((await api.get('/api/consumptions')).body).toHaveLength(50);
+    expect((await api.get('/api/consumptions?limit=20')).body).toHaveLength(20);
+  });
+});
+
+describe('GET /api/consumptions refuses', () => {
+  it('a bad query with a 400', async () => {
+    const bad = [
+      'minUnitPrice=abc',
+      'minQuantity=-1',
+      'maxUnitPrice=1e3',
+      'minUnitPrice=2&maxUnitPrice=1',
+      'minQuantity=3&maxQuantity=2.5',
+      'from=2026-09-05&to=2026-09-01',
+      'from=2026-02-30',
+      'to=yesterday',
+      'type=consumption',
+      'limit=0',
+      'limit=201',
+      'before=yesterday',
+      'substanceId=0',
+      'batchId=x',
+    ];
+    for (const query of bad) expectProblem(await api.get(`/api/consumptions?${query}`), 400);
+  });
+
+  it('a range the wrong way round, under its min field', async () => {
+    const res = await api.get('/api/consumptions?minUnitPrice=2&maxUnitPrice=1');
+    expect(res.body.errors).toEqual([{ field: 'minUnitPrice', message: 'minUnitPrice must not be greater than maxUnitPrice' }]);
+  });
+
+  it('an unknown or deleted substance or batch with a 404', async () => {
+    expectProblem(await api.get('/api/consumptions?substanceId=8080'), 404);
+    expectProblem(await api.get('/api/consumptions?batchId=8080'), 404);
+    const s = await api.substance();
+    const b = await api.batch(s.id, { quantity: 1, totalPrice: 1 });
+    await api.del(`/api/batches/${b.id}`);
+    expectProblem(await api.get(`/api/consumptions?batchId=${b.id}`), 404);
+  });
+});
+
+describe('GET /api/consumptions/bounds', () => {
+  const none = { minUnitPrice: null, maxUnitPrice: null, minQuantity: null, maxQuantity: null };
+  const bounds = async (query: string) => {
+    const res = await api.get(`/api/consumptions/bounds?${query}`);
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    return res.body;
+  };
+
+  it('gives the lowest and highest unit price and quantity in scope, nulls when there is none', async () => {
+    expect(await bounds('')).toEqual(none);
+    const { beer, corona } = await seedBeerAndCoffee();
+    expect(await bounds('')).toEqual({ minUnitPrice: '0.250000', maxUnitPrice: '5.000000', minQuantity: '1.000', maxQuantity: '3.000' });
+    expect(await bounds(`substanceId=${beer.id}`)).toEqual({ minUnitPrice: '1.000000', maxUnitPrice: '5.000000', minQuantity: '1.000', maxQuantity: '3.000' });
+    expect(await bounds(`batchId=${corona.id}`)).toEqual({ minUnitPrice: '1.000000', maxUnitPrice: '1.000000', minQuantity: '1.000', maxQuantity: '3.000' });
+    expect(await bounds('from=2026-09-07&to=2026-09-07')).toEqual({ minUnitPrice: '1.500000', maxUnitPrice: '1.500000', minQuantity: '2.000', maxQuantity: '2.000' });
+    expect(await bounds('from=2026-10-01')).toEqual(none);
+  });
+
+  it('takes no price, quantity or page filters, and refuses bad dates and unknown ids', async () => {
+    expectProblem(await api.get('/api/consumptions/bounds?minUnitPrice=1'), 400);
+    expectProblem(await api.get('/api/consumptions/bounds?maxQuantity=1'), 400);
+    expectProblem(await api.get('/api/consumptions/bounds?limit=5'), 400);
+    expectProblem(await api.get('/api/consumptions/bounds?from=2026-09-05&to=2026-09-01'), 400);
+    expectProblem(await api.get('/api/consumptions/bounds?substanceId=8080'), 404);
+    expectProblem(await api.get('/api/consumptions/bounds?batchId=8080'), 404);
+  });
+});
+
+describe('GET /api/batches', () => {
+  it('lists every batch that is not deleted, finished ones too, by substance name, newest first', async () => {
+    const coffee = await api.substance({ name: 'coffee', unit: 'cup' });
+    const beer = await api.substance({ name: 'Beer', unit: 'beer' }); // after coffee by id, before it by name
+    const moka = await api.batch(coffee.id, { quantity: 10, totalPrice: 5, occurredAt: '2026-09-01T08:00:00Z' });
+    const corona = await api.batch(beer.id, { name: 'Corona', quantity: 6, totalPrice: 6, occurredAt: '2026-09-01T10:00:00Z' });
+    const peroni = await api.batch(beer.id, { name: 'Peroni', quantity: 2, totalPrice: 3, occurredAt: '2026-09-05T10:00:00Z' });
+    await api.consume(peroni.id, { quantity: 2, occurredAt: '2026-09-06T10:00:00Z' }); // finishes it
+    const deleted = await api.batch(beer.id, { quantity: 1, totalPrice: 1, occurredAt: '2026-09-07T10:00:00Z' });
+    await api.del(`/api/batches/${deleted.id}`);
+
+    const res = await api.get('/api/batches');
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([
+      { id: peroni.id, substanceId: beer.id, substanceName: 'Beer', name: 'Peroni', occurredAt: '2026-09-05T10:00:00Z', deactivatedAt: expect.any(String) },
+      { id: corona.id, substanceId: beer.id, substanceName: 'Beer', name: 'Corona', occurredAt: '2026-09-01T10:00:00Z', deactivatedAt: null },
+      { id: moka.id, substanceId: coffee.id, substanceName: 'coffee', name: null, occurredAt: '2026-09-01T08:00:00Z', deactivatedAt: null },
+    ]);
+    expect((await api.get(`/api/batches?substanceId=${coffee.id}`)).body.map((b: any) => b.id)).toEqual([moka.id]);
+  });
+
+  it('refuses an unknown substance and unknown query fields', async () => {
+    expectProblem(await api.get('/api/batches?substanceId=8080'), 404);
+    expectProblem(await api.get('/api/batches?includeDeactivated=true'), 400);
+  });
+});
+
+describe('delta from the previous consumption of the same substance', () => {
+  const deltas = (body: any[]) => body.map((c: any) => [c.type, c.id, c.deltaQuantity, c.deltaUnitPrice]);
+
+  it('is null for the first one, then (this − previous) ÷ previous on quantity and unit price, across both kinds', async () => {
+    const beer = await api.substance({ name: 'beer', unit: 'beer' });
+    const coffee = await api.substance({ name: 'coffee', unit: 'cup' });
+    const corona = await api.batch(beer.id, { quantity: 10, totalPrice: 10, occurredAt: '2026-09-01T10:00:00Z' });
+    const moka = await api.batch(coffee.id, { quantity: 10, totalPrice: 30, occurredAt: '2026-09-01T10:00:00Z' });
+    const first = await api.consume(corona.id, { quantity: 2, occurredAt: '2026-09-02T10:00:00Z' });
+    const otherSubstance = await api.consume(moka.id, { quantity: 5, occurredAt: '2026-09-02T12:00:00Z' });
+    const cancelled = await api.consume(corona.id, { quantity: 4, occurredAt: '2026-09-02T15:00:00Z' });
+    await api.del(`/api/consumptions/${cancelled.id}`);
+    const pint = await api.oneTime(beer.id, { quantity: 1, totalPrice: 5, occurredAt: '2026-09-03T10:00:00Z' });
+    const again = await api.consume(corona.id, { quantity: 3, occurredAt: '2026-09-04T10:00:00Z' });
+
+    const res = await api.get('/api/consumptions');
+    expect(deltas(res.body)).toEqual([
+      ['consumption', again.id, '2.0000', '-0.8000'], // 3 vs 1, 1.00 vs 5.00 (the one-time pint)
+      ['one_time', pint.id, '-0.5000', '4.0000'], // 1 vs 2, 5.00 vs 1.00 (not the cancelled 4)
+      ['consumption', otherSubstance.id, null, null], // first coffee: beer never counts
+      ['consumption', first.id, null, null],
+    ]);
+  });
+
+  it('rounds ratios to 4 decimals and, at the same instant, compares with the one recorded first', async () => {
+    const s = await api.substance();
+    const b = await api.batch(s.id, { quantity: 100, totalPrice: 30, occurredAt: '2026-09-01T10:00:00Z' });
+    const T = '2026-09-02T10:00:00Z';
+    const a = await api.consume(b.id, { quantity: 3, occurredAt: T });
+    const c = await api.consume(b.id, { quantity: 7, occurredAt: T });
+    const o = await api.oneTime(s.id, { quantity: 6, totalPrice: 2, occurredAt: T });
+
+    const res = await api.get('/api/consumptions');
+    expect(deltas(res.body)).toEqual([
+      ['one_time', o.id, '-0.1429', '0.1111'], // 6 vs 7; 0.333333… vs 0.30
+      ['consumption', c.id, '1.3333', '0.0000'], // 7 vs 3, same batch
+      ['consumption', a.id, null, null],
+    ]);
+  });
+
+  it('has no unit-price ratio after a unit price of 0', async () => {
+    const s = await api.substance({ name: 'cigarettes', unit: 'cigarette' });
+    const pack = await api.batch(s.id, { quantity: 20, totalPrice: 6, occurredAt: '2026-09-01T10:00:00Z' });
+    const gift = await api.oneTime(s.id, { name: 'from a friend', quantity: 1, totalPrice: 0, occurredAt: '2026-09-02T10:00:00Z' });
+    const next = await api.consume(pack.id, { quantity: 2, occurredAt: '2026-09-03T10:00:00Z' });
+    const gift2 = await api.oneTime(s.id, { quantity: 1, totalPrice: 0, occurredAt: '2026-09-04T10:00:00Z' });
+
+    const res = await api.get('/api/consumptions');
+    expect(deltas(res.body)).toEqual([
+      ['one_time', gift2.id, '-0.5000', '-1.0000'], // 0.00 vs 0.30: −100 %
+      ['consumption', next.id, '1.0000', null], // after 0.00: no percentage of zero
+      ['one_time', gift.id, null, null],
+    ]);
+  });
+});

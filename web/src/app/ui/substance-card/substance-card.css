@@ -1,0 +1,78 @@
+:host {
+  display: block;
+  cursor: pointer;
+}
+
+mat-card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.dot {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+/* A plain-looking button: the card is the visible target, the button is the keyboard one. */
+.name {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: var(--mat-sys-title-medium);
+  text-align: start;
+  cursor: inherit;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.name:focus-visible {
+  outline: 2px solid var(--mat-sys-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Price on the left, its toggle on the right: the same layout at 390 px and on desktop. */
+.price {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.price-value {
+  font: var(--mat-sys-body-large);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Touch target of at least 48 dp (design-frontend.md). */
+.price-mode {
+  --mat-button-toggle-height: 48px;
+  cursor: default;
+}
+
+.last-purchase {
+  flex: none;
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+/* The ⋮ in the top right corner: 48 dp to tap, without making the name's row taller. */
+.more {
+  flex: none;
+  margin: -12px -12px -12px -4px;
+  cursor: default;
+}

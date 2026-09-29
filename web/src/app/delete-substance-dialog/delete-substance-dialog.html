@@ -1,0 +1,13 @@
+<h2 mat-dialog-title>Eliminare «{{ substance.name }}»?</h2>
+
+<mat-dialog-content>
+  <p>Spariscono anche i suoi lotti e i suoi consumi.</p>
+  @if (error(); as message) {
+    <p class="error" role="alert">{{ message }}</p>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="cancel()">Annulla</button>
+  <button mat-flat-button type="button" class="delete" [disabled]="deleting()" (click)="confirm()">Elimina</button>
+</mat-dialog-actions>

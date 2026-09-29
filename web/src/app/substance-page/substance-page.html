@@ -1,0 +1,52 @@
+@if (view(); as view) {
+  <div class="backdrop" (click)="close()"></div>
+  <section
+    class="window"
+    role="dialog"
+    aria-modal="true"
+    [attr.aria-label]="view.found ? view.substance.name : 'Sostanza non trovata'"
+    cdkTrapFocus
+    [cdkTrapFocusAutoCapture]="true"
+  >
+    <button mat-icon-button type="button" class="close" aria-label="Chiudi" (click)="close()">
+      <mat-icon>close</mat-icon>
+    </button>
+    @if (view.found) {
+      <div class="content">
+        <app-substance-card
+          [substance]="view.substance"
+          [settings]="view.settings"
+          (edit)="actions.edit(view.substance)"
+          (remove)="delete(view.substance)"
+        />
+        <app-batch-list [substanceId]="view.substance.id" [unit]="view.substance.unit" [settings]="view.settings" />
+        <app-one-time-list [substanceId]="view.substance.id" [unit]="view.substance.unit" [settings]="view.settings" />
+      </div>
+      <nav class="pager">
+        <button
+          mat-icon-button
+          type="button"
+          class="previous"
+          aria-label="Sostanza precedente"
+          [disabled]="view.previous === null"
+          (click)="go(view.previous!)"
+        >
+          <mat-icon>chevron_left</mat-icon>
+        </button>
+        <span class="position">{{ view.position }} / {{ view.count }}</span>
+        <button
+          mat-icon-button
+          type="button"
+          class="next"
+          aria-label="Sostanza successiva"
+          [disabled]="view.next === null"
+          (click)="go(view.next!)"
+        >
+          <mat-icon>chevron_right</mat-icon>
+        </button>
+      </nav>
+    } @else {
+      <p class="missing">Sostanza non trovata</p>
+    }
+  </section>
+}

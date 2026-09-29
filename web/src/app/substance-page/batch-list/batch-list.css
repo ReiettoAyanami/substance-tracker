@@ -1,0 +1,94 @@
+:host {
+  display: block;
+}
+
+/* The title stays on one line; the total wraps if it must. */
+mat-panel-title {
+  flex: none;
+}
+
+.total {
+  justify-content: flex-end;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The share toggle above the sub-cards: 48 dp to tap, like the card's price toggle. */
+.share-mode {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.share-mode mat-button-toggle-group {
+  --mat-button-toggle-height: 48px;
+}
+
+.batches {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* A sub-card: one batch. */
+.batch {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 12px;
+}
+
+.batch-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.batch-name {
+  flex: 1;
+  min-width: 0;
+  font: var(--mat-sys-title-small);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bought {
+  flex: none;
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+/* What is left and the share on the first line, the prices on the second. */
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 2px 12px;
+  font: var(--mat-sys-body-medium);
+  font-variant-numeric: tabular-nums;
+}
+
+.share {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.prices {
+  flex-basis: 100%;
+  color: var(--mat-sys-on-surface-variant);
+}

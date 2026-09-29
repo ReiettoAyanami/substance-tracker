@@ -1,0 +1,55 @@
+# Production stack: MySQL + app (API that also serves the Angular build).
+#   docker compose -f compose.prod.yaml up -d --build
+# Secrets come only from .env (gitignored); the stack refuses to start without them.
+# NEVER "down -v" here: it deletes the database volume.
+
+name: substance-tracker-prod
+
+services:
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD must be set in .env}
+      MYSQL_DATABASE: ${DB_NAME:-substance_tracker}
+      MYSQL_USER: ${DB_USER:-substance}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set in .env}
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      DB_HOST: db
+      DB_PORT: "3306"
+      DB_NAME: ${DB_NAME:-substance_tracker}
+      DB_USER: ${DB_USER:-substance}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set in .env}
+      PORT: "3000"
+      HOST: 0.0.0.0
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      # WEB_DIST=/app/public is set in the Dockerfile.
+    ports:
+      - "${APP_PORT:-8080}:3000"
+    healthcheck:
+      # The runtime image has no curl: Node 22's fetch hits /api/health.
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db-data:

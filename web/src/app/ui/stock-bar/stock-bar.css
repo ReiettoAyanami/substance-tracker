@@ -1,0 +1,20 @@
+:host {
+  display: block;
+}
+
+/* The whole track is the maximum; the part not covered by segments is what was consumed. */
+.track {
+  display: flex;
+  gap: 2px; /* the separator between batches */
+  height: 12px;
+  border-radius: 4px;
+  overflow: hidden;
+  background-color: var(--mat-sys-surface-container-highest);
+}
+
+.segment {
+  flex-grow: 0;
+  flex-shrink: 1;
+  /* a tiny batch (1 of 391) must stay visible, also under the rounded corner */
+  min-width: 6px;
+}

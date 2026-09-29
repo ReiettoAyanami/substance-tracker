@@ -1,0 +1,10 @@
+@let price = unitPrice() | unitPrice: currency() : unit();
+<div
+  class="fill"
+  [style.background-color]="batchId() | identityColor: 'batch'"
+  [matTooltip]="(name() ?? 'Lotto senza nome') + '\n' + price"
+  matTooltipPosition="above"
+  matTooltipPositionAtOrigin
+  matTooltipClass="batch-bar-tooltip"
+  (mousemove)="follow($event)"
+></div>

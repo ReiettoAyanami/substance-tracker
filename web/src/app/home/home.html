@@ -1,0 +1,33 @@
+@let current = list.state();
+<main class="home">
+  @switch (current.status) {
+    @case ('loaded') {
+      @for (substance of current.substances; track substance.id) {
+        <app-substance-card
+          [substance]="substance"
+          [settings]="current.settings"
+          (tapped)="open($event)"
+          (edit)="actions.edit(substance)"
+          (remove)="actions.delete(substance)"
+        />
+      } @empty {
+        <p class="empty">Nessuna sostanza</p>
+      }
+    }
+    @case ('failed') {
+      <p class="error">
+        Impossibile caricare le sostanze: {{ current.error.title }}
+        @if (current.error.status) {
+          ({{ current.error.status }})
+        }
+      </p>
+    }
+  }
+</main>
+
+@if (current.status === 'loaded') {
+  <app-add-button label="Aggiungi sostanza" (pressed)="actions.add()" />
+}
+
+<!-- The substance page (child route substances/:id, step 4) opens here, over the home. -->
+<router-outlet />

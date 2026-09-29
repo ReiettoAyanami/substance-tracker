@@ -1,0 +1,33 @@
+<h2 mat-dialog-title>{{ editing ? 'Modifica sostanza' : 'Nuova sostanza' }}</h2>
+
+<mat-dialog-content>
+  <form id="substance-form" [formGroup]="form" (ngSubmit)="save()">
+    <mat-form-field appearance="outline">
+      <mat-label>Nome</mat-label>
+      <input matInput formControlName="name" autocomplete="off" />
+      <mat-error>{{ errorOf('name') }}</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Unità</mat-label>
+      <input matInput formControlName="unit" autocomplete="off" />
+      <mat-hint>es. g, capsula, bottiglia</mat-hint>
+      <mat-error>{{ errorOf('unit') }}</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Quantità per ricarica</mat-label>
+      <input matInput formControlName="refillQuantity" inputmode="decimal" autocomplete="off" />
+      <mat-hint>Facoltativa, es. 20 per un pacchetto</mat-hint>
+      <mat-error>{{ errorOf('refillQuantity') }}</mat-error>
+    </mat-form-field>
+  </form>
+  @if (formError(); as message) {
+    <p class="form-error" role="alert">{{ message }}</p>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="cancel()">Annulla</button>
+  <button mat-flat-button type="submit" form="substance-form" [disabled]="saving()">Salva</button>
+</mat-dialog-actions>

@@ -1,0 +1,12 @@
+# Dependencies and build output
+node_modules/
+dist/
+.angular/
+
+# Local environment and secrets (keep only the template)
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log

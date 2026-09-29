@@ -1,0 +1,13 @@
+<div class="track" role="img" [attr.aria-label]="label()">
+  @for (bar of bars(); track bar.batchId) {
+    <app-batch-bar
+      class="segment"
+      [style.flex-basis.%]="bar.widthPercent"
+      [batchId]="bar.batchId"
+      [name]="bar.name"
+      [unitPrice]="bar.unitPrice"
+      [unit]="unit()"
+      [currency]="currency()"
+    />
+  }
+</div>
