@@ -6,6 +6,17 @@
     </button>
   </div>
 
+  @if (loadedSettings(); as settings) {
+    <app-consumption-filters
+      [filter]="filter()"
+      [substances]="substances.hasValue() ? substances.value() : []"
+      [batches]="batches.hasValue() ? batches.value() : []"
+      [bounds]="bounds.hasValue() ? bounds.value() : null"
+      [settings]="settings"
+      (changed)="apply($event)"
+    />
+  }
+
   @if (error(); as why) {
     <p class="error">Could not load the consumptions: {{ why }}</p>
   } @else if (list(); as shown) {

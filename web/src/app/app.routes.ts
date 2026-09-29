@@ -1,20 +1,24 @@
 import { Routes } from '@angular/router';
 
-import { ConsumptionsPage } from './consumptions-page/consumptions-page';
-import { SubstancePage } from './substance-page/substance-page';
-import { SubstancesPage } from './substances-page/substances-page';
-
+// Every page is loaded when it is first opened (its own chunk): the initial bundle stays the shell,
+// within the budget of angular.json, however many Material pieces the pages use.
 export const routes: Routes = [
   // The start page: recording a consumption is the most frequent action (design-frontend.md).
   { path: '', pathMatch: 'full', redirectTo: 'consumptions' },
-  { path: 'consumptions', component: ConsumptionsPage, title: 'Consumptions' },
+  {
+    path: 'consumptions',
+    loadComponent: () => import('./consumptions-page/consumptions-page').then((m) => m.ConsumptionsPage),
+    title: 'Consumptions',
+  },
   {
     path: 'substances',
-    component: SubstancesPage,
+    loadComponent: () => import('./substances-page/substances-page').then((m) => m.SubstancesPage),
     title: 'Substances',
     // The substance page is a child of the substances page, so the list stays rendered underneath
     // it and a direct link or a refresh on /substances/5 rebuilds the list below (design-frontend.md).
-    children: [{ path: ':id', component: SubstancePage }],
+    children: [
+      { path: ':id', loadComponent: () => import('./substance-page/substance-page').then((m) => m.SubstancePage) },
+    ],
   },
   // An unknown URL (an old bookmark, a typo) lands on the start page.
   { path: '**', redirectTo: 'consumptions' },

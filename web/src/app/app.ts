@@ -8,10 +8,8 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRouteSnapshot, NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter, map } from 'rxjs';
 
+import { WIDE_SCREEN } from './layout';
 import { Sidebar } from './sidebar/sidebar';
-
-/** From this width the sidebar stays open at the side (Material 3's "expanded" window class). */
-export const WIDE_SCREEN = '(min-width: 840px)';
 
 /** The title of the deepest active route that has one. */
 function routeTitle(route: ActivatedRouteSnapshot): string {

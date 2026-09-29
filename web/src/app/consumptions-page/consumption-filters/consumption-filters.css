@@ -1,0 +1,60 @@
+:host {
+  display: block;
+}
+
+.count {
+  justify-content: flex-end;
+}
+
+/* One column on a phone; substance and batch side by side from 600 px, the days under them. */
+.fields {
+  display: grid;
+  grid-template-columns: 1fr;
+  column-gap: 12px;
+}
+
+@media (min-width: 600px) {
+  .fields {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .days {
+    grid-column: 1 / -1;
+  }
+}
+
+mat-form-field {
+  width: 100%;
+}
+
+.ranges {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.range-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font: var(--mat-sys-body-medium);
+}
+
+.range-values {
+  font-variant-numeric: tabular-nums;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+mat-slider {
+  display: block;
+  margin: 0 8px;
+}
+
+.warning {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 4px 0;
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+}

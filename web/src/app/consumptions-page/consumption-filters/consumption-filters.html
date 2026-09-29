@@ -1,0 +1,119 @@
+<mat-expansion-panel class="panel" [expanded]="startOpen">
+  <mat-expansion-panel-header>
+    <mat-panel-title>Filters</mat-panel-title>
+    <mat-panel-description class="count">{{ activeCount() ? activeCount() + ' active' : 'None' }}</mat-panel-description>
+  </mat-expansion-panel-header>
+
+  <div class="fields">
+    <mat-form-field appearance="outline">
+      <mat-label>Substance</mat-label>
+      <mat-select class="substance" [value]="filter().substanceId ?? null" (selectionChange)="chooseSubstance($event.value)">
+        <mat-option [value]="null">All substances</mat-option>
+        @for (substance of substances(); track substance.id) {
+          <mat-option [value]="substance.id">{{ substance.name }}@if (substance.archived) { (archived)}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Batch</mat-label>
+      <mat-select class="batch" [value]="filter().batchId ?? null" (selectionChange)="chooseBatch($event.value)">
+        <mat-option [value]="null">All batches</mat-option>
+        @for (group of batchGroups(); track group.substanceId) {
+          @if (group.label) {
+            <mat-optgroup [label]="group.label">
+              @for (batch of group.batches; track batch.id) {
+                <mat-option [value]="batch.id">{{ batch.label }}</mat-option>
+              }
+            </mat-optgroup>
+          } @else {
+            @for (batch of group.batches; track batch.id) {
+              <mat-option [value]="batch.id">{{ batch.label }}</mat-option>
+            }
+          }
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="days">
+      <mat-label>Days</mat-label>
+      <mat-date-range-input [formGroup]="dates" [rangePicker]="picker" (click)="picker.open()">
+        <input matStartDate formControlName="start" placeholder="From" readonly />
+        <input matEndDate formControlName="end" placeholder="To" readonly />
+      </mat-date-range-input>
+      @if (filter().from || filter().to) {
+        <button mat-icon-button matIconSuffix type="button" class="any-day" aria-label="Any day" (click)="clearDates()">
+          <mat-icon>close</mat-icon>
+        </button>
+      }
+      <mat-datepicker-toggle matIconSuffix [for]="picker" />
+      <mat-date-range-picker #picker (closed)="applyDates()" />
+    </mat-form-field>
+  </div>
+
+  <div class="ranges">
+    @if (priceShown(); as range) {
+      <div class="range price">
+        <div class="range-head">
+          <span>Price per unit</span>
+          <span class="range-values">{{ money(range.start) }} – {{ money(range.end) }}</span>
+        </div>
+        <mat-slider [min]="range.min" [max]="range.max" [step]="range.step" [disabled]="range.min === range.max">
+          <input
+            matSliderStartThumb
+            #priceLow
+            [value]="range.start"
+            aria-label="Lowest price per unit"
+            (input)="slide('price', +priceLow.value, +priceHigh.value)"
+            (change)="chooseRange('price', +priceLow.value, +priceHigh.value)"
+          />
+          <input
+            matSliderEndThumb
+            #priceHigh
+            [value]="range.end"
+            aria-label="Highest price per unit"
+            (input)="slide('price', +priceLow.value, +priceHigh.value)"
+            (change)="chooseRange('price', +priceLow.value, +priceHigh.value)"
+          />
+        </mat-slider>
+      </div>
+    }
+    @if (quantityShown(); as range) {
+      <div class="range quantity">
+        <div class="range-head">
+          <span>Quantity</span>
+          <span class="range-values">{{ amount(range.start) }} – {{ amount(range.end) }}</span>
+        </div>
+        <mat-slider [min]="range.min" [max]="range.max" [step]="range.step" [disabled]="range.min === range.max">
+          <input
+            matSliderStartThumb
+            #quantityLow
+            [value]="range.start"
+            aria-label="Lowest quantity"
+            (input)="slide('quantity', +quantityLow.value, +quantityHigh.value)"
+            (change)="chooseRange('quantity', +quantityLow.value, +quantityHigh.value)"
+          />
+          <input
+            matSliderEndThumb
+            #quantityHigh
+            [value]="range.end"
+            aria-label="Highest quantity"
+            (input)="slide('quantity', +quantityLow.value, +quantityHigh.value)"
+            (change)="chooseRange('quantity', +quantityLow.value, +quantityHigh.value)"
+          />
+        </mat-slider>
+      </div>
+    }
+  </div>
+
+  <mat-action-row>
+    <button mat-button type="button" class="clear" [disabled]="activeCount() === 0" (click)="clear()">Clear</button>
+  </mat-action-row>
+</mat-expansion-panel>
+
+@if (warning(); as text) {
+  <p class="warning" role="status">
+    <mat-icon>info</mat-icon>
+    <span>{{ text }}</span>
+  </p>
+}

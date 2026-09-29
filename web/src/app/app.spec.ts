@@ -10,12 +10,21 @@ import { of } from 'rxjs';
 
 import { App } from './app';
 import { routes } from './app.routes';
+import { CatalogApi } from './data/catalog-api';
 import { ReportsApi } from './data/reports-api';
 import { SettingsApi } from './data/settings-api';
 
 /** The pages' data: the shell is tested here, not what the pages show. */
 const pageData = [
-  { provide: ReportsApi, useValue: { listConsumptions: () => of([]) } },
+  {
+    provide: ReportsApi,
+    useValue: {
+      listConsumptions: () => of([]),
+      listBatches: () => of([]),
+      getConsumptionBounds: () => of({ minUnitPrice: null, maxUnitPrice: null, minQuantity: null, maxQuantity: null }),
+    },
+  },
+  { provide: CatalogApi, useValue: { listSubstances: () => of([]) } },
   {
     provide: SettingsApi,
     useValue: { getSettings: () => of({ timezone: 'Europe/Rome', dayStartsAt: '00:00:00', currency: 'EUR' }) },
@@ -33,7 +42,10 @@ describe('App', () => {
         provideRouter(routes),
         // jsdom has no animation events: the drawer opens and closes at once
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
-        { provide: BreakpointObserver, useValue: { observe: () => of({ matches: screen === 'wide', breakpoints: {} }) } },
+        {
+          provide: BreakpointObserver,
+          useValue: { observe: () => of({ matches: screen === 'wide', breakpoints: {} }), isMatched: () => screen === 'wide' },
+        },
         ...pageData,
       ],
     });

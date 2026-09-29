@@ -8,7 +8,7 @@
   padding: 16px 16px calc(24px + env(safe-area-inset-bottom, 0px));
 }
 
-/* The "+" at the top right of the page, above the list (and, later, the filters). */
+/* The "+" at the top right of the page, above the filters and the list. */
 .page-actions {
   display: flex;
   justify-content: flex-end;
