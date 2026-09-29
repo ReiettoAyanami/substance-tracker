@@ -1,0 +1,63 @@
+@let item = consumption();
+@let shown = view();
+<mat-card appearance="outlined">
+  <mat-card-content>
+    @switch (variant()) {
+      @case ('full') {
+        <div class="head">
+          <span class="dot" [style.background-color]="item.substanceId | identityColor: 'substance'"></span>
+          <span class="substance">{{ item.substanceName }}</span>
+          <span class="when">{{ shown.when }}</span>
+          <button
+            mat-icon-button
+            type="button"
+            class="more"
+            [attr.aria-label]="'Actions for the consumption of ' + shown.when"
+            [matMenuTriggerFor]="actions"
+          >
+            <mat-icon>more_vert</mat-icon>
+          </button>
+        </div>
+        <mat-menu #actions="matMenu" xPosition="before">
+          <button mat-menu-item type="button" (click)="edit.emit()">
+            <mat-icon>edit</mat-icon>
+            <span>Edit</span>
+          </button>
+          <button mat-menu-item type="button" (click)="remove.emit()">
+            <mat-icon>delete</mat-icon>
+            <span>Delete</span>
+          </button>
+        </mat-menu>
+
+        <div class="source">
+          @if (item.type === 'one_time') {
+            <span class="label">One-time@if (item.name) { · {{ item.name }}}</span>
+          } @else {
+            <span class="dot" [style.background-color]="item.batchId! | identityColor: 'batch'"></span>
+            <span class="label">{{ item.batchName ?? 'Unnamed batch' }}</span>
+          }
+        </div>
+
+        <div class="figures">
+          <span class="amount">{{ shown.amount }}</span>
+          @if (shown.delta) {
+            <span class="delta">{{ shown.delta }}</span>
+          }
+        </div>
+
+        @if (item.note) {
+          <p class="note">{{ item.note }}</p>
+        }
+      }
+      @case ('compact') {
+        <div class="figures">
+          <span class="when">{{ shown.when }}</span>
+          <span class="amount">{{ shown.amount }}</span>
+          @if (shown.delta) {
+            <span class="delta">{{ shown.delta }}</span>
+          }
+        </div>
+      }
+    }
+  </mat-card-content>
+</mat-card>

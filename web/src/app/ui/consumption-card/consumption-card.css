@@ -1,0 +1,84 @@
+:host {
+  display: block;
+}
+
+mat-card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Substance on the left, when on the right, the ⋮ in the corner (like the substance card). */
+.head,
+.source {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.dot {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.substance {
+  flex: 1;
+  min-width: 0;
+  font: var(--mat-sys-title-medium);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.when {
+  flex: none;
+  font: var(--mat-sys-body-medium);
+  font-variant-numeric: tabular-nums;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+/* 48 dp to tap, without making the row taller. */
+.more {
+  flex: none;
+  margin: -12px -12px -12px -4px;
+}
+
+.source .label {
+  min-width: 0;
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Amount on the left, delta on the right; on a narrow screen the delta wraps below. */
+.figures {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+}
+
+.amount {
+  font: var(--mat-sys-body-large);
+  font-variant-numeric: tabular-nums;
+}
+
+.delta {
+  font: var(--mat-sys-body-medium);
+  font-variant-numeric: tabular-nums;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.note {
+  margin: 0;
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
