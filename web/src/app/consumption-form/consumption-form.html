@@ -22,12 +22,13 @@
       </mat-form-field>
     }
 
-    @if (batchId() === null && chosenSubstanceId() !== null) {
+    @if (batchId() === null) {
+      <!-- In sight from the start, before a substance is chosen: it is the only way to a one-time consumption. -->
       <mat-checkbox class="one-time" formControlName="oneTime">One-time: bought and used at once</mat-checkbox>
       @if (noActiveBatch()) {
         <p class="hint">No active batch of this substance: record it as one-time, with its price.</p>
       }
-      @if (!oneTime()) {
+      @if (!oneTime() && chosenSubstanceId() !== null) {
         <mat-form-field appearance="outline">
           <mat-label>Batch</mat-label>
           <mat-select class="batch" formControlName="batchId">

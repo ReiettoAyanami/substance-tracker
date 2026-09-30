@@ -69,9 +69,9 @@ const FIELD_OF: Record<string, string> = { occurredAt: 'day', unitPrice: 'totalP
 /**
  * The consumption form (design-frontend.md, "consumption form"): it records a consumption from a
  * batch, or a one-time one (bought and used at once: a price, an optional name), or edits the one
- * it is given. The substance and the batch can come fixed (their selectors are hidden). The active
- * batches of the substance are offered oldest first, the oldest chosen; with none, the consumption
- * can only be one-time. The day and the time are those of the settings' time zone, "now" at
+ * it is given. The substance and the batch can come fixed (their selectors are hidden). "One-time"
+ * can be ticked from the start; else the active batches of the substance chosen are offered oldest
+ * first, the oldest chosen; with none, the consumption can only be one-time. The day and the time are those of the settings' time zone, "now" at
  * first. In edit mode the kind and the batch are shown, not changed (the API cannot move a
  * consumption). It says `saved` with what the Ledger returned, or `cancelled`.
  */

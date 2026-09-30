@@ -156,7 +156,6 @@ describe('ConsumptionForm', () => {
     await render();
     await fixture.whenStable();
     expect(element().querySelector('mat-select.batch')).toBeNull();
-    expect(element().querySelector('mat-checkbox')).toBeNull();
 
     const offered = optionsOf('substance');
     expect(offered.map((o) => o.text)).toEqual(['Sigarette', 'Birra']);
@@ -247,6 +246,46 @@ describe('ConsumptionForm', () => {
     req.flush({ id: 6 }, { status: 201, statusText: 'Created' });
     await fixture.whenStable();
     expect(said).toEqual([{ id: 6 }]);
+  });
+
+  it('offers "One-time" from the start, before the substance is chosen: no batch is asked for then', async () => {
+    await render();
+    await fixture.whenStable();
+    const oneTimeBox = await harnesses.getHarness(MatCheckboxHarness);
+    expect(await oneTimeBox.getLabelText()).toBe('One-time: bought and used at once');
+    expect(await oneTimeBox.isChecked()).toBe(false);
+
+    await oneTimeBox.check();
+    await fixture.whenStable();
+    expect(input('totalPrice')).not.toBeNull();
+
+    optionsOf('substance')[0]!.option.click(); // the Sigarette, which have active batches
+    request('/api/substances/2/batches').flush(packs);
+    await fixture.whenStable();
+    expect(element().querySelector('mat-select.batch')).toBeNull();
+    expect(await oneTimeBox.isChecked()).toBe(true);
+
+    await type('quantity', '2');
+    await type('totalPrice', '1');
+    save();
+    const req = backend.expectOne('/api/substances/2/one-time-consumptions');
+    expect(req.request.body).toEqual({ quantity: '2', totalPrice: '1', occurredAt: '2026-09-05T18:15:00Z' });
+    req.flush({ id: 7 }, { status: 201, statusText: 'Created' });
+  });
+
+  it('goes back to the batches when "One-time" is unticked: the oldest one is chosen', async () => {
+    await render();
+    await fixture.whenStable();
+    const oneTimeBox = await harnesses.getHarness(MatCheckboxHarness);
+    await oneTimeBox.check();
+    optionsOf('substance')[0]!.option.click();
+    request('/api/substances/2/batches').flush(packs);
+    await fixture.whenStable();
+
+    await oneTimeBox.uncheck();
+    await fixture.whenStable();
+    expect(text('mat-select.batch .mat-mdc-select-value-text')).toBe('Pack A · 3 sigaretta left');
+    expect(element().querySelector('[formControlName="totalPrice"]')).toBeNull();
   });
 
   it('can only be one-time for a substance with no active batch, and says why', async () => {
