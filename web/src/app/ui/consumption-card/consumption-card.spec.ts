@@ -50,24 +50,23 @@ const pint: Consumption = {
 describe('ConsumptionCard', () => {
   let fixture: ComponentFixture<ConsumptionCard>;
 
-  async function render(
-    consumption: Consumption,
-    variant?: 'full' | 'compact',
-    deltaOf?: 'both' | 'quantity' | 'price',
-  ): Promise<HTMLElement> {
+  async function render(consumption: Consumption, variant?: 'full' | 'compact'): Promise<HTMLElement> {
     fixture = TestBed.createComponent(ConsumptionCard);
     fixture.componentRef.setInput('consumption', consumption);
     fixture.componentRef.setInput('settings', settings);
     if (variant) fixture.componentRef.setInput('variant', variant);
-    if (deltaOf) fixture.componentRef.setInput('deltaOf', deltaOf);
     await fixture.whenStable();
     return fixture.nativeElement;
   }
 
   const text = (element: Element | null) => (element?.textContent ?? '').replace(/\s+/g, ' ').trim();
+  /** The delta pill of a card: a button, when the consumption has one before it. */
+  const pill = (card: HTMLElement) => card.querySelector<HTMLButtonElement>('app-delta-pill button');
+
+  beforeEach(() => localStorage.clear()); // the change the pills show is remembered there
   const colour = (id: number, kind: 'substance' | 'batch') => new IdentityColorPipe().transform(id, kind);
 
-  it('shows when, what, from which batch, how much and at what cost, the delta and the note', async () => {
+  it('shows when, what, from which batch, how much and at what cost, the delta pill and the note', async () => {
     const card = await render(coffee);
 
     expect(text(card.querySelector('.when'))).toBe('28 Sept 2026, 08:45'); // Europe/Rome
@@ -76,7 +75,7 @@ describe('ConsumptionCard', () => {
     expect(text(card.querySelector('.source'))).toBe('Scorta grande');
     expect(card.querySelector<HTMLElement>('.source .dot')!.style.backgroundColor).toBe(colour(6, 'batch'));
     expect(text(card.querySelector('.amount'))).toBe('2 capsula · €0.64');
-    expect(text(card.querySelector('.delta'))).toBe('-33.3% qty · -46.7% price');
+    expect(text(pill(card))).toBe('quantity -33.3%');
     expect(text(card.querySelector('.note'))).toBe('Before the train');
   });
 
@@ -85,7 +84,7 @@ describe('ConsumptionCard', () => {
 
     expect(text(card.querySelector('.source'))).toBe('One-time · Pinta al pub');
     expect(card.querySelector('.source .dot')).toBeNull();
-    expect(text(card.querySelector('.delta'))).toBe('-75% qty · +4.2% price');
+    expect(text(pill(card))).toBe('quantity -75%');
     expect(card.querySelector('.note')).toBeNull();
 
     const unnamed = await render({ ...pint, name: null });
@@ -97,29 +96,22 @@ describe('ConsumptionCard', () => {
     expect(text(card.querySelector('.source'))).toBe('Unnamed batch');
   });
 
-  it('compares the price with what the previous consumption cost, not with its price per unit', async () => {
-    // same unit price as the one before (a delta of 0 on it), three times the quantity: three times the price
-    const card = await render({ ...coffee, deltaQuantity: '2.0000', deltaUnitPrice: '0.0000', deltaCost: '2.0000' });
-    expect(text(card.querySelector('.delta'))).toBe('+200% qty · +200% price');
+  it('shows one change at a time: a tap on the pill switches it to the price, without asking anything of the parent', async () => {
+    const card = await render(coffee);
+    const asked: string[] = [];
+    fixture.componentInstance.edit.subscribe(() => asked.push('edit'));
+    fixture.componentInstance.remove.subscribe(() => asked.push('remove'));
+
+    pill(card)!.click();
+    await fixture.whenStable();
+
+    expect(text(pill(card))).toBe('price -46.7%');
+    expect(asked).toEqual([]);
   });
 
-  it('has no delta for the first consumption, and no price delta after a price of 0', async () => {
+  it('has no pill for the first consumption', async () => {
     const first = await render({ ...coffee, deltaQuantity: null, deltaUnitPrice: null, deltaCost: null });
-    expect(first.querySelector('.delta')).toBeNull();
-
-    const afterAGift = await render({ ...coffee, deltaQuantity: '3.0000', deltaUnitPrice: null, deltaCost: null });
-    expect(text(afterAGift.querySelector('.delta'))).toBe('+300% qty');
-  });
-
-  it('shows one delta only when its list chose one: the quantity, or the price', async () => {
-    let card = await render(coffee, 'compact', 'quantity');
-    expect(text(card.querySelector('.delta'))).toBe('-33.3% qty');
-
-    card = await render(coffee, 'compact', 'price');
-    expect(text(card.querySelector('.delta'))).toBe('-46.7% price');
-
-    card = await render({ ...coffee, deltaCost: null }, 'compact', 'price'); // after a price of 0: nothing to show
-    expect(text(card.querySelector('.delta'))).toBe(''); // its place stays, so the amounts of a list line up
+    expect(pill(first)).toBeNull();
   });
 
   it('asks to edit or delete the consumption from its ⋮ menu', async () => {
@@ -147,10 +139,18 @@ describe('ConsumptionCard', () => {
 
     expect(text(card.querySelector('.when'))).toBe('28 Sept 2026, 08:45');
     expect(text(card.querySelector('.amount'))).toBe('2 capsula · €0.64');
-    expect(text(card.querySelector('.delta'))).toBe('-33.3% qty · -46.7% price');
+    expect(text(pill(card))).toBe('quantity -33.3%');
     expect(card.querySelector('.substance')).toBeNull();
     expect(card.querySelector('.source')).toBeNull();
     expect(card.querySelector('.note')).toBeNull();
     expect(card.querySelector('button.more')).toBeNull();
+  });
+
+  it('compact: has no pill for the first consumption, and still says when, how much and the cost', async () => {
+    const first = await render({ ...coffee, deltaQuantity: null, deltaUnitPrice: null, deltaCost: null }, 'compact');
+
+    expect(pill(first)).toBeNull();
+    expect(text(first.querySelector('.when'))).toBe('28 Sept 2026, 08:45');
+    expect(text(first.querySelector('.amount'))).toBe('2 capsula · €0.64');
   });
 });

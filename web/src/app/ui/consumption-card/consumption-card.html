@@ -40,9 +40,7 @@
 
         <div class="figures">
           <span class="amount">{{ shown.amount }}</span>
-          @if (shown.delta) {
-            <span class="delta">{{ shown.delta }}</span>
-          }
+          <app-delta-pill [consumption]="item" />
         </div>
 
         @if (item.note) {
@@ -50,11 +48,11 @@
         }
       }
       @case ('compact') {
-        <!-- The change keeps its place also when there is none: the amounts line up from card to card. -->
-        <div class="figures compact">
+        <!-- Three columns, the same in every card: the amounts of a list line up, with a pill or without. -->
+        <div class="compact">
           <span class="when">{{ shown.when }}</span>
           <span class="amount">{{ shown.amount }}</span>
-          <span class="delta">{{ shown.delta }}</span>
+          <app-delta-pill class="delta" [consumption]="item" />
         </div>
       }
     }

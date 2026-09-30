@@ -7,31 +7,27 @@ import { MatMenuModule } from '@angular/material/menu';
 import { Consumption } from '../../data/consumption';
 import { Settings } from '../../data/settings';
 import { LOCALE } from '../../locale';
+import { DeltaPill } from '../delta-pill/delta-pill';
 import { IdentityColorPipe } from '../identity-color-pipe';
 
 /** full: on the consumptions page; compact: under a batch, where substance and batch are known. */
 export type ConsumptionCardVariant = 'full' | 'compact';
 
-/** Which changes from the previous consumption a card shows: both, or the one its list chose. */
-export type ConsumptionCardDelta = 'both' | 'quantity' | 'price';
-
 const quantityFormat = new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 3 });
-/** A delta ratio of the API ("-0.3333") as a signed percentage ("-33.3%"). */
-const deltaFormat = new Intl.NumberFormat(LOCALE, { style: 'percent', maximumFractionDigits: 1, signDisplay: 'exceptZero' });
 
 /** A decimal string of the API, formatted exactly (Intl reads it as a string: no binary rounding). */
 const exact = (format: Intl.NumberFormat, value: string) => format.format(value as unknown as number);
 
 /**
  * One consumption (design-frontend.md, "consumption card"). Presentational: every number is the
- * API's (the cost, the deltas from the previous consumption: of the quantity and of the price,
- * which is the cost); it only formats them. Full, it says when, what, from which batch (or "One-time"), how much, what it cost, the
- * delta and the note, with a ⋮ menu that asks the parent to edit or delete it. Compact, only when,
- * how much, the cost and the delta.
+ * API's (the cost, the change from the previous consumption); it only formats them. Full, it says
+ * when, what, from which batch (or "One-time"), how much, what it cost, the change from the
+ * previous one (a delta pill) and the note, with a ⋮ menu that asks the parent to edit or delete
+ * it. Compact, only when, how much, the cost and the delta pill.
  */
 @Component({
   selector: 'app-consumption-card',
-  imports: [IdentityColorPipe, MatButtonModule, MatCardModule, MatIconModule, MatMenuModule],
+  imports: [DeltaPill, IdentityColorPipe, MatButtonModule, MatCardModule, MatIconModule, MatMenuModule],
   templateUrl: './consumption-card.html',
   styleUrl: './consumption-card.css',
 })
@@ -39,8 +35,6 @@ export class ConsumptionCard {
   readonly consumption = input.required<Consumption>();
   readonly settings = input.required<Settings>();
   readonly variant = input<ConsumptionCardVariant>('full');
-  /** The deltas shown: both, or only the quantity's or the price's (the toggle of the batch list). */
-  readonly deltaOf = input<ConsumptionCardDelta>('both');
   /** "Edit" in the ⋮ menu. */
   readonly edit = output<void>();
   /** "Delete" in the ⋮ menu. */
@@ -63,15 +57,9 @@ export class ConsumptionCard {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
-    const deltaOf = this.deltaOf();
-    const deltas = [
-      deltaOf === 'price' || consumption.deltaQuantity === null ? null : `${exact(deltaFormat, consumption.deltaQuantity)} qty`,
-      deltaOf === 'quantity' || consumption.deltaCost === null ? null : `${exact(deltaFormat, consumption.deltaCost)} price`,
-    ];
     return {
       when,
       amount: `${exact(quantityFormat, consumption.quantity)} ${consumption.unit} · ${exact(money, consumption.cost)}`,
-      delta: deltas.filter((delta) => delta !== null).join(' · '),
     };
   });
 }

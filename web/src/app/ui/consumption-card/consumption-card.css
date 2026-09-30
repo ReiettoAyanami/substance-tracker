@@ -1,5 +1,7 @@
 :host {
   display: block;
+  /* The compact card lays itself out on its own width: it sits in narrow places (a batch's sub-card). */
+  container-type: inline-size;
 }
 
 mat-card-content {
@@ -55,11 +57,11 @@ mat-card-content {
   white-space: nowrap;
 }
 
-/* Amount on the left, delta on the right; on a narrow screen the delta wraps below. */
+/* Amount on the left, the delta pill on the right; on a narrow screen the pill wraps below. */
 .figures {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 4px 12px;
 }
@@ -69,16 +71,27 @@ mat-card-content {
   font-variant-numeric: tabular-nums;
 }
 
-.delta {
-  font: var(--mat-sys-body-medium);
-  font-variant-numeric: tabular-nums;
-  color: var(--mat-sys-on-surface-variant);
+/* Compact, on one line: when, how much, and the delta pill at the right. The first column is as
+   wide in every card, so the amounts of a list line up; the line is as tall as a pill also without one. */
+.compact {
+  display: grid;
+  grid-template-columns: 10rem 1fr auto;
+  align-items: center;
+  gap: 4px 12px;
+  min-height: 28px;
 }
 
-/* Room for one change ("-28.6% price"), at the right. */
-.compact .delta {
-  min-width: 12ch;
-  text-align: right;
+/* Where the three do not fit on a line (a phone): one under the other, the pill last. */
+@container (max-width: 26rem) {
+  .compact {
+    grid-template-columns: 1fr;
+    justify-items: start;
+  }
+
+  /* No pill (the first consumption): no empty line for it. */
+  .compact .delta:empty {
+    display: none;
+  }
 }
 
 /* Smaller and greyer than the figures (lenzi): a remark, not data. */

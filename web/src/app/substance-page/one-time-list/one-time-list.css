@@ -47,6 +47,13 @@ mat-panel-title {
   min-width: 0;
 }
 
+/* The pill wraps below the amount where there is no room for both. */
+.facts {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+}
+
 .item-name {
   min-width: 0;
   font: var(--mat-sys-title-small);

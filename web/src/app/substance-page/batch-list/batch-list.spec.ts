@@ -1,6 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
-import { By } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
 import { Observable, of, throwError } from 'rxjs';
 
@@ -10,7 +9,6 @@ import { Settings } from '../../data/settings';
 import { Batch, SubstanceBatches } from '../../data/substance-batches';
 import { BatchActions } from './batch-actions';
 import { BatchList } from './batch-list';
-import { RecentConsumptions } from './recent-consumptions/recent-consumptions';
 
 const settings: Settings = { timezone: 'Europe/Rome', dayStartsAt: '00:00:00', currency: 'EUR' };
 
@@ -237,37 +235,13 @@ describe('BatchList', () => {
     expect(subCards[1]!.querySelector('app-recent-consumptions')).not.toBeNull();
     expect(toggles()[1]!.getAttribute('aria-expanded')).toBe('true');
     expect(recentAsks).toEqual([6]);
+    // which change they show is chosen on their delta pills: the only toggle of the panel is the share's
+    expect(element().querySelectorAll('mat-button-toggle-group').length).toBe(1);
 
     toggles()[1]!.click();
     await fixture.whenStable();
     expect(element().querySelector('app-recent-consumptions')).toBeNull();
     expect(toggles()[1]!.getAttribute('aria-expanded')).toBe('false');
-  });
-
-  it('lets the recent consumptions show one change at a time, the quantity\'s or the price\'s, and remembers which', async () => {
-    await render();
-    await expand();
-    expect(element().querySelector('.recent-delta')).toBeNull(); // nothing to choose while they are closed
-    element().querySelectorAll<HTMLButtonElement>('.batch button.recent-toggle')[0]!.click();
-    await fixture.whenStable();
-
-    const recent = () => fixture.debugElement.query(By.directive(RecentConsumptions)).componentInstance as RecentConsumptions;
-    const choice = (label: string) =>
-      Array.from(element().querySelectorAll<HTMLButtonElement>('.recent-delta button')).find((b) => text(b) === label)!;
-    expect(text(element().querySelector('.recent-delta span'))).toBe('Change in');
-    expect(recent().deltaOf()).toBe('quantity');
-    expect(choice('quantity').getAttribute('aria-checked')).toBe('true');
-
-    choice('price').click();
-    await fixture.whenStable();
-    expect(recent().deltaOf()).toBe('price');
-    expect(recentAsks).toEqual([1]); // only what is shown changes
-
-    await render(); // e.g. another substance, or after a reload
-    await expand();
-    element().querySelectorAll<HTMLButtonElement>('.batch button.recent-toggle')[1]!.click();
-    await fixture.whenStable();
-    expect(recent().deltaOf()).toBe('price');
   });
 
   it('asks the recent consumptions of an open sub-card again when the batches are (a batch was edited)', async () => {

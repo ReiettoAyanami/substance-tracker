@@ -13,10 +13,21 @@ import { RecentConsumptions } from './recent-consumptions';
 const settings: Settings = { timezone: 'Europe/Rome', dayStartsAt: '00:00:00', currency: 'EUR' };
 
 /** A batch of the Sigarette, as their batch list gives it. */
-const pack = { id: 8, name: null, quantity: '20.000', remaining: '7.000', unitPrice: '0.325000' } as Batch;
+const pack = { id: 8, name: null, quantity: '20.000', remaining: '8.000', unitPrice: '0.310000' } as Batch;
+
+/**
+ * The consumptions of the pack, newest first: how many, what they cost at 0.31 each, and the change
+ * from the one before in the batch. At one unit price the cost changes as the quantity does.
+ */
+const LAST = [
+  { quantity: '4.000', cost: '1.24', delta: '0.3333' },
+  { quantity: '3.000', cost: '0.93', delta: '-0.4000' },
+  { quantity: '5.000', cost: '1.55', delta: null }, // the first of the batch
+];
 
 /** The n-th consumption of the pack back in time: one a day, from 2026-09-28 18:00 UTC. */
 function consumption(n: number): Consumption {
+  const { quantity, cost, delta } = LAST[n] ?? LAST[2]!;
   return {
     type: 'consumption',
     id: 100 - n,
@@ -27,13 +38,13 @@ function consumption(n: number): Consumption {
     batchName: null,
     name: null,
     occurredAt: new Date(Date.UTC(2026, 8, 28 - n, 18)).toISOString().replace('.000', ''),
-    quantity: '4.000',
-    unitPrice: '0.325000',
-    cost: '1.30',
+    quantity,
+    unitPrice: '0.310000',
+    cost,
     note: 'a note the compact card leaves out',
-    deltaQuantity: n === 0 ? '1.0000' : null,
-    deltaUnitPrice: null,
-    deltaCost: n === 0 ? '0.5000' : null,
+    deltaQuantity: delta,
+    deltaUnitPrice: delta === null ? null : '0.0000',
+    deltaCost: delta,
   };
 }
 
@@ -56,6 +67,7 @@ describe('RecentConsumptions', () => {
   }
 
   beforeEach(async () => {
+    localStorage.clear(); // the change the pills show is remembered there
     calls = [];
     answer = () => of([consumption(0), consumption(1), consumption(2)]);
     await TestBed.configureTestingModule({
@@ -81,22 +93,22 @@ describe('RecentConsumptions', () => {
     expect(calls).toEqual([{ filter: { batchId: 8 }, page: { limit: 5 } }]);
     const parts = (card: Element) => ['.when', '.amount', '.delta'].map((part) => text(card.querySelector(part)));
     expect(cards().map(parts)).toEqual([
-      ['28 Sept 2026, 20:00', '4 sigaretta · €1.30', '+100% qty'],
-      ['27 Sept 2026, 20:00', '4 sigaretta · €1.30', ''],
-      ['26 Sept 2026, 20:00', '4 sigaretta · €1.30', ''],
+      ['28 Sept 2026, 20:00', '4 sigaretta · €1.24', 'quantity +33.3%'],
+      ['27 Sept 2026, 20:00', '3 sigaretta · €0.93', 'quantity -40%'],
+      ['26 Sept 2026, 20:00', '5 sigaretta · €1.55', ''], // the first of the batch
     ]);
     expect(element().querySelector('app-consumption-card .note')).toBeNull();
-    expect(element().querySelector('app-consumption-card button')).toBeNull(); // edited and deleted in the consumptions page
+    expect(element().querySelector('app-consumption-card button.more')).toBeNull(); // edited and deleted in the consumptions page
   });
 
-  it('shows one change at a time, the one its list chose: of the quantity (at first), or of the price', async () => {
+  it('shows one change at a time: a tap on a pill switches every card to the change in price', async () => {
     await render();
     const deltas = () => cards().map((card) => text(card.querySelector('.delta')));
-    expect(deltas()).toEqual(['+100% qty', '', '']);
+    expect(deltas()).toEqual(['quantity +33.3%', 'quantity -40%', '']);
 
-    fixture.componentRef.setInput('deltaOf', 'price');
+    cards()[1]!.querySelector<HTMLButtonElement>('app-delta-pill button')!.click();
     await fixture.whenStable();
-    expect(deltas()).toEqual(['+50% price', '', '']);
+    expect(deltas()).toEqual(['price +33.3%', 'price -40%', '']);
     expect(calls.length).toBe(1); // nothing is asked again for that
   });
 

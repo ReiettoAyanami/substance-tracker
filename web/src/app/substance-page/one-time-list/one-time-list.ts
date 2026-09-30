@@ -10,6 +10,7 @@ import { OneTimeConsumption } from '../../data/one-time';
 import { ReportsApi } from '../../data/reports-api';
 import { Settings } from '../../data/settings';
 import { LOCALE } from '../../locale';
+import { DeltaPill } from '../../ui/delta-pill/delta-pill';
 
 /** How many one-time consumptions one page shows. */
 const PAGE = 20;
@@ -17,14 +18,16 @@ const PAGE = 20;
 /**
  * The one-time consumptions of a substance, in its page (design.md, "one-time consumption":
  * bought and used at once, no batch, never in stock). Closed, it is the total: how many, how much
- * and what they cost. Open, one item per consumption, newest first, a page at a time, and at the
- * top right "Add one-time" (lenzi: a quick way to one from its list; every other consumption is
- * added in the consumptions page), so the panel opens also with none. Loads its data from the API,
- * asks for it again after an addition, and tells its page (`changed`).
+ * and what they cost. Open, one item per consumption, newest first, a page at a time, each with its
+ * change from the consumption before it of the substance, from a batch or one-time (a delta pill:
+ * a one-time consumption has no batch to be compared within), and at the top right "Add one-time"
+ * (lenzi: a quick way to one from its list; every other consumption is added in the consumptions
+ * page), so the panel opens also with none. Loads its data from the API, asks for it again after
+ * an addition, and tells its page (`changed`).
  */
 @Component({
   selector: 'app-one-time-list',
-  imports: [MatButtonModule, MatExpansionModule, MatIconModule],
+  imports: [DeltaPill, MatButtonModule, MatExpansionModule, MatIconModule],
   templateUrl: './one-time-list.html',
   styleUrl: './one-time-list.css',
 })

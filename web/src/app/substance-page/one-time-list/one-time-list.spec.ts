@@ -13,8 +13,17 @@ const settings: Settings = { timezone: 'Europe/Rome', dayStartsAt: '00:00:00', c
 const stats = (count: number, totalQuantity = '0.000', totalSpent = '0.00') =>
   ({ substanceId: 4, count, totalQuantity, totalSpent }) as OneTimeStats;
 
-/** The n-th consumption back in time: one a day, from 2026-09-26 22:00 UTC (27 Sep in Rome). */
-function consumption(n: number, name: string | null = null, note: string | null = null): OneTimeConsumption {
+/**
+ * The n-th consumption back in time: one a day, from 2026-09-26 22:00 UTC (27 Sep in Rome). `delta`
+ * is its change from the consumption before it of the substance, on the quantity and on the price;
+ * none for the first.
+ */
+function consumption(
+  n: number,
+  name: string | null = null,
+  note: string | null = null,
+  delta: { quantity: string; cost: string } | null = null,
+): OneTimeConsumption {
   return {
     type: 'one_time',
     id: 100 - n,
@@ -27,6 +36,9 @@ function consumption(n: number, name: string | null = null, note: string | null 
     note,
     clientRef: null,
     createdAt: '2026-09-29T10:00:00Z',
+    deltaQuantity: delta?.quantity ?? null,
+    deltaUnitPrice: null,
+    deltaCost: delta?.cost ?? null,
   };
 }
 
@@ -61,12 +73,17 @@ describe('OneTimeList', () => {
   }
 
   beforeEach(async () => {
+    localStorage.clear(); // the change the pills show is remembered there
     pages = [];
     totals = 0;
     asked = [];
     written = true;
     statsAnswer = () => of(stats(2, '4.000', '18.00'));
-    pageAnswer = () => [consumption(0, 'Bar sotto casa', 'con Luca'), consumption(1)];
+    // The newest: twice the single bottle taken from a batch before it, for 9.00 against 1.50.
+    pageAnswer = () => [
+      consumption(0, 'Bar sotto casa', 'con Luca', { quantity: '1.0000', cost: '5.0000' }),
+      consumption(1),
+    ];
     await TestBed.configureTestingModule({
       imports: [OneTimeList],
       providers: [
@@ -107,6 +124,20 @@ describe('OneTimeList', () => {
     expect(texts('.price')).toEqual(['€9.00', '€9.00']);
     expect(texts('.note')).toEqual(['con Luca']);
     expect(element().querySelector('.more')).toBeNull(); // a page that is not full is the last one
+  });
+
+  it('shows the change of each from the consumption before it of the substance, in a delta pill that a tap switches to the price', async () => {
+    await render();
+    await expand();
+    const pills = () => Array.from(element().querySelectorAll('.item')).map((item) => text(item.querySelector('app-delta-pill')));
+
+    expect(pills()).toEqual(['quantity +100%', '']); // none for the first consumption of the substance
+
+    element().querySelector<HTMLButtonElement>('.item app-delta-pill button')!.click();
+    await fixture.whenStable();
+
+    expect(pills()).toEqual(['price +500%', '']);
+    expect(pages.length).toBe(1); // nothing is asked again for that
   });
 
   it('loads older consumptions a page at a time, from before the oldest one shown', async () => {

@@ -31,6 +31,15 @@ export interface OneTimeConsumption {
   note: string | null;
   clientRef: string | null;
   createdAt: string;
+  /**
+   * (this − previous) ÷ previous, 4 decimals; null for the first. Previous = the consumption before
+   * it of the same substance, from a batch or one-time: a one-time consumption has no batch.
+   */
+  deltaQuantity: string | null;
+  /** The same on the unit price; also null after a unit price of 0. */
+  deltaUnitPrice: string | null;
+  /** The same on the cost, what was paid (what the delta pill shows as price); also null after a cost of 0. */
+  deltaCost: string | null;
 }
 
 /** A one-time consumption as the Ledger returns it after a create (201) or a change. */
