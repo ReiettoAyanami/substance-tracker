@@ -55,7 +55,7 @@
     @if (priceShown(); as range) {
       <div class="range price">
         <div class="range-head">
-          <span>Price per unit</span>
+          <span>Price</span>
           <span class="range-values">{{ money(range.start) }} – {{ money(range.end) }}</span>
         </div>
         <mat-slider [min]="range.min" [max]="range.max" [step]="range.step" [disabled]="range.min === range.max">
@@ -63,7 +63,7 @@
             matSliderStartThumb
             #priceLow
             [value]="range.start"
-            aria-label="Lowest price per unit"
+            aria-label="Lowest price of a consumption"
             (input)="slide('price', +priceLow.value, +priceHigh.value)"
             (change)="chooseRange('price', +priceLow.value, +priceHigh.value)"
           />
@@ -71,7 +71,7 @@
             matSliderEndThumb
             #priceHigh
             [value]="range.end"
-            aria-label="Highest price per unit"
+            aria-label="Highest price of a consumption"
             (input)="slide('price', +priceLow.value, +priceHigh.value)"
             (change)="chooseRange('price', +priceLow.value, +priceHigh.value)"
           />

@@ -7,7 +7,7 @@ import { ConsumptionCard } from './consumption-card';
 
 const settings: Settings = { timezone: 'Europe/Rome', dayStartsAt: '00:00:00', currency: 'EUR' };
 
-/** 2 capsules of the big stock at 0.32, after 3 at 0.40: −33.3 % quantity, −20 % price. */
+/** 2 capsules of the big stock for 0.64, after 3 for 1.20: −33.3 % quantity, −46.7 % price. */
 const coffee: Consumption = {
   type: 'consumption',
   id: 39,
@@ -24,6 +24,7 @@ const coffee: Consumption = {
   note: 'Before the train',
   deltaQuantity: '-0.3333',
   deltaUnitPrice: '-0.2000',
+  deltaCost: '-0.4667',
 };
 
 const pint: Consumption = {
@@ -43,16 +44,22 @@ const pint: Consumption = {
   note: null,
   deltaQuantity: '-0.7500',
   deltaUnitPrice: '3.1667',
+  deltaCost: '0.0417',
 };
 
 describe('ConsumptionCard', () => {
   let fixture: ComponentFixture<ConsumptionCard>;
 
-  async function render(consumption: Consumption, variant?: 'full' | 'compact'): Promise<HTMLElement> {
+  async function render(
+    consumption: Consumption,
+    variant?: 'full' | 'compact',
+    deltaOf?: 'both' | 'quantity' | 'price',
+  ): Promise<HTMLElement> {
     fixture = TestBed.createComponent(ConsumptionCard);
     fixture.componentRef.setInput('consumption', consumption);
     fixture.componentRef.setInput('settings', settings);
     if (variant) fixture.componentRef.setInput('variant', variant);
+    if (deltaOf) fixture.componentRef.setInput('deltaOf', deltaOf);
     await fixture.whenStable();
     return fixture.nativeElement;
   }
@@ -69,7 +76,7 @@ describe('ConsumptionCard', () => {
     expect(text(card.querySelector('.source'))).toBe('Scorta grande');
     expect(card.querySelector<HTMLElement>('.source .dot')!.style.backgroundColor).toBe(colour(6, 'batch'));
     expect(text(card.querySelector('.amount'))).toBe('2 capsula · €0.64');
-    expect(text(card.querySelector('.delta'))).toBe('-33.3% qty · -20% price');
+    expect(text(card.querySelector('.delta'))).toBe('-33.3% qty · -46.7% price');
     expect(text(card.querySelector('.note'))).toBe('Before the train');
   });
 
@@ -78,7 +85,7 @@ describe('ConsumptionCard', () => {
 
     expect(text(card.querySelector('.source'))).toBe('One-time · Pinta al pub');
     expect(card.querySelector('.source .dot')).toBeNull();
-    expect(text(card.querySelector('.delta'))).toBe('-75% qty · +316.7% price');
+    expect(text(card.querySelector('.delta'))).toBe('-75% qty · +4.2% price');
     expect(card.querySelector('.note')).toBeNull();
 
     const unnamed = await render({ ...pint, name: null });
@@ -90,12 +97,29 @@ describe('ConsumptionCard', () => {
     expect(text(card.querySelector('.source'))).toBe('Unnamed batch');
   });
 
-  it('has no delta for the first consumption of a substance, and no price delta after a price of 0', async () => {
-    const first = await render({ ...coffee, deltaQuantity: null, deltaUnitPrice: null });
+  it('compares the price with what the previous consumption cost, not with its price per unit', async () => {
+    // same unit price as the one before (a delta of 0 on it), three times the quantity: three times the price
+    const card = await render({ ...coffee, deltaQuantity: '2.0000', deltaUnitPrice: '0.0000', deltaCost: '2.0000' });
+    expect(text(card.querySelector('.delta'))).toBe('+200% qty · +200% price');
+  });
+
+  it('has no delta for the first consumption, and no price delta after a price of 0', async () => {
+    const first = await render({ ...coffee, deltaQuantity: null, deltaUnitPrice: null, deltaCost: null });
     expect(first.querySelector('.delta')).toBeNull();
 
-    const afterAGift = await render({ ...coffee, deltaQuantity: '3.0000', deltaUnitPrice: null });
+    const afterAGift = await render({ ...coffee, deltaQuantity: '3.0000', deltaUnitPrice: null, deltaCost: null });
     expect(text(afterAGift.querySelector('.delta'))).toBe('+300% qty');
+  });
+
+  it('shows one delta only when its list chose one: the quantity, or the price', async () => {
+    let card = await render(coffee, 'compact', 'quantity');
+    expect(text(card.querySelector('.delta'))).toBe('-33.3% qty');
+
+    card = await render(coffee, 'compact', 'price');
+    expect(text(card.querySelector('.delta'))).toBe('-46.7% price');
+
+    card = await render({ ...coffee, deltaCost: null }, 'compact', 'price'); // after a price of 0: nothing to show
+    expect(text(card.querySelector('.delta'))).toBe(''); // its place stays, so the amounts of a list line up
   });
 
   it('asks to edit or delete the consumption from its ⋮ menu', async () => {
@@ -123,7 +147,7 @@ describe('ConsumptionCard', () => {
 
     expect(text(card.querySelector('.when'))).toBe('28 Sept 2026, 08:45');
     expect(text(card.querySelector('.amount'))).toBe('2 capsula · €0.64');
-    expect(text(card.querySelector('.delta'))).toBe('-33.3% qty · -20% price');
+    expect(text(card.querySelector('.delta'))).toBe('-33.3% qty · -46.7% price');
     expect(card.querySelector('.substance')).toBeNull();
     expect(card.querySelector('.source')).toBeNull();
     expect(card.querySelector('.note')).toBeNull();

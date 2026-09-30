@@ -21,7 +21,7 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const DECIMAL = /^\d+(\.\d+)?$/;
 
 /**
- * The filter in the URL's query (?substanceId=&batchId=&from=&to=&minUnitPrice=&maxUnitPrice=
+ * The filter in the URL's query (?substanceId=&batchId=&from=&to=&minCost=&maxCost=
  * &minQuantity=&maxQuantity=). A value that does not look right is left out: the API would refuse
  * it, and an old or hand-made link should still show a list.
  */
@@ -39,8 +39,8 @@ function filterOfQuery(query: Params): ConsumptionFilter {
     batchId: id('batchId'),
     from: text('from', DAY),
     to: text('to', DAY),
-    minUnitPrice: text('minUnitPrice', DECIMAL),
-    maxUnitPrice: text('maxUnitPrice', DECIMAL),
+    minCost: text('minCost', DECIMAL),
+    maxCost: text('maxCost', DECIMAL),
     minQuantity: text('minQuantity', DECIMAL),
     maxQuantity: text('maxQuantity', DECIMAL),
   };

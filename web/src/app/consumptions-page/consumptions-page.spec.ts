@@ -37,6 +37,7 @@ function consumption(n: number, type: Consumption['type'] = 'consumption'): Cons
     note: null,
     deltaQuantity: null,
     deltaUnitPrice: null,
+    deltaCost: null,
   };
 }
 
@@ -85,7 +86,7 @@ describe('ConsumptionsPage', () => {
             },
             getConsumptionBounds: (scope: ConsumptionScope) => {
               scopes.push(scope);
-              return of({ minUnitPrice: '0.300000', maxUnitPrice: '0.325000', minQuantity: '1.000', maxQuantity: '13.000' });
+              return of({ minCost: '0.30', maxCost: '4.22', minQuantity: '1.000', maxQuantity: '13.000' });
             },
           },
         },
@@ -116,9 +117,9 @@ describe('ConsumptionsPage', () => {
   });
 
   it('reads the filters from the URL, leaving out what does not look right', async () => {
-    await render('/consumptions?substanceId=2&batchId=8&from=2026-09-01&to=2026-09&minUnitPrice=0.3&maxQuantity=abc&other=1');
+    await render('/consumptions?substanceId=2&batchId=8&from=2026-09-01&to=2026-09&minCost=0.3&maxQuantity=abc&other=1&minUnitPrice=0.3');
 
-    const filter = { substanceId: 2, batchId: 8, from: '2026-09-01', minUnitPrice: '0.3' };
+    const filter = { substanceId: 2, batchId: 8, from: '2026-09-01', minCost: '0.3' }; // an old link's minUnitPrice is left out
     expect(calls).toEqual([{ filter, page: { limit: 20 } }]);
     expect(scopes).toEqual([{ substanceId: 2, batchId: 8, from: '2026-09-01' }]); // the bounds ignore the ranges
   });

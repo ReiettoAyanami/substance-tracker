@@ -26,7 +26,7 @@ const batches: BatchListItem[] = [
   { id: 7, substanceId: 2, substanceName: 'Sigarette', name: null, occurredAt: '2026-08-01T10:00:00Z', deactivatedAt: null },
 ];
 
-const bounds: ConsumptionBounds = { minUnitPrice: '0.000000', maxUnitPrice: '10.000000', minQuantity: '0.250', maxQuantity: '40.000' };
+const bounds: ConsumptionBounds = { minCost: '0.00', maxCost: '10.00', minQuantity: '0.250', maxQuantity: '40.000' };
 
 describe('ConsumptionFilters', () => {
   let fixture: ComponentFixture<ConsumptionFilters>;
@@ -68,7 +68,7 @@ describe('ConsumptionFilters', () => {
   afterEach(() => document.querySelectorAll('.cdk-overlay-container').forEach((overlay) => (overlay.innerHTML = '')));
 
   it('says how many filters are set, and Clear empties them', async () => {
-    await render({ substanceId: 2, from: '2026-09-01', to: '2026-09-30', minUnitPrice: '0.30', maxUnitPrice: '0.40' });
+    await render({ substanceId: 2, from: '2026-09-01', to: '2026-09-30', minCost: '0.30', maxCost: '0.40' });
 
     expect(text(element().querySelector('.count'))).toBe('3 active');
     element().querySelector<HTMLButtonElement>('button.clear')!.click();
@@ -153,7 +153,7 @@ describe('ConsumptionFilters', () => {
   });
 
   it('keeps a batch of the substance chosen, drops a batch of another one, and the ranges', async () => {
-    await render({ substanceId: 4, batchId: 11, minUnitPrice: '1.00', maxQuantity: '2' });
+    await render({ substanceId: 4, batchId: 11, minCost: '1.00', maxQuantity: '2' });
     const options = await open('substance');
     options.find((o) => text(o) === 'Sigarette')!.click();
 
@@ -199,17 +199,17 @@ describe('ConsumptionFilters', () => {
     high!.value = '10';
     high!.dispatchEvent(new Event('change'));
 
-    expect(emitted).toEqual([{ substanceId: 1, minUnitPrice: '0.30' }, { substanceId: 1, minUnitPrice: '0.30' }]);
+    expect(emitted).toEqual([{ substanceId: 1, minCost: '0.30' }, { substanceId: 1, minCost: '0.30' }]);
   });
 
   it('counts whole units on a whole-units slider, and hides the sliders with nothing in scope', async () => {
-    await render({ substanceId: 2 }, { minUnitPrice: '0.300000', maxUnitPrice: '0.325000', minQuantity: '1.000', maxQuantity: '13.000' });
+    await render({ substanceId: 2 }, { minCost: '0.30', maxCost: '4.22', minQuantity: '1.000', maxQuantity: '13.000' });
     const [low] = Array.from(element().querySelectorAll<HTMLInputElement>('.range.quantity input'));
     low!.value = '4';
     low!.dispatchEvent(new Event('change'));
     expect(emitted).toEqual([{ substanceId: 2, minQuantity: '4' }]);
 
-    await render({ from: '2027-01-01' }, { minUnitPrice: null, maxUnitPrice: null, minQuantity: null, maxQuantity: null });
+    await render({ from: '2027-01-01' }, { minCost: null, maxCost: null, minQuantity: null, maxQuantity: null });
     expect(element().querySelector('mat-slider')).toBeNull();
   });
 

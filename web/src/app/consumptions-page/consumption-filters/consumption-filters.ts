@@ -31,7 +31,7 @@ interface SliderRange {
 type RangeKind = 'price' | 'quantity';
 
 const RANGE_KEYS = {
-  price: ['minUnitPrice', 'maxUnitPrice'],
+  price: ['minCost', 'maxCost'],
   quantity: ['minQuantity', 'maxQuantity'],
 } as const satisfies Record<RangeKind, readonly [keyof ConsumptionFilter, keyof ConsumptionFilter]>;
 
@@ -79,8 +79,9 @@ function sliderRange(
 
 /**
  * The filters of the consumptions page (design-frontend.md, "consumption filters"): substance,
- * batch, the days from..to, and ranges on the unit price and on the quantity (two-thumb sliders
- * between the bounds the API gives for the scope). Choosing a batch fills in its substance;
+ * batch, the days from..to, and ranges on the price of a consumption (what it cost, not its price
+ * per unit: lenzi) and on its quantity (two-thumb sliders between the bounds the API gives for
+ * the scope). Choosing a batch fills in its substance;
  * choosing a substance narrows the batches, drops a batch of another substance and the ranges
  * (they differ per substance, in units too). Every change goes out at once (a slider on release)
  * as the whole new filter: the page keeps it in the URL. A warning says when the chosen batch or
@@ -143,7 +144,7 @@ export class ConsumptionFilters {
   /** How many filters are set (the days count once, each range once). */
   protected readonly activeCount = computed(() => {
     const f = this.filter();
-    return [f.substanceId, f.batchId, f.from ?? f.to, f.minUnitPrice ?? f.maxUnitPrice, f.minQuantity ?? f.maxQuantity].filter(
+    return [f.substanceId, f.batchId, f.from ?? f.to, f.minCost ?? f.maxCost, f.minQuantity ?? f.maxQuantity].filter(
       (value) => value !== undefined,
     ).length;
   });
@@ -169,7 +170,7 @@ export class ConsumptionFilters {
   protected readonly priceRange = computed(() => {
     const bounds = this.bounds();
     const f = this.filter();
-    return bounds && sliderRange(bounds.minUnitPrice, bounds.maxUnitPrice, 0.01, f.minUnitPrice, f.maxUnitPrice);
+    return bounds && sliderRange(bounds.minCost, bounds.maxCost, 0.01, f.minCost, f.maxCost);
   });
 
   /** Whole units when every quantity in scope is whole (cigarettes), else hundredths (grams). */
@@ -262,7 +263,7 @@ export class ConsumptionFilters {
 
   /** Substance and batch changed: the ranges go (other substances, other units). */
   private changeScope(scope: Pick<ConsumptionFilter, 'substanceId' | 'batchId'>): void {
-    this.emit({ ...scope, minUnitPrice: undefined, maxUnitPrice: undefined, minQuantity: undefined, maxQuantity: undefined });
+    this.emit({ ...scope, minCost: undefined, maxCost: undefined, minQuantity: undefined, maxQuantity: undefined });
   }
 
   private emit(change: Partial<ConsumptionFilter>): void {

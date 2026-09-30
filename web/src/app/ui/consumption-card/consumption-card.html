@@ -50,12 +50,11 @@
         }
       }
       @case ('compact') {
-        <div class="figures">
+        <!-- The change keeps its place also when there is none: the amounts line up from card to card. -->
+        <div class="figures compact">
           <span class="when">{{ shown.when }}</span>
           <span class="amount">{{ shown.amount }}</span>
-          @if (shown.delta) {
-            <span class="delta">{{ shown.delta }}</span>
-          }
+          <span class="delta">{{ shown.delta }}</span>
         </div>
       }
     }

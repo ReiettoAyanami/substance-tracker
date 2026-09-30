@@ -21,7 +21,7 @@ const pageData = [
     useValue: {
       listConsumptions: () => of([]),
       listBatches: () => of([]),
-      getConsumptionBounds: () => of({ minUnitPrice: null, maxUnitPrice: null, minQuantity: null, maxQuantity: null }),
+      getConsumptionBounds: () => of({ minCost: null, maxCost: null, minQuantity: null, maxQuantity: null }),
     },
   },
   { provide: CatalogApi, useValue: { listSubstances: () => of([]) } },

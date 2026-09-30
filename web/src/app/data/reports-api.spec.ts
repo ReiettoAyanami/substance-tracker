@@ -64,8 +64,8 @@ describe('ReportsApi', () => {
           batchId: 8,
           from: '2026-09-01',
           to: '2026-09-30',
-          minUnitPrice: '0.3',
-          maxUnitPrice: '0.5',
+          minCost: '0.3',
+          maxCost: '0.5',
           minQuantity: '2',
           maxQuantity: undefined,
         },
@@ -73,7 +73,7 @@ describe('ReportsApi', () => {
       ),
     );
     const req = backend.expectOne(
-      '/api/consumptions?substanceId=2&batchId=8&from=2026-09-01&to=2026-09-30&minUnitPrice=0.3&maxUnitPrice=0.5&minQuantity=2&limit=20&before=2026-09-23T20:00:00Z',
+      '/api/consumptions?substanceId=2&batchId=8&from=2026-09-01&to=2026-09-30&minCost=0.3&maxCost=0.5&minQuantity=2&limit=20&before=2026-09-23T20:00:00Z',
     );
     expect(req.request.method).toBe('GET');
     req.flush([]);
@@ -81,7 +81,7 @@ describe('ReportsApi', () => {
   });
 
   it('gets the ends of the sliders for a scope', async () => {
-    const bounds = { minUnitPrice: '0.250000', maxUnitPrice: '5.000000', minQuantity: '1.000', maxQuantity: '3.000' } satisfies ConsumptionBounds;
+    const bounds = { minCost: '0.50', maxCost: '5.00', minQuantity: '1.000', maxQuantity: '3.000' } satisfies ConsumptionBounds;
     const all = firstValueFrom(api.getConsumptionBounds());
     backend.expectOne('/api/consumptions/bounds').flush(bounds);
     expect(await all).toEqual(bounds);

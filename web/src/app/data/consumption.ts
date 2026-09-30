@@ -19,10 +19,15 @@ export interface Consumption {
   unitPrice: string;
   cost: string;
   note: string | null;
-  /** (this − previous) ÷ previous consumption of the substance, 4 decimals ("0.0500" is +5 %); null for the first. */
+  /**
+   * (this − previous) ÷ previous, 4 decimals ("0.0500" is +5 %); null for the first. Previous = the
+   * consumption before it of the same substance, or of the same batch in the list of one batch.
+   */
   deltaQuantity: string | null;
   /** The same on the unit price; also null after a unit price of 0. */
   deltaUnitPrice: string | null;
+  /** The same on the cost, the price of the consumption (what the cards show); also null after a cost of 0. */
+  deltaCost: string | null;
 }
 
 /** Which consumptions: of a substance, of a batch (no one-time ones), in logical days YYYY-MM-DD (inclusive). */
@@ -33,18 +38,18 @@ export interface ConsumptionScope {
   to?: string;
 }
 
-/** The scope, plus inclusive ranges on the unit price and on the quantity (decimal strings). */
+/** The scope, plus inclusive ranges on the cost of the consumption (its price) and on its quantity (decimal strings). */
 export interface ConsumptionFilter extends ConsumptionScope {
-  minUnitPrice?: string;
-  maxUnitPrice?: string;
+  minCost?: string;
+  maxCost?: string;
   minQuantity?: string;
   maxQuantity?: string;
 }
 
 /** GET /api/consumptions/bounds: the ends of the two sliders; null when there is no consumption in scope. */
 export interface ConsumptionBounds {
-  minUnitPrice: string | null;
-  maxUnitPrice: string | null;
+  minCost: string | null;
+  maxCost: string | null;
   minQuantity: string | null;
   maxQuantity: string | null;
 }

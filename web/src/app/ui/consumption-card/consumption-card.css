@@ -75,6 +75,12 @@ mat-card-content {
   color: var(--mat-sys-on-surface-variant);
 }
 
+/* Room for one change ("-28.6% price"), at the right. */
+.compact .delta {
+  min-width: 12ch;
+  text-align: right;
+}
+
 /* Smaller and greyer than the figures (lenzi): a remark, not data. */
 .note {
   margin: 0;

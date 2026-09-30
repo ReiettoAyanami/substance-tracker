@@ -26,6 +26,7 @@ const fromBatch: Consumption = {
   note: null,
   deltaQuantity: null,
   deltaUnitPrice: null,
+  deltaCost: null,
 };
 const oneTime: Consumption = { ...fromBatch, type: 'one_time', id: 5, batchId: null, name: 'Bar', quantity: '1.500' };
 

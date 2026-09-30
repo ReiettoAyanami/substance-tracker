@@ -15,7 +15,8 @@ const RECENT = 5;
 
 /**
  * The last consumptions of a batch, under its sub-card in the batch list (design-frontend.md,
- * "recent consumptions"): five at most, newest first, as compact consumption cards. They are only
+ * "recent consumptions"): five at most, newest first, as compact consumption cards, each with one
+ * change from the consumption before it in the batch (the one its list chose). They are only
  * shown here: the item after them, "…", leads to the consumptions page filtered on the batch,
  * where every consumption of it is listed, edited and deleted. Adjustments are never in the list.
  * Loads its data from the API when it is created (its sub-card is opened), and again whenever its
@@ -33,6 +34,8 @@ export class RecentConsumptions {
   /** The substance of the batch, for the link to the consumptions page. */
   readonly substanceId = input.required<number>();
   readonly settings = input.required<Settings>();
+  /** The change each card shows, from the previous consumption of the batch: of the quantity, or of the price. */
+  readonly deltaOf = input<'quantity' | 'price'>('quantity');
 
   private readonly reports = inject(ReportsApi);
   private readonly consumptions = rxResource({

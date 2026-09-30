@@ -39,6 +39,28 @@ function writeShareMode(mode: ShareMode): void {
   }
 }
 
+/** Which change the recent consumptions show, from the one before: of the quantity, or of the price. */
+type RecentDelta = 'quantity' | 'price';
+
+/** Like the share mode: a display preference of this browser, for every substance. */
+const RECENT_DELTA_KEY = 'substance-tracker.recent-delta';
+
+function readRecentDelta(): RecentDelta {
+  try {
+    return localStorage.getItem(RECENT_DELTA_KEY) === 'price' ? 'price' : 'quantity';
+  } catch {
+    return 'quantity';
+  }
+}
+
+function writeRecentDelta(delta: RecentDelta): void {
+  try {
+    localStorage.setItem(RECENT_DELTA_KEY, delta);
+  } catch {
+    // Not remembered: the list still switches.
+  }
+}
+
 /**
  * The active batches of a substance, in its page (design.md, "stock bar": one sub-card per batch,
  * oldest first). Closed, it is the total: how many batches and the stock they make up. Open, one
@@ -83,6 +105,8 @@ export class BatchList {
   protected readonly shareMode = signal<ShareMode>(readShareMode());
   /** The batches whose recent consumptions are open. */
   private readonly recentOpen = signal<ReadonlySet<number>>(new Set());
+  /** The change the recent consumptions show: one at a time (lenzi), chosen with a toggle next to them. */
+  protected readonly recentDelta = signal<RecentDelta>(readRecentDelta());
 
   private readonly formats = computed(() => ({
     quantity: new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 3 }),
@@ -140,6 +164,11 @@ export class BatchList {
       recentOpen: this.recentOpen().has(batch.id),
     }));
   });
+
+  protected chooseRecentDelta(delta: RecentDelta): void {
+    this.recentDelta.set(delta);
+    writeRecentDelta(delta);
+  }
 
   /** Opens the recent consumptions of a batch (they are asked for then), or closes them. */
   protected toggleRecent(batchId: number): void {

@@ -47,6 +47,7 @@ const fromBatch: Consumption = {
   note: 'after lunch',
   deltaQuantity: null,
   deltaUnitPrice: null,
+  deltaCost: null,
 };
 const oneTime: Consumption = {
   ...fromBatch,

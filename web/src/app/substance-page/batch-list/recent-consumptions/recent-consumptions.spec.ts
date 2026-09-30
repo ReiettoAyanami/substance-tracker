@@ -33,6 +33,7 @@ function consumption(n: number): Consumption {
     note: 'a note the compact card leaves out',
     deltaQuantity: n === 0 ? '1.0000' : null,
     deltaUnitPrice: null,
+    deltaCost: n === 0 ? '0.5000' : null,
   };
 }
 
@@ -86,6 +87,17 @@ describe('RecentConsumptions', () => {
     ]);
     expect(element().querySelector('app-consumption-card .note')).toBeNull();
     expect(element().querySelector('app-consumption-card button')).toBeNull(); // edited and deleted in the consumptions page
+  });
+
+  it('shows one change at a time, the one its list chose: of the quantity (at first), or of the price', async () => {
+    await render();
+    const deltas = () => cards().map((card) => text(card.querySelector('.delta')));
+    expect(deltas()).toEqual(['+100% qty', '', '']);
+
+    fixture.componentRef.setInput('deltaOf', 'price');
+    await fixture.whenStable();
+    expect(deltas()).toEqual(['+50% price', '', '']);
+    expect(calls.length).toBe(1); // nothing is asked again for that
   });
 
   it('ends with "…", the way to every consumption of the batch: the consumptions page filtered on it', async () => {
