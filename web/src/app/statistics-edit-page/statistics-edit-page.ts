@@ -87,7 +87,7 @@ export class StatisticsEditPage {
       const items = resource.hasValue() ? resource.value() : null;
       return {
         place,
-        metrics: catalog.filter((m) => m.scope === place.scope),
+        metrics: catalog.filter((m): m is MetricDefinition => m.scope === place.scope),
         // on the metrics page, the scope of the metric says which table it is a column of
         items: items?.filter((i) => place.surface !== 'metrics' || scopeOf.get(i.metric) === place.scope) ?? null,
       };

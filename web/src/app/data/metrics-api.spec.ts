@@ -5,6 +5,7 @@ import { firstValueFrom } from 'rxjs';
 
 import { MetricDefinition, MetricsResult, MetricsTable } from './metric';
 import { MetricsApi } from './metrics-api';
+import { SeriesData } from './series';
 
 describe('MetricsApi', () => {
   let api: MetricsApi;
@@ -27,6 +28,17 @@ describe('MetricsApi', () => {
     expect(req.request.method).toBe('GET');
     req.flush(catalog);
     expect(await result).toEqual(catalog);
+  });
+
+  it('gets a series, its substances comma-separated', async () => {
+    const data = { metric: 'series.cost', per: 'week', by: 'substance', from: '2026-09-01', to: '2026-09-30', periods: [], series: [] } as SeriesData;
+    const result = firstValueFrom(api.getSeries({ metric: 'series.cost', per: 'week', days: 30, substanceIds: [4, 1] }));
+    backend.expectOne('/api/series?metric=series.cost&per=week&days=30&substanceIds=4,1').flush(data);
+    expect(await result).toEqual(data);
+
+    const all = firstValueFrom(api.getSeries({ metric: 'series.hourOfDay', by: 'batch' }));
+    backend.expectOne('/api/series?metric=series.hourOfDay&by=batch').flush(data);
+    expect(await all).toEqual(data);
   });
 
   it('gets a table of the metrics page, its keys comma-separated', async () => {

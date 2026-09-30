@@ -1,0 +1,16 @@
+@if (filters() && data().series.length > 1) {
+  <!-- Every line starts shown; a tap on its chip hides it, another shows it again. -->
+  <mat-chip-listbox class="filters" [multiple]="true" aria-label="Lines shown" (change)="choose($event)">
+    @for (line of data().series; track line.key) {
+      <mat-chip-option [value]="line.key" [selected]="!hidden().has(line.key)">
+        <span class="dot" [style.background-color]="color(line)"></span>
+        {{ label(line) }}
+      </mat-chip-option>
+    }
+  </mat-chip-listbox>
+}
+@if (data().series.length === 0) {
+  <p class="empty">Nothing in the period</p>
+} @else {
+  <div echarts class="chart" [options]="options()" [autoResize]="true" [initOpts]="{ renderer: 'svg' }"></div>
+}
