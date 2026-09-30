@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
-import { MetricDefinition, MetricsQuery, MetricsResult } from './metric';
+import { MetricDefinition, MetricsQuery, MetricsResult, MetricsTable, MetricsTableQuery } from './metric';
 
 /** The query parameters that are set: an unset one is left out. */
 function queryOf(values: object): Record<string, string | number> {
@@ -23,6 +23,11 @@ export class MetricsApi {
   /** GET /api/metrics: the catalog, in the order of design-statistics.md. */
   getCatalog(): Observable<MetricDefinition[]> {
     return this.http.get<MetricDefinition[]>('/api/metrics');
+  }
+
+  /** GET /api/metrics/table: the rows of a table of the metrics page, with the keys asked. */
+  getTable({ keys, ...query }: MetricsTableQuery): Observable<MetricsTable> {
+    return this.http.get<MetricsTable>('/api/metrics/table', { params: queryOf({ ...query, keys: keys.join(',') }) });
   }
 
   /** GET /api/substances/:id/metrics: the substance's metrics in the scale and the period asked. */

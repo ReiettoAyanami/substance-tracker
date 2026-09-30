@@ -3,7 +3,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { firstValueFrom } from 'rxjs';
 
-import { MetricDefinition, MetricsResult } from './metric';
+import { MetricDefinition, MetricsResult, MetricsTable } from './metric';
 import { MetricsApi } from './metrics-api';
 
 describe('MetricsApi', () => {
@@ -27,6 +27,13 @@ describe('MetricsApi', () => {
     expect(req.request.method).toBe('GET');
     req.flush(catalog);
     expect(await result).toEqual(catalog);
+  });
+
+  it('gets a table of the metrics page, its keys comma-separated', async () => {
+    const table = { scope: 'substance', per: 'day', from: null, to: null, keys: [], rows: [] } as MetricsTable;
+    const result = firstValueFrom(api.getTable({ scope: 'substance', keys: ['substance.pace', 'substance.cost'], per: 'day', days: 30 }));
+    backend.expectOne('/api/metrics/table?scope=substance&per=day&days=30&keys=substance.pace,substance.cost').flush(table);
+    expect(await result).toEqual(table);
   });
 
   it("gets a substance's metrics, with the scale and the period that are set", async () => {

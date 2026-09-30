@@ -28,3 +28,31 @@ export interface SubstanceMetricsQuery {
   to?: string;
   days?: number;
 }
+
+/** Scopes whose table is built so far. */
+export const TABLE_SCOPES = ['substance'] as const;
+export type TableScope = (typeof TABLE_SCOPES)[number];
+
+export const metricsTableSchema = {
+  querystring: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['scope'],
+    properties: {
+      scope: { type: 'string', enum: TABLE_SCOPES },
+      /** Comma-separated keys of the catalog, of the scope; none = all of them. */
+      keys: { type: 'string', maxLength: 2000, pattern: '^[A-Za-z.]+(,[A-Za-z.]+)*$' },
+      per: perQuery,
+      ...periodProperties,
+    },
+  },
+} as const;
+
+export interface MetricsTableQuery {
+  scope: TableScope;
+  keys?: string;
+  per?: TimeScale;
+  from?: string;
+  to?: string;
+  days?: number;
+}

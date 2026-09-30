@@ -15,6 +15,7 @@ describe('Sidebar', () => {
         provideRouter([
           { path: 'consumptions', component: Blank },
           { path: 'substances', component: Blank, children: [{ path: ':id', component: Blank }] },
+          { path: 'metrics', component: Blank },
         ]),
       ],
     });
@@ -44,16 +45,17 @@ describe('Sidebar', () => {
     expect(links(element).map(({ icon, label, href }) => ({ icon, label, href }))).toEqual([
       { icon: 'history', label: 'Consumptions', href: '/consumptions' },
       { icon: 'inventory_2', label: 'Substances', href: '/substances' },
+      { icon: 'table_chart', label: 'Metrics', href: '/metrics' },
     ]);
   });
 
   it('highlights the current page, also on a child route', async () => {
     const onConsumptions = await sidebarAt('/consumptions');
-    expect(links(onConsumptions.nativeElement).map((l) => l.current)).toEqual(['page', null]);
+    expect(links(onConsumptions.nativeElement).map((l) => l.current)).toEqual(['page', null, null]);
 
     await TestBed.inject(Router).navigateByUrl('/substances/5');
     await onConsumptions.whenStable();
-    expect(links(onConsumptions.nativeElement).map((l) => l.current)).toEqual([null, 'page']);
+    expect(links(onConsumptions.nativeElement).map((l) => l.current)).toEqual([null, 'page', null]);
     expect(onConsumptions.nativeElement.querySelector('.mdc-list-item--activated')?.textContent).toContain('Substances');
   });
 

@@ -5,26 +5,12 @@
   </mat-expansion-panel-header>
 
   <div class="choices">
-    @if (hasPeriod()) {
-      <mat-form-field class="period" appearance="outline" subscriptSizing="dynamic">
-        <mat-label>Period</mat-label>
-        <mat-select [value]="days()" (selectionChange)="chooseDays($event.value)">
-          @for (period of periods; track period.days) {
-            <mat-option [value]="period.days">{{ period.label }}</mat-option>
-          }
-        </mat-select>
-      </mat-form-field>
-    }
-    @if (hasScales()) {
-      <mat-form-field class="per" appearance="outline" subscriptSizing="dynamic">
-        <mat-label>Per</mat-label>
-        <mat-select [value]="per()" (selectionChange)="choosePer($event.value)">
-          @for (scale of scales; track scale) {
-            <mat-option [value]="scale">{{ scale }}</mat-option>
-          }
-        </mat-select>
-      </mat-form-field>
-    }
+    <app-period-scale
+      [days]="hasPeriod() ? days() : null"
+      [per]="hasScales() ? per() : null"
+      (daysChange)="chooseDays($event)"
+      (perChange)="choosePer($event)"
+    />
     <button
       mat-icon-button
       type="button"

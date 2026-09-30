@@ -22,5 +22,6 @@ export class Sidebar {
   protected readonly pages = [
     { path: '/consumptions', label: 'Consumptions', icon: 'history' },
     { path: '/substances', label: 'Substances', icon: 'inventory_2' },
+    { path: '/metrics', label: 'Metrics', icon: 'table_chart' },
   ] as const;
 }

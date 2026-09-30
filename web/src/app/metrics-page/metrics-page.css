@@ -1,0 +1,88 @@
+/* Full width on a phone (16 px gutters); on desktop as wide as the columns need, at most 1200 px. */
+.metrics-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px 16px 32px;
+}
+
+.intro {
+  margin: 0;
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.choices {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* The table scrolls inside its box, never the page. */
+.table-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 12px;
+}
+
+table {
+  width: 100%;
+}
+
+th,
+td {
+  white-space: nowrap;
+}
+
+.number {
+  font-variant-numeric: tabular-nums;
+}
+
+/* The sticky name column has the table's background, so the numbers slide under it. */
+.mat-mdc-table-sticky {
+  background-color: var(--mat-table-background-color, var(--mat-sys-surface));
+}
+
+.name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* A long name is cut; the whole name is on the substance's page. */
+.name-text {
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.row {
+  cursor: pointer;
+}
+
+.row:hover,
+.row:focus-visible {
+  background-color: color-mix(in srgb, var(--mat-sys-on-surface) 8%, transparent);
+  outline: none;
+}
+
+.message {
+  margin: 48px 0;
+  text-align: center;
+  font: var(--mat-sys-body-large);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.error {
+  color: var(--mat-sys-error);
+}

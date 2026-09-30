@@ -19,14 +19,6 @@ mat-panel-title {
   flex-wrap: wrap;
 }
 
-.period {
-  flex: 1 1 160px;
-}
-
-.per {
-  flex: 0 1 132px;
-}
-
 .explain {
   margin-left: auto;
 }

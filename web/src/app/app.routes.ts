@@ -20,6 +20,11 @@ export const routes: Routes = [
       { path: ':id', loadComponent: () => import('./substance-page/substance-page').then((m) => m.SubstancePage) },
     ],
   },
+  {
+    path: 'metrics',
+    loadComponent: () => import('./metrics-page/metrics-page').then((m) => m.MetricsPage),
+    title: 'Metrics',
+  },
   // An unknown URL (an old bookmark, a typo) lands on the start page.
   { path: '**', redirectTo: 'consumptions' },
 ];

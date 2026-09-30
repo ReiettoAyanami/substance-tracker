@@ -2,9 +2,7 @@ import { Component, computed, inject, input, linkedSignal, signal } from '@angul
 import { rxResource } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatExpansionModule } from '@angular/material/expansion';
-import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
-import { MatSelectModule } from '@angular/material/select';
 import { of } from 'rxjs';
 
 import { ApiError } from '../../data/api-error';
@@ -13,15 +11,7 @@ import { MetricsApi } from '../../data/metrics-api';
 import { Settings } from '../../data/settings';
 import { ViewsApi } from '../../data/views-api';
 import { MetricReading, MetricValuePipe } from '../metric-value-pipe';
-
-/** The periods offered: the last N logical days (the API resolves them), or all time (0). */
-export const PERIODS: readonly { days: number; label: string }[] = [
-  { days: 7, label: 'Last 7 days' },
-  { days: 30, label: 'Last 30 days' },
-  { days: 90, label: 'Last 90 days' },
-  { days: 365, label: 'Last 365 days' },
-  { days: 0, label: 'All time' },
-];
+import { PERIODS, PeriodScale, periodLabel } from '../period-scale/period-scale';
 
 /** Display preferences of this browser, for every panel: localStorage, never the database. */
 const PER_KEY = 'substance-tracker.metrics.per';
@@ -57,7 +47,7 @@ const readDays = () => read<number>(DAYS_KEY, (v) => (PERIODS.some((p) => String
  */
 @Component({
   selector: 'app-metrics-panel',
-  imports: [MatButtonModule, MatExpansionModule, MatFormFieldModule, MatIconModule, MatSelectModule, MetricValuePipe],
+  imports: [MatButtonModule, MatExpansionModule, MatIconModule, MetricValuePipe, PeriodScale],
   templateUrl: './metrics-panel.html',
   styleUrl: './metrics-panel.css',
 })
@@ -76,8 +66,6 @@ export class MetricsPanel {
   private readonly api = inject(MetricsApi);
   private readonly views = inject(ViewsApi);
 
-  protected readonly periods = PERIODS;
-  protected readonly scales = TIME_SCALES;
   protected readonly per = signal<TimeScale>(readPer());
   protected readonly days = signal<number>(readDays());
   /** The descriptions are shown under the numbers. */
@@ -132,7 +120,7 @@ export class MetricsPanel {
   /** What the closed panel says: the period and the scale the numbers are in. */
   protected readonly summary = computed(() =>
     [
-      this.hasPeriod() || !this.items.hasValue() ? PERIODS.find((p) => p.days === this.days())?.label : null,
+      this.hasPeriod() || !this.items.hasValue() ? periodLabel(this.days()) : null,
       this.hasScales() || !this.items.hasValue() ? `per ${this.per()}` : null,
     ]
       .filter(Boolean)

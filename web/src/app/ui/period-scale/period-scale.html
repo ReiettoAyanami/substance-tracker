@@ -1,0 +1,20 @@
+@if (days() !== null) {
+  <mat-form-field class="period" appearance="outline" subscriptSizing="dynamic">
+    <mat-label>Period</mat-label>
+    <mat-select [value]="days()" (selectionChange)="daysChange.emit($event.value)">
+      @for (period of periods; track period.days) {
+        <mat-option [value]="period.days">{{ period.label }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+}
+@if (per() !== null) {
+  <mat-form-field class="per" appearance="outline" subscriptSizing="dynamic">
+    <mat-label>Per</mat-label>
+    <mat-select [value]="per()" (selectionChange)="perChange.emit($event.value)">
+      @for (scale of scales; track scale) {
+        <mat-option [value]="scale">{{ scale }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+}

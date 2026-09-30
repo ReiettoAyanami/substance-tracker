@@ -46,3 +46,30 @@ export interface MetricsQuery {
   per?: TimeScale;
   days?: number;
 }
+
+/** The tables of the metrics page built so far. */
+export type TableScope = 'substance';
+
+/** One row of the substances table. */
+export interface SubstanceMetricsRow {
+  id: number;
+  name: string;
+  unit: string;
+  values: MetricValues;
+}
+
+/** GET /api/metrics/table: one row per entity, one value per key asked. */
+export interface MetricsTable {
+  scope: TableScope;
+  per: TimeScale;
+  from: string | null;
+  to: string | null;
+  keys: string[];
+  rows: SubstanceMetricsRow[];
+}
+
+/** What a table is asked for: its scope, the keys (its columns), the scale and the period. */
+export interface MetricsTableQuery extends MetricsQuery {
+  scope: TableScope;
+  keys: string[];
+}

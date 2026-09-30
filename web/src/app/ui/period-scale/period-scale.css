@@ -1,0 +1,12 @@
+/* The two fields are items of whoever hosts them (its row of choices wraps them as it needs). */
+:host {
+  display: contents;
+}
+
+.period {
+  flex: 1 1 160px;
+}
+
+.per {
+  flex: 0 1 132px;
+}
