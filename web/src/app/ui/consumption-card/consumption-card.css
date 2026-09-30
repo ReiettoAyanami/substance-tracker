@@ -75,10 +75,11 @@ mat-card-content {
   color: var(--mat-sys-on-surface-variant);
 }
 
+/* Smaller and greyer than the figures (lenzi): a remark, not data. */
 .note {
   margin: 0;
-  font: var(--mat-sys-body-medium);
-  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-outline);
   white-space: pre-line;
   overflow-wrap: anywhere;
 }
