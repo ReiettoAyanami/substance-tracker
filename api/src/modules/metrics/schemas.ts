@@ -1,5 +1,6 @@
 import { idParams } from '../../shared/schemas.js';
 import { TIME_SCALES, type TimeScale } from '../../shared/time.js';
+import { SERIES_SCALES, type SeriesScale } from './catalog.js';
 
 const logicalDate = { type: 'string', format: 'date' } as const;
 
@@ -75,6 +76,31 @@ export interface MetricsTableQuery {
   batchId?: number;
   limit?: number;
   per?: TimeScale;
+  from?: string;
+  to?: string;
+  days?: number;
+}
+
+export const seriesSchema = {
+  querystring: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['metric'],
+    properties: {
+      metric: { type: 'string', minLength: 1, maxLength: 64 },
+      per: { type: 'string', enum: SERIES_SCALES },
+      by: { type: 'string', enum: ['substance', 'batch'] },
+      substanceIds: { type: 'string', maxLength: 2000, pattern: '^[1-9][0-9]{0,9}(,[1-9][0-9]{0,9})*$' },
+      ...periodProperties,
+    },
+  },
+} as const;
+
+export interface SeriesQueryString {
+  metric: string;
+  per?: SeriesScale;
+  by?: 'substance' | 'batch';
+  substanceIds?: string;
   from?: string;
   to?: string;
   days?: number;

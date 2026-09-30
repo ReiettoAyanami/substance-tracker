@@ -1,12 +1,14 @@
 import type { FastifyInstance } from 'fastify';
 import type { IdParams } from '../../shared/schemas.js';
-import { METRICS } from './catalog.js';
+import { CATALOG } from './catalog.js';
 import {
   metricsTableSchema,
   scaleOnlyMetricsSchema,
+  seriesSchema,
   substanceMetricsSchema,
   type MetricsTableQuery,
   type ScaleQuery,
+  type SeriesQueryString,
   type SubstanceMetricsQuery,
 } from './schemas.js';
 import type { MetricsService } from './service.js';
@@ -14,7 +16,9 @@ import type { MetricsService } from './service.js';
 export function metricsRoutes(app: FastifyInstance, deps: { metrics: MetricsService }): void {
   const { metrics } = deps;
 
-  app.get('/api/metrics', async () => METRICS);
+  app.get('/api/metrics', async () => CATALOG);
+
+  app.get<{ Querystring: SeriesQueryString }>('/api/series', { schema: seriesSchema }, async (req) => metrics.series(req.query));
 
   app.get<{ Querystring: MetricsTableQuery }>('/api/metrics/table', { schema: metricsTableSchema }, async (req) =>
     metrics.table(req.query),

@@ -16,7 +16,7 @@ describe('GET /api/metrics (the catalog)', () => {
     const res = await api.get('/api/metrics');
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
-    for (const m of res.body) {
+    for (const m of res.body.filter((m: any) => m.scope !== 'series')) {
       expect(Object.keys(m).sort()).toEqual(['description', 'key', 'label', 'period', 'scales', 'scope', 'unit']);
       expect(m.key).toMatch(/^(substance|batch|consumption)\.[a-zA-Z]+$/);
       expect(m.key.split('.')[0]).toBe(m.scope);
@@ -28,6 +28,7 @@ describe('GET /api/metrics (the catalog)', () => {
     }
     const keys = res.body.map((m: any) => m.key);
     expect(new Set(keys).size).toBe(keys.length);
+    expect(res.body.filter((m: any) => m.scope === 'series').every((m: any) => m.key.startsWith('series.'))).toBe(true);
   });
 
   it('has the rows of the three tables of design-statistics.md, entity by entity', async () => {
@@ -79,6 +80,7 @@ describe('GET /api/metrics (the catalog)', () => {
 
   it('the user chooses the scale of every rate and every duration; none where the scale is the meaning', async () => {
     const res = await api.get('/api/metrics');
+    res.body = res.body.filter((m: any) => m.scope !== 'series');
     for (const m of res.body) {
       if (m.unit === 'duration') expect(m.scales, m.key).toEqual(ALL_SCALES);
       if (['rank', 'hours', 'change', 'share'].includes(m.unit)) expect(m.scales, m.key).toEqual([]);
@@ -101,6 +103,7 @@ describe('GET /api/metrics (the catalog)', () => {
 
   it('only the substance metrics follow the period, except the time since the last one', async () => {
     const res = await api.get('/api/metrics');
+    res.body = res.body.filter((m: any) => m.scope !== 'series');
     const withPeriod = res.body.filter((m: any) => m.period).map((m: any) => m.key);
     expect(withPeriod).toEqual([
       'substance.consumed',

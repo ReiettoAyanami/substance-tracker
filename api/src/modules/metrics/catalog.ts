@@ -267,6 +267,71 @@ export const METRICS: readonly MetricDefinition[] = [
   ),
 ];
 
+/** How a chart draws a series (design-statistics.md, "chart"). */
+export const CHARTS = ['bar', 'line', 'donut'] as const;
+export type Chart = (typeof CHARTS)[number];
+
+/** The intervals a series groups its values by (its periods): the user chooses. */
+export const SERIES_SCALES = ['day', 'week', 'month', 'year'] as const;
+export type SeriesScale = (typeof SERIES_SCALES)[number];
+
+/**
+ * A series (design-statistics.md, "series"): numbers of a measure over time, one per period, for
+ * each substance (or each batch of one), what a chart draws. `unit` quantity is each series' own
+ * unit; unitPrice is money per unit (6 decimals). `charts` are those that can draw it (a donut
+ * needs totals that add up: none for quantities in different units, nor for prices).
+ */
+export interface SeriesDefinition {
+  key: string;
+  scope: 'series';
+  label: string;
+  unit: 'quantity' | 'count' | 'money' | 'unitPrice';
+  /** The intervals it groups by; empty when its periods are its meaning (the hours of the day). */
+  scales: SeriesScale[];
+  /** It follows the period (all series do). */
+  period: true;
+  charts: Chart[];
+  description: string;
+}
+
+const EVERY: SeriesScale[] = [...SERIES_SCALES];
+
+function series(
+  key: string,
+  label: string,
+  unit: SeriesDefinition['unit'],
+  scales: SeriesScale[],
+  charts: Chart[],
+  description: string,
+): SeriesDefinition {
+  return { key, scope: 'series', label, unit, scales, period: true, charts, description };
+}
+
+export const SERIES: readonly SeriesDefinition[] = [
+  series('series.consumed', 'Consumed', 'quantity', EVERY, ['bar', 'line'], 'Quantity consumed in each interval (each substance in its own unit).'),
+  series('series.consumptions', 'Consumptions', 'count', EVERY, ['bar', 'line', 'donut'], 'How many consumptions in each interval.'),
+  series('series.cost', 'Cost', 'money', EVERY, ['bar', 'line', 'donut'], 'What the consumptions of each interval cost.'),
+  series('series.spend', 'Spend', 'money', EVERY, ['bar', 'line', 'donut'], 'What was paid in each interval: batches bought and one-time consumptions.'),
+  series(
+    'series.unitPrice',
+    'Unit price of the batches',
+    'unitPrice',
+    EVERY,
+    ['line', 'bar'],
+    'The average unit price of the batches bought in each interval (total paid ÷ total bought); none where none was bought.',
+  ),
+  series('series.hourOfDay', 'Hour of the day', 'count', [], ['bar', 'line'], 'How many consumptions at each hour of the clock, over the period.'),
+];
+
+/** Everything the pages can show: the metrics of the entities, then the series of the charts. */
+export const CATALOG: readonly (MetricDefinition | SeriesDefinition)[] = [...METRICS, ...SERIES];
+
+const SERIES_BY_KEY = new Map(SERIES.map((s) => [s.key, s]));
+
+export function findSeries(key: string): SeriesDefinition | undefined {
+  return SERIES_BY_KEY.get(key);
+}
+
 const BY_KEY = new Map(METRICS.map((m) => [m.key, m]));
 
 export function findMetric(key: string): MetricDefinition | undefined {

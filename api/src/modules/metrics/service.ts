@@ -1,7 +1,16 @@
 import type { Pool } from '../../db/pool.js';
 import { fmtQty } from '../../shared/decimal.js';
 import { badRequest, notFound } from '../../shared/errors.js';
-import { toIso, toIsoOrNull, type Clock, type TimeScale } from '../../shared/time.js';
+import {
+  addDays,
+  logicalDate,
+  logicalDayStart,
+  periodsBetween,
+  toIso,
+  toIsoOrNull,
+  type Clock,
+  type TimeScale,
+} from '../../shared/time.js';
 import type { CatalogService, SubstanceDto } from '../catalog/service.js';
 import * as reportsRepo from '../reports/repository.js';
 import type { SettingsService } from '../settings/service.js';
@@ -14,9 +23,10 @@ import {
   type MetricContext,
   type MetricValues,
 } from './calculations.js';
-import { findMetric, metricsOf, type MetricScope } from './catalog.js';
+import { findMetric, findSeries, metricsOf, type MetricScope, type SeriesScale } from './catalog.js';
 import { inPeriod, resolvePeriod, type PeriodQuery } from './period.js';
 import * as repo from './repository.js';
+import { HOURS, lineOf, partsOf, type SeriesLine } from './series.js';
 
 /** The metrics of one entity, with the scale and the period they were computed in. */
 export interface MetricsResult {
@@ -88,6 +98,31 @@ export interface MetricsTable extends Omit<MetricsResult, 'values'> {
   keys: string[];
   rows: SubstanceRow[] | BatchRow[] | ConsumptionRow[];
 }
+
+export interface SeriesQuery extends PeriodQuery {
+  metric: string;
+  /** The interval of the periods (default day); the hours of the day take none. */
+  per?: SeriesScale | undefined;
+  /** One line per substance (default), or per batch of each (and its one-time consumptions). */
+  by?: 'substance' | 'batch' | undefined;
+  /** Comma-separated ids: only these substances (archived or not); none: every one not archived. */
+  substanceIds?: string | undefined;
+}
+
+/** GET /api/series: what a chart draws. */
+export interface SeriesResult {
+  metric: string;
+  per: SeriesScale | null;
+  by: 'substance' | 'batch';
+  from: string;
+  to: string;
+  /** The periods ('2026-09-29', '2026-W40', '2026-09', '2026'), or the hours '00'..'23'. */
+  periods: string[];
+  series: SeriesLine[];
+}
+
+/** At most this many periods in a series (a day per period for more than five years is too many). */
+const MAX_PERIODS = 2000;
 
 /** How many consumptions a table shows at most, by default. */
 const CONSUMPTION_ROWS = 100;
@@ -259,6 +294,51 @@ export class MetricsService {
         values: pick(substanceValues(ledgers.get(s.id)!, period, ctx), keys),
       })),
     };
+  }
+
+  /**
+   * A series (design-statistics.md, "series"): the values of a measure in each period, one line per
+   * substance (or per batch, and the one-time consumptions, of each), zero-filled; a line with
+   * nothing in the period is left out. Without a period: from the first thing recorded of those
+   * substances to today.
+   */
+  async series(query: SeriesQuery): Promise<SeriesResult> {
+    const definition = findSeries(query.metric);
+    if (!definition) throw badRequest(`"${query.metric}" is not a series of the catalog`, 'metric');
+    const ctx = await this.context(undefined);
+    const asked = resolvePeriod(query, ctx.day, ctx.now);
+    const substances = await this.seriesSubstances(query.substanceIds);
+    const ledgers = await this.substanceLedgersOf(substances.map((s) => s.id));
+
+    const today = logicalDate(ctx.now, ctx.day);
+    const instants = [...ledgers.values()].flatMap((l) => [
+      ...l.batches.map((b) => b.occurred_at.getTime()),
+      ...l.entries.map((e) => e.occurred_at.getTime()),
+    ]);
+    const first = instants.length === 0 ? today : logicalDate(new Date(Math.min(...instants)), ctx.day);
+    const from = asked.from ?? (first < today ? first : today);
+    const to = asked.to ?? today;
+    const period = { from, to, start: logicalDayStart(from, ctx.day), end: logicalDayStart(addDays(to, 1), ctx.day) };
+    const per = definition.scales.length === 0 ? null : (query.per ?? 'day');
+    const periods = per === null ? HOURS : periodsBetween(from, to, per, MAX_PERIODS);
+    const by = query.by ?? 'substance';
+
+    const lines = substances
+      .flatMap((s) => partsOf(s, ledgers.get(s.id)!, by))
+      .map((part) => lineOf(definition, part, { period, day: ctx.day, per, periods }))
+      .filter((line): line is SeriesLine => line !== null);
+    return { metric: definition.key, per, by, from, to, periods, series: lines };
+  }
+
+  /** The substances of a series: those asked (archived or not, 404 when one is unknown), or every one not archived; by name. */
+  private async seriesSubstances(raw: string | undefined): Promise<SubstanceDto[]> {
+    if (raw === undefined) return this.catalog.list({ includeArchived: false });
+    const ids = [...new Set(raw.split(',').map(Number))];
+    const all = await this.catalog.list({ includeArchived: true });
+    const found = all.filter((s) => ids.includes(s.id));
+    const missing = ids.find((id) => !found.some((s) => s.id === id));
+    if (missing !== undefined) throw notFound('Substance', missing);
+    return found;
   }
 
   /** The keys asked, each a metric of the scope (400 otherwise); none asked = all of the scope. */

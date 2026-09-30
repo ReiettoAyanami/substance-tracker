@@ -121,12 +121,13 @@ export function isValidIsoDate(isoDate: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(isoDate) && DateTime.fromISO(isoDate, { zone: 'UTC' }).isValid;
 }
 
-export type GroupBy = 'day' | 'week' | 'month';
+export type GroupBy = 'day' | 'week' | 'month' | 'year';
 
-/** Period key of a logical date: '2026-09-29', ISO week '2026-W40', or month '2026-09'. */
+/** Period key of a logical date: '2026-09-29', ISO week '2026-W40', month '2026-09', or year '2026'. */
 export function periodOf(isoDate: string, groupBy: GroupBy): string {
   if (groupBy === 'day') return isoDate;
   if (groupBy === 'month') return isoDate.slice(0, 7);
+  if (groupBy === 'year') return isoDate.slice(0, 4);
   const d = DateTime.fromISO(isoDate, { zone: 'UTC' });
   return `${String(d.weekYear).padStart(4, '0')}-W${String(d.weekNumber).padStart(2, '0')}`;
 }
@@ -147,7 +148,8 @@ export function periodsBetween(from: string, to: string, groupBy: GroupBy, maxPe
     // Jump to the start of the next period.
     if (groupBy === 'day') cursor = cursor.plus({ days: 1 });
     else if (groupBy === 'week') cursor = cursor.startOf('week').plus({ weeks: 1 });
-    else cursor = cursor.startOf('month').plus({ months: 1 });
+    else if (groupBy === 'month') cursor = cursor.startOf('month').plus({ months: 1 });
+    else cursor = cursor.startOf('year').plus({ years: 1 });
   }
   return periods;
 }
