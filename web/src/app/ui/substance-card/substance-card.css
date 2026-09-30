@@ -58,9 +58,8 @@ mat-card-content {
   font-variant-numeric: tabular-nums;
 }
 
-/* Touch target of at least 48 dp (design-frontend.md). */
+/* Its size and shape are those of every toggle (styles.css). */
 .price-mode {
-  --mat-button-toggle-height: 48px;
   cursor: default;
 }
 

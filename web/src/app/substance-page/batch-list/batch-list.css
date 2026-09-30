@@ -19,7 +19,7 @@ mat-panel-title {
   margin-bottom: 4px;
 }
 
-/* The share toggle above the sub-cards: 48 dp to tap, like the card's price toggle. */
+/* The share toggle above the sub-cards. */
 .share-mode {
   display: flex;
   align-items: center;
@@ -27,10 +27,6 @@ mat-panel-title {
   gap: 12px;
   font: var(--mat-sys-body-medium);
   color: var(--mat-sys-on-surface-variant);
-}
-
-.share-mode mat-button-toggle-group {
-  --mat-button-toggle-height: 48px;
 }
 
 .batches {

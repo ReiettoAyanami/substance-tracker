@@ -16,3 +16,11 @@
 .batch-bar-tooltip .mat-mdc-tooltip-surface {
   white-space: pre-line;
 }
+
+/* The toggles ("last | avg", "quantity | value", "total | per unit"): a little flatter and less
+   round than a pill (lenzi, 2026-09-30). Set here once, for every one of them: Material's own 40 px
+   of height, and the corners of the sub-cards instead of its fully rounded ends. */
+:root {
+  --mat-button-toggle-height: 40px;
+  --mat-button-toggle-shape: 12px;
+}
