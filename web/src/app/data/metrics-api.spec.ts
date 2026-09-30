@@ -36,6 +36,13 @@ describe('MetricsApi', () => {
     expect(await result).toEqual(table);
   });
 
+  it("gets a batch's metrics, in the scale asked", async () => {
+    const metrics: MetricsResult = { per: 'week', from: null, to: null, values: { 'batch.pace': '1.000' } };
+    const result = firstValueFrom(api.getBatchMetrics(7, { per: 'week' }));
+    backend.expectOne('/api/batches/7/metrics?per=week').flush(metrics);
+    expect(await result).toEqual(metrics);
+  });
+
   it("gets a substance's metrics, with the scale and the period that are set", async () => {
     const metrics: MetricsResult = { per: 'week', from: '2026-09-23', to: '2026-09-29', values: { 'substance.pace': '2.250' } };
     const result = firstValueFrom(api.getSubstanceMetrics(4, { per: 'week', days: 7 }));

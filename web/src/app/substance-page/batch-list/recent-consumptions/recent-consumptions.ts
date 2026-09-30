@@ -29,8 +29,8 @@ const RECENT = 5;
   styleUrl: './recent-consumptions.css',
 })
 export class RecentConsumptions {
-  /** The batch, as its batch list gives it: a new one (the list was asked again) asks the consumptions again. */
-  readonly batch = input.required<Batch>();
+  /** The batch, as its list or its page gives it: a new one (asked again) asks the consumptions again. */
+  readonly batch = input.required<Pick<Batch, 'id'>>();
   /** The substance of the batch, for the link to the consumptions page. */
   readonly substanceId = input.required<number>();
   readonly settings = input.required<Settings>();

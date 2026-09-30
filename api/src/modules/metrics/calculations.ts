@@ -3,8 +3,10 @@ import { durationIn, type DayConfig, type TimeScale } from '../../shared/time.js
 import type * as repo from '../reports/repository.js';
 import {
   compareWithPrevious,
+  consumptionCosts,
   consumptionEntriesOf,
   ofItsSubstance,
+  perConsumptionStats,
   remainingOf,
   unitPriceOf,
   type ConsumptionEntry,
@@ -136,5 +138,67 @@ export function substanceValues(ledger: SubstanceLedger, period: Period, ctx: Me
     ),
     'substance.unitPriceTrend': fmtOrNull(trend, SCALE.ratio),
     'substance.stockTime': batchPace !== null && !batchPace.isZero() ? fmt(stockOf(ledger).div(batchPace), TWO) : null,
+  };
+}
+
+/** (value - base) / base, or null without a base (none, or 0). */
+function changeFrom(value: Dec, base: Dec | null): Dec | null {
+  return base === null || base.isZero() ? null : value.minus(base).div(base);
+}
+
+/** The average unit price of every batch of the substance: total paid / total bought; null with none. */
+export function batchesUnitPrice(ledger: SubstanceLedger): Dec | null {
+  const bought = sum(ledger.batches.map((b) => fromDb(b.quantity)));
+  return bought.isZero() ? null : sum(ledger.batches.map((b) => fromDb(b.total_price))).div(bought);
+}
+
+/**
+ * When a finished batch ended: when the consumption or the adjustment that emptied it happened
+ * (`deactivated_at` is when it was recorded); null while it is active.
+ */
+export function finishedAt(batch: repo.BatchStatRow, ledger: SubstanceLedger): Date | null {
+  if (!batch.deactivated_at) return null;
+  const byConsumption = ledger.consumptions.find((c) => c.id === batch.deactivated_by_consumption_id);
+  const byAdjustment = ledger.adjustments.find((a) => a.id === batch.deactivated_by_adjustment_id);
+  return (byConsumption ?? byAdjustment)?.occurred_at ?? batch.deactivated_at;
+}
+
+/**
+ * The batch metrics (design-statistics.md): over its whole life, from the purchase to its end
+ * (the consumption or adjustment that finished it), or to now while it is active. `ledger` is its
+ * substance's, for the averages and the batch before it.
+ */
+export function batchValues(batch: repo.BatchStatRow, ledger: SubstanceLedger, ctx: MetricContext): MetricValues {
+  const length = (start: Date, end: Date) => durationIn(start, end, ctx.scale, ctx.day.timezone);
+  const own = ledger.consumptions.filter((c) => c.batch_id === batch.id);
+  const costs = consumptionCosts([batch], own);
+  const items = own.map((c) => ({ quantity: fromDb(c.quantity), cost: costs.get(c.id) ?? ZERO }));
+  const stats = perConsumptionStats(items);
+
+  const consumed = sum(items.map((i) => i.quantity));
+  const valueConsumed = sum(items.map((i) => i.cost));
+  const unitPrice = unitPriceOf(batch);
+  const index = ledger.batches.findIndex((b) => b.id === batch.id);
+  const previous = index > 0 ? ledger.batches[index - 1]! : null;
+
+  const end = finishedAt(batch, ledger);
+  const life = length(batch.occurred_at, end ?? ctx.now);
+  const perLife = (amount: Dec): Dec | null => (life.gt(0) ? amount.div(life) : null);
+  const pace = perLife(consumed);
+  const timeToFinish = end ? life : pace !== null && !pace.isZero() ? life.plus(remainingOf(batch).div(pace)) : null;
+
+  return {
+    'batch.used': fmt(consumed.div(fromDb(batch.quantity)), SCALE.share),
+    'batch.unitPriceVsAverage': fmtOrNull(changeFrom(unitPrice, batchesUnitPrice(ledger)), SCALE.ratio),
+    'batch.unitPriceVsPrevious': fmtOrNull(previous ? changeFrom(unitPrice, unitPriceOf(previous)) : null, SCALE.ratio),
+    'batch.valueConsumed': fmtMoney(valueConsumed),
+    'batch.consumptions': String(stats.count),
+    'batch.avgQuantity': stats.avgQuantityPerConsumption,
+    'batch.minQuantity': stats.minConsumption,
+    'batch.maxQuantity': stats.maxConsumption,
+    'batch.pace': fmtOrNull(pace, SCALE.quantity),
+    'batch.waitBeforeFirst': own[0] ? fmt(length(batch.occurred_at, own[0].occurred_at), TWO) : null,
+    'batch.timeToFinish': fmtOrNull(timeToFinish, TWO),
+    'batch.costPerTime': fmtOrNull(perLife(valueConsumed), SCALE.money),
   };
 }

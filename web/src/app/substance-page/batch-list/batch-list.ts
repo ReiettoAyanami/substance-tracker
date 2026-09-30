@@ -5,6 +5,7 @@ import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
+import { ActivatedRoute, Router } from '@angular/router';
 
 import { ApiError } from '../../data/api-error';
 import { ReportsApi } from '../../data/reports-api';
@@ -43,11 +44,11 @@ function writeShareMode(mode: ShareMode): void {
  * The active batches of a substance, in its page (design.md, "stock bar": one sub-card per batch,
  * oldest first). Closed, it is the total: how many batches and the stock they make up. Open, one
  * sub-card per batch, with its own bar (maximum = what was bought, filled = what is left), its
- * prices and its share of the stock, by quantity or by value, a ⋮ menu to edit or delete it, and
- * its recent consumptions, shown on demand (design-frontend.md, "recent consumptions"); at the top
- * right of the open panel, "Add batch" (so the panel opens also with no batch). Loads
- * its data from the API, asks for it again after each of those writes, and tells its page
- * (`changed`), which has the substance's card to refresh.
+ * prices and its share of the stock, by quantity or by value, a ⋮ menu to open its page
+ * (Details), edit or delete it, and its recent consumptions, shown on demand (design-frontend.md,
+ * "recent consumptions"); at the top right of the open panel, "Add batch" (so the panel opens also
+ * with no batch). Loads its data from the API, asks for it again after each of those writes, and
+ * tells its page (`changed`), which has the substance's card to refresh.
  */
 @Component({
   selector: 'app-batch-list',
@@ -75,6 +76,9 @@ export class BatchList {
 
   private readonly reports = inject(ReportsApi);
   private readonly actions = inject(BatchActions);
+  private readonly router = inject(Router);
+  /** The substance page's route: a batch's page opens under it. */
+  private readonly route = inject(ActivatedRoute);
   protected readonly batches = rxResource({
     params: () => this.substanceId(),
     stream: ({ params }) => this.reports.getSubstanceBatches(params),
@@ -153,6 +157,15 @@ export class BatchList {
   protected chooseShare(mode: ShareMode): void {
     this.shareMode.set(mode);
     writeShareMode(mode);
+  }
+
+  /** The batch's page, over the substance's: closing it comes back here. */
+  protected details(batch: Batch): void {
+    void this.router.navigate(['batches', batch.id], {
+      relativeTo: this.route,
+      state: { fromList: true },
+      queryParamsHandling: 'preserve',
+    });
   }
 
   protected async add(): Promise<void> {

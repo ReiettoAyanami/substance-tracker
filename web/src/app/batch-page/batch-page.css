@@ -1,0 +1,127 @@
+/* A window over the substance's page, as that one is over the list (substance-page.css): the same
+   shape, one level up. */
+.backdrop {
+  position: fixed;
+  inset: 0 0 0 var(--app-sidebar-width, 0px);
+  z-index: 30;
+  background-color: color-mix(in srgb, var(--mat-sys-scrim) 40%, transparent);
+}
+
+.window {
+  position: fixed;
+  inset: 16px;
+  z-index: 31;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 68px 20px 12px;
+  border-radius: 28px;
+  background-color: var(--mat-sys-surface-container-high);
+  color: var(--mat-sys-on-surface);
+  overflow: hidden;
+}
+
+.content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dot {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.titles {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.name {
+  margin: 0;
+  font: var(--mat-sys-title-large);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.substance {
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+/* What was bought, three facts side by side (they wrap on a phone). */
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  margin: 0;
+}
+
+.facts dt {
+  font: var(--mat-sys-label-medium);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.facts dd {
+  margin: 0;
+  font: var(--mat-sys-body-large);
+  font-variant-numeric: tabular-nums;
+}
+
+.left,
+.note {
+  margin: -8px 0 0;
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.recent h3 {
+  margin: 0 0 8px;
+  font: var(--mat-sys-title-small);
+}
+
+.recent {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.missing {
+  margin: 48px 0;
+  text-align: center;
+  font: var(--mat-sys-body-large);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+/* Desktop: centred over the content, a little narrower than the substance's page. */
+@media (min-width: 600px) {
+  .window {
+    inset: auto;
+    top: 50%;
+    left: calc(50% + var(--app-sidebar-width, 0px) / 2);
+    translate: -50% -50%;
+    width: min(720px, calc(100vw - var(--app-sidebar-width, 0px) - 96px));
+    max-height: calc(100dvh - 96px);
+    padding: 72px 32px 32px;
+  }
+}

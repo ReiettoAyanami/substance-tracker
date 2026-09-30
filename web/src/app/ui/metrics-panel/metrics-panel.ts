@@ -53,7 +53,7 @@ const readDays = () => read<number>(DAYS_KEY, (v) => (PERIODS.some((p) => String
 })
 export class MetricsPanel {
   readonly scope = input.required<MetricScope>();
-  /** The id of the substance (the only scope so far). */
+  /** The id of the substance or of the batch. */
   readonly entityId = input.required<number>();
   /** Unit of the substance the numbers are about. */
   readonly unit = input.required<string>();
@@ -89,10 +89,16 @@ export class MetricsPanel {
       this.wasOpened()
         ? { scope: this.scope(), id: this.entityId(), per: this.per(), days: this.days(), refresh: this.refresh() }
         : undefined,
-    stream: ({ params }) =>
-      params.scope === 'substance'
-        ? this.api.getSubstanceMetrics(params.id, { per: params.per, ...(params.days ? { days: params.days } : {}) })
-        : of(null),
+    stream: ({ params }) => {
+      switch (params.scope) {
+        case 'substance':
+          return this.api.getSubstanceMetrics(params.id, { per: params.per, ...(params.days ? { days: params.days } : {}) });
+        case 'batch':
+          return this.api.getBatchMetrics(params.id, { per: params.per });
+        default:
+          return of(null);
+      }
+    },
   });
 
   /** The metrics its surface lists, in their order (one the catalog no longer has is left out). */

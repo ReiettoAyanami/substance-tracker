@@ -44,6 +44,10 @@
             <mat-icon>more_vert</mat-icon>
           </button>
           <mat-menu #actions="matMenu" xPosition="before">
+            <button mat-menu-item type="button" (click)="details(row.batch)">
+              <mat-icon>insights</mat-icon>
+              <span>Details</span>
+            </button>
             <button mat-menu-item type="button" (click)="edit(row.batch)">
               <mat-icon>edit</mat-icon>
               <span>Edit</span>

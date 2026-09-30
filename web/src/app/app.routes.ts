@@ -17,7 +17,14 @@ export const routes: Routes = [
     // The substance page is a child of the substances page, so the list stays rendered underneath
     // it and a direct link or a refresh on /substances/5 rebuilds the list below (design-frontend.md).
     children: [
-      { path: ':id', loadComponent: () => import('./substance-page/substance-page').then((m) => m.SubstancePage) },
+      {
+        path: ':id',
+        loadComponent: () => import('./substance-page/substance-page').then((m) => m.SubstancePage),
+        // A batch's page opens over its substance's (design-statistics.md, "batch page").
+        children: [
+          { path: 'batches/:batchId', loadComponent: () => import('./batch-page/batch-page').then((m) => m.BatchPage) },
+        ],
+      },
     ],
   },
   {

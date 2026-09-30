@@ -1,6 +1,7 @@
+import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 import { Observable, of, throwError } from 'rxjs';
 
 import { ApiError } from '../../data/api-error';
@@ -9,6 +10,10 @@ import { Settings } from '../../data/settings';
 import { Batch, SubstanceBatches } from '../../data/substance-batches';
 import { BatchActions } from './batch-actions';
 import { BatchList } from './batch-list';
+
+/** Where "Details" goes (in the app, the batch's page under the substance's). */
+@Component({ template: '' })
+class Blank {}
 
 const settings: Settings = { timezone: 'Europe/Rome', dayStartsAt: '00:00:00', currency: 'EUR' };
 
@@ -111,7 +116,7 @@ describe('BatchList', () => {
             },
           },
         },
-        provideRouter([]),
+        provideRouter([{ path: 'batches/:batchId', component: Blank }]),
         {
           provide: BatchActions,
           useValue: {
@@ -202,6 +207,18 @@ describe('BatchList', () => {
     ]);
     expect(asks).toBe(3);
     expect(told).toBe(2);
+  });
+
+  it("opens a batch's page from the ⋮ menu of its sub-card (Details), under the substance's", async () => {
+    await render();
+    await expand();
+    const router = TestBed.inject(Router);
+    await menu(1, 'Details');
+    await fixture.whenStable();
+
+    expect(router.url).toBe('/batches/6');
+    expect(router.lastSuccessfulNavigation()?.extras.state).toEqual({ fromList: true });
+    expect(asked).toEqual([]);
   });
 
   it('asks nothing again when nothing was written (a dialog cancelled)', async () => {

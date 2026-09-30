@@ -3,7 +3,7 @@ import { DOCUMENT, Location } from '@angular/common';
 import { Component, DestroyRef, computed, inject, input, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterOutlet } from '@angular/router';
 
 import { Substance } from '../data/substance';
 import { SubstanceActions } from '../substances-page/substance-actions';
@@ -30,7 +30,7 @@ export interface PageHistoryState {
  */
 @Component({
   selector: 'app-substance-page',
-  imports: [A11yModule, BatchList, MatButtonModule, MatIconModule, MetricsPanel, OneTimeList, SubstanceCard],
+  imports: [A11yModule, BatchList, MatButtonModule, MatIconModule, MetricsPanel, OneTimeList, RouterOutlet, SubstanceCard],
   templateUrl: './substance-page.html',
   styleUrl: './substance-page.css',
   host: { '(document:keydown.escape)': 'escape($event)' },
@@ -41,6 +41,7 @@ export class SubstancePage {
   private readonly list = inject(SubstanceList);
   protected readonly actions = inject(SubstanceActions);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   /** Its substance was just deleted: the page shows nothing while it closes. */
   private readonly closing = signal(false);
   private readonly location = inject(Location);
@@ -73,9 +74,12 @@ export class SubstancePage {
     this.list.reload(id);
   }
 
-  /** Esc closes the page, unless something open over it (a dialog, a menu) already took the key. */
+  /**
+   * Esc closes the page, unless something open over it already took the key: a dialog, a menu, or
+   * a batch's page (a child route), which closes first.
+   */
   protected escape(event: Event): void {
-    if (!event.defaultPrevented) this.close();
+    if (!event.defaultPrevented && !this.route.firstChild) this.close();
   }
 
   /** Deleted from the page's card: the page closes onto the list. */

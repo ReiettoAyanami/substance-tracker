@@ -3,7 +3,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { firstValueFrom } from 'rxjs';
 
-import { BatchListItem } from './batch';
+import { BatchDetails, BatchListItem } from './batch';
 import { Consumption, ConsumptionBounds } from './consumption';
 import { OneTimeStats } from './one-time';
 import { ReportsApi } from './reports-api';
@@ -30,6 +30,13 @@ describe('ReportsApi', () => {
     expect(req.request.method).toBe('GET');
     req.flush(batches);
     expect(await result).toEqual(batches);
+  });
+
+  it('gets one batch', async () => {
+    const batch = { id: 7, substanceId: 3, remaining: '4.000' } as BatchDetails;
+    const result = firstValueFrom(api.getBatch(7));
+    backend.expectOne('/api/batches/7').flush(batch);
+    expect(await result).toEqual(batch);
   });
 
   it('gets the one-time totals of a substance', async () => {

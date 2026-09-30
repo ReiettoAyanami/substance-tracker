@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
-import { BatchListItem } from './batch';
+import { BatchDetails, BatchListItem } from './batch';
 import { Consumption, ConsumptionBounds, ConsumptionFilter, ConsumptionScope } from './consumption';
 import { HistoryPage, OneTimeConsumption, OneTimeStats } from './one-time';
 import { SubstanceBatches } from './substance-batches';
@@ -26,6 +26,11 @@ export class ReportsApi {
   /** GET /api/substances/:id/batches: the active batches, oldest first, with their shares. */
   getSubstanceBatches(substanceId: number): Observable<SubstanceBatches> {
     return this.http.get<SubstanceBatches>(`/api/substances/${substanceId}/batches`);
+  }
+
+  /** GET /api/batches/:id: one batch, finished or not, with its remaining and unit price. */
+  getBatch(batchId: number): Observable<BatchDetails> {
+    return this.http.get<BatchDetails>(`/api/batches/${batchId}`);
   }
 
   /** GET /api/substances/:id/one-time: totals and averages of its one-time consumptions. */

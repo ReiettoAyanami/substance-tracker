@@ -1,0 +1,71 @@
+<div class="backdrop" (click)="close()"></div>
+<section
+  class="window"
+  role="dialog"
+  aria-modal="true"
+  [attr.aria-label]="found()?.title ?? 'Batch'"
+  cdkTrapFocus
+  [cdkTrapFocusAutoCapture]="true"
+>
+  <button mat-icon-button type="button" class="close" aria-label="Close" (click)="close()">
+    <mat-icon>close</mat-icon>
+  </button>
+  @if (found(); as current) {
+    <div class="content">
+      <header class="head">
+        <span class="dot" [style.background-color]="current.batch.id | identityColor: 'batch'"></span>
+        <div class="titles">
+          <h2 class="name">{{ current.title }}</h2>
+          <span class="substance">{{ current.substance.name }}</span>
+        </div>
+      </header>
+
+      <dl class="facts">
+        <div>
+          <dt>Bought</dt>
+          <dd class="bought">{{ current.bought }}</dd>
+        </div>
+        <div>
+          <dt>Quantity</dt>
+          <dd class="quantity">{{ current.quantity }}</dd>
+        </div>
+        <div>
+          <dt>Price</dt>
+          <dd class="price">
+            {{ current.totalPrice }} ·
+            {{ current.batch.unitPrice | unitPrice: current.settings.currency : current.substance.unit }}
+          </dd>
+        </div>
+      </dl>
+
+      <app-stock-bar
+        [segments]="current.segments"
+        [max]="current.batch.quantity"
+        [label]="current.left"
+        [unit]="current.substance.unit"
+        [currency]="current.settings.currency"
+      />
+      <p class="left">{{ current.left }}</p>
+      @if (current.batch.note) {
+        <p class="note">{{ current.batch.note }}</p>
+      }
+
+      <app-metrics-panel
+        scope="batch"
+        [entityId]="current.batch.id"
+        [unit]="current.substance.unit"
+        [settings]="current.settings"
+        [open]="true"
+      />
+
+      <section class="recent" aria-label="Last consumptions">
+        <h3>Last consumptions</h3>
+        <app-recent-consumptions [batch]="current.batch" [substanceId]="current.substance.id" [settings]="current.settings" />
+      </section>
+    </div>
+  } @else if (missing(); as message) {
+    <p class="missing">{{ message }}</p>
+  } @else {
+    <p class="missing">…</p>
+  }
+</section>

@@ -29,6 +29,20 @@ export interface SubstanceMetricsQuery {
   days?: number;
 }
 
+/** Batches and consumptions: over their whole life, so only the scale. */
+export const scaleOnlyMetricsSchema = {
+  params: idParams,
+  querystring: {
+    type: 'object',
+    additionalProperties: false,
+    properties: { per: perQuery },
+  },
+} as const;
+
+export interface ScaleQuery {
+  per?: TimeScale;
+}
+
 /** Scopes whose table is built so far. */
 export const TABLE_SCOPES = ['substance'] as const;
 export type TableScope = (typeof TABLE_SCOPES)[number];

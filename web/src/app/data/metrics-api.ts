@@ -30,6 +30,11 @@ export class MetricsApi {
     return this.http.get<MetricsTable>('/api/metrics/table', { params: queryOf({ ...query, keys: keys.join(',') }) });
   }
 
+  /** GET /api/batches/:id/metrics: the batch's metrics, over its life, in the scale asked. */
+  getBatchMetrics(batchId: number, query: Pick<MetricsQuery, 'per'> = {}): Observable<MetricsResult> {
+    return this.http.get<MetricsResult>(`/api/batches/${batchId}/metrics`, { params: queryOf(query) });
+  }
+
   /** GET /api/substances/:id/metrics: the substance's metrics in the scale and the period asked. */
   getSubstanceMetrics(substanceId: number, query: MetricsQuery = {}): Observable<MetricsResult> {
     return this.http.get<MetricsResult>(`/api/substances/${substanceId}/metrics`, { params: queryOf(query) });

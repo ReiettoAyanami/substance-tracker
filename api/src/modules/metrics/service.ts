@@ -1,10 +1,11 @@
 import type { Pool } from '../../db/pool.js';
-import { badRequest } from '../../shared/errors.js';
+import { badRequest, notFound } from '../../shared/errors.js';
 import type { Clock, TimeScale } from '../../shared/time.js';
 import type { CatalogService } from '../catalog/service.js';
 import * as reportsRepo from '../reports/repository.js';
 import type { SettingsService } from '../settings/service.js';
 import {
+  batchValues,
   substanceLedgerOf,
   substanceLedgers,
   substanceValues,
@@ -71,10 +72,8 @@ export class MetricsService {
     return { scale: per ?? 'day', day, now: this.clock() };
   }
 
-  async substanceMetrics(substanceId: number, query: MetricsQuery): Promise<MetricsResult> {
-    await this.catalog.get(substanceId);
-    const ctx = await this.context(query.per);
-    const period = resolvePeriod(query, ctx.day, ctx.now);
+  /** Everything that counts of one substance (nothing deleted), oldest first. */
+  private async substanceLedger(substanceId: number) {
     const scope = { substanceIds: [substanceId] };
     const [batches, consumptions, adjustments, oneTimes] = await Promise.all([
       reportsRepo.loadBatches(this.pool, scope),
@@ -82,8 +81,25 @@ export class MetricsService {
       reportsRepo.loadAdjustments(this.pool, scope),
       reportsRepo.loadOneTimes(this.pool, scope),
     ]);
-    const ledger = substanceLedgerOf({ batches, consumptions, adjustments, oneTimes });
+    return substanceLedgerOf({ batches, consumptions, adjustments, oneTimes });
+  }
+
+  async substanceMetrics(substanceId: number, query: MetricsQuery): Promise<MetricsResult> {
+    await this.catalog.get(substanceId);
+    const ctx = await this.context(query.per);
+    const period = resolvePeriod(query, ctx.day, ctx.now);
+    const ledger = await this.substanceLedger(substanceId);
     return { per: ctx.scale, from: period.from, to: period.to, values: substanceValues(ledger, period, ctx) };
+  }
+
+  /** A batch's metrics, over its life: no period. 404 when it does not exist or is deleted. */
+  async batchMetrics(batchId: number, per: TimeScale | undefined): Promise<MetricsResult> {
+    const [found] = await reportsRepo.loadBatches(this.pool, { batchIds: [batchId] });
+    if (!found) throw notFound('Batch', batchId);
+    const ctx = await this.context(per);
+    const ledger = await this.substanceLedger(found.substance_id);
+    const batch = ledger.batches.find((b) => b.id === batchId)!;
+    return { per: ctx.scale, from: null, to: null, values: batchValues(batch, ledger, ctx) };
   }
 
   /**

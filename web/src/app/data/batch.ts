@@ -50,3 +50,28 @@ export interface UpdateBatchInput {
   occurredAt?: string;
   note?: string | null;
 }
+
+/** GET /api/batches/:id: one batch, finished or not, with what Reports computes about it. */
+export interface BatchDetails {
+  id: number;
+  substanceId: number;
+  name: string | null;
+  quantity: string;
+  totalPrice: string;
+  occurredAt: string;
+  note: string | null;
+  clientRef: string | null;
+  createdAt: string;
+  remaining: string;
+  /** 6 decimals. */
+  unitPrice: string;
+  deactivatedAt: string | null;
+  deactivatedByConsumptionId: number | null;
+  deactivatedByAdjustmentId: number | null;
+  consumptionCount: number;
+  avgQuantityPerConsumption: string | null;
+  minConsumption: string | null;
+  maxConsumption: string | null;
+  avgPricePerConsumption: string | null;
+  firstConsumedAt: string | null;
+}
