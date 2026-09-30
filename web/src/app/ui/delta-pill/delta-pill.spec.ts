@@ -60,8 +60,6 @@ describe('DeltaPill', () => {
     await fixture.whenStable();
   }
 
-  beforeEach(() => localStorage.clear());
-
   it('shows the change in quantity from the previous consumption, in a pill', async () => {
     const fixture = await render(coffee);
 
@@ -100,7 +98,7 @@ describe('DeltaPill', () => {
     expect(text(pillOf(fixture))).toBe('price +4.2%'); // what was paid against what the previous one cost
   });
 
-  it('switches every pill at once: one change at a time, the same everywhere', async () => {
+  it('switches only itself: every card has its own pill', async () => {
     const first = await render(coffee);
     const second = await render(pint);
 
@@ -108,14 +106,7 @@ describe('DeltaPill', () => {
     await second.whenStable();
 
     expect(text(pillOf(first))).toBe('price -46.7%');
-    expect(text(pillOf(second))).toBe('price +4.2%');
-  });
-
-  it('remembers which change it shows', async () => {
-    await tap(await render(coffee));
-
-    TestBed.resetTestingModule(); // a page opened later
-    expect(text(pillOf(await render(pint)))).toBe('price +4.2%');
+    expect(text(pillOf(second))).toBe('quantity -75%');
   });
 
   it('signs the change, and says "0%" when nothing changed', async () => {

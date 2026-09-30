@@ -101,14 +101,14 @@ describe('RecentConsumptions', () => {
     expect(element().querySelector('app-consumption-card button.more')).toBeNull(); // edited and deleted in the consumptions page
   });
 
-  it('shows one change at a time: a tap on a pill switches every card to the change in price', async () => {
+  it('a tap on a pill switches that card only to the change in price', async () => {
     await render();
     const deltas = () => cards().map((card) => text(card.querySelector('.delta')));
     expect(deltas()).toEqual(['quantity +33.3%', 'quantity -40%', '']);
 
     cards()[1]!.querySelector<HTMLButtonElement>('app-delta-pill button')!.click();
     await fixture.whenStable();
-    expect(deltas()).toEqual(['price +33.3%', 'price -40%', '']);
+    expect(deltas()).toEqual(['quantity +33.3%', 'price -40%', '']);
     expect(calls.length).toBe(1); // nothing is asked again for that
   });
 

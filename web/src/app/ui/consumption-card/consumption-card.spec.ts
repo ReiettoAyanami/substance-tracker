@@ -63,7 +63,6 @@ describe('ConsumptionCard', () => {
   /** The delta pill of a card: a button, when the consumption has one before it. */
   const pill = (card: HTMLElement) => card.querySelector<HTMLButtonElement>('app-delta-pill button');
 
-  beforeEach(() => localStorage.clear()); // the change the pills show is remembered there
   const colour = (id: number, kind: 'substance' | 'batch') => new IdentityColorPipe().transform(id, kind);
 
   it('shows when, what, from which batch, how much and at what cost, the delta pill and the note', async () => {

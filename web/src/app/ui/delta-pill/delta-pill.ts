@@ -1,13 +1,15 @@
-import { Component, computed, inject, input } from '@angular/core';
+import { Component, computed, input, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 
 import { Consumption } from '../../data/consumption';
 import { OneTimeConsumption } from '../../data/one-time';
 import { LOCALE } from '../../locale';
-import { DeltaMeasure, Measure } from './delta-measure';
 
 /** A delta ratio of the API ("-0.3333") as a signed percentage ("-33.3%"). */
 const deltaFormat = new Intl.NumberFormat(LOCALE, { style: 'percent', maximumFractionDigits: 1, signDisplay: 'exceptZero' });
+
+/** What a delta is the change of: the quantity of a consumption, or its price (what it cost). */
+export type Measure = 'quantity' | 'price';
 
 const other = (measure: Measure): Measure => (measure === 'quantity' ? 'price' : 'quantity');
 
@@ -17,8 +19,8 @@ const other = (measure: Measure): Measure => (measure === 'quantity' ? 'price' :
  * tapped, of the price ("price -20%"; the price is what the consumption cost). It takes the
  * consumption as the API gives it, of a batch or one-time, and needs nothing else from whoever
  * shows it: both kinds come with the same two ratios, computed by the API (what each is compared
- * with is the API's rule, design.md "delta from previous"). Which change is shown is shared by
- * every pill (`DeltaMeasure`). No pill for the first consumption: nothing to compare it with.
+ * with is the API's rule, design.md "delta from previous"). Each pill switches on its own (lenzi,
+ * 2026-09-30): a tap changes that card only. No pill for the first consumption: nothing to compare it with.
  */
 @Component({
   selector: 'app-delta-pill',
@@ -30,13 +32,14 @@ export class DeltaPill {
   /** The consumption, as the list it is in gives it: of a batch, or one-time. */
   readonly consumption = input.required<Consumption | OneTimeConsumption>();
 
-  private readonly measure = inject(DeltaMeasure);
+  /** The change this pill shows: the quantity at first. */
+  private readonly measure = signal<Measure>('quantity');
 
   /** What the pill says; null when the consumption has nothing before it. */
   protected readonly view = computed(() => {
     const { deltaQuantity, deltaCost } = this.consumption();
     if (deltaQuantity === null && deltaCost === null) return null;
-    const measure = this.measure.shown();
+    const measure = this.measure();
     const ratio = measure === 'quantity' ? deltaQuantity : deltaCost;
     const next = `Show the change in ${other(measure)}`;
     // Intl reads the decimal string as it is: no binary rounding.
@@ -54,6 +57,6 @@ export class DeltaPill {
   });
 
   protected toggle(): void {
-    this.measure.toggle();
+    this.measure.update(other);
   }
 }
