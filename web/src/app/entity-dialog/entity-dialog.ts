@@ -9,6 +9,7 @@ import { BatchRecord } from '../data/batch';
 import { Consumption, ConsumptionRecord } from '../data/consumption';
 import { OneTimeRecord } from '../data/one-time';
 import { Substance } from '../data/substance';
+import { Batch } from '../data/substance-batches';
 import { SubstanceForm } from '../substance-form/substance-form';
 
 /** What the entity dialog creates or edits: one form per entity (design-frontend.md, "entity form"). */
@@ -22,8 +23,13 @@ export interface EntityDialogData {
   kinds: readonly EntityKind[];
   /** The kind shown first; the first of `kinds` when missing. */
   kind?: EntityKind;
-  /** A record to edit: only its form, filled in, no selector. */
-  edit?: { kind: 'substance'; substance: Substance } | { kind: 'consumption'; consumption: Consumption };
+  /** A record to edit: only its form, filled in, no selector. A batch comes with its substance (its list item has none). */
+  edit?:
+    | { kind: 'substance'; substance: Substance }
+    | { kind: 'batch'; batch: Batch; substanceId: number }
+    | { kind: 'consumption'; consumption: Consumption };
+  /** The substance a new batch is for, when the opener knows it: the batch form hides its selector. */
+  substanceId?: number;
 }
 
 /** What it closes with: the saved record and its kind. Nothing when cancelled or closed by back. */
@@ -55,7 +61,11 @@ export class EntityDialog {
 
   /** The record to edit, by its kind. */
   protected readonly editedSubstance = this.data.edit?.kind === 'substance' ? this.data.edit.substance : null;
+  protected readonly editedBatch = this.data.edit?.kind === 'batch' ? this.data.edit.batch : null;
   protected readonly editedConsumption = this.data.edit?.kind === 'consumption' ? this.data.edit.consumption : null;
+  /** The fixed substance of the batch form: the one of the batch edited, or the one the opener gave. */
+  protected readonly batchSubstanceId =
+    this.data.edit?.kind === 'batch' ? this.data.edit.substanceId : (this.data.substanceId ?? null);
 
   protected savedSubstance(substance: Substance): void {
     this.dialog.close({ kind: 'substance', substance });

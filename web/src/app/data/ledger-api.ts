@@ -27,7 +27,7 @@ export class LedgerApi {
     return this.http.patch<BatchRecord>(`/api/batches/${id}`, input);
   }
 
-  /** DELETE /api/batches/:id (204); 409 when it is finished or has consumptions or adjustments. */
+  /** DELETE /api/batches/:id (204): its consumptions and adjustments are deleted with it; 409 when it is finished. */
   deleteBatch(id: number): Observable<void> {
     return this.http.delete<void>(`/api/batches/${id}`);
   }

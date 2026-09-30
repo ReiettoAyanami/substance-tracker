@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
+import { By } from '@angular/platform-browser';
 import { Router, provideRouter, withComponentInputBinding } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { of } from 'rxjs';
@@ -11,6 +12,7 @@ import { routes } from '../app.routes';
 import { ReportsApi } from '../data/reports-api';
 import { Substance } from '../data/substance';
 import { SubstanceBatches } from '../data/substance-batches';
+import { BatchList } from './batch-list/batch-list';
 
 const settings = { timezone: 'Europe/Rome', dayStartsAt: '00:00:00', currency: 'EUR' };
 
@@ -190,6 +192,42 @@ describe('SubstancePage', () => {
     await harness.fixture.whenStable();
     page()!.querySelector<HTMLButtonElement>('button[aria-label="Close"]')!.click();
     expect(back).toHaveBeenCalledTimes(1);
+  });
+
+  it('asks its substance again when a batch was written in its batch list: the card changes here and in the list underneath', async () => {
+    await open('/substances/1');
+    const bars = () => document.querySelectorAll('app-substances-page app-substance-card .segment').length;
+    expect(bars()).toBe(0);
+
+    const batchList = harness.fixture.debugElement.query(By.directive(BatchList)).componentInstance as BatchList;
+    batchList.changed.emit();
+    const restocked = substance(1, 'Caffè');
+    restocked.summary = {
+      ...restocked.summary,
+      stock: '4.000',
+      stockBarMax: '10.000',
+      stockBarSegments: [{ batchId: 21, name: null, remaining: '4.000', unitPrice: '1.000000' }],
+    };
+    TestBed.inject(HttpTestingController).expectOne('/api/substances/1').flush(restocked);
+    await harness.fixture.whenStable();
+
+    expect(bars()).toBe(2); // the card of the page and the one in the list
+    expect(TestBed.inject(Router).url).toBe('/substances/1');
+  });
+
+  it('closes on Esc, unless something open over it (a dialog, a menu) already took the key', async () => {
+    await open('/substances/1');
+
+    const taken = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+    taken.preventDefault(); // as the dialog or the menu on top does when it closes itself
+    document.dispatchEvent(taken);
+    await harness.fixture.whenStable();
+    expect(page()).not.toBeNull();
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+    await harness.fixture.whenStable();
+    expect(page()).toBeNull();
+    expect(TestBed.inject(Router).url).toBe('/substances');
   });
 
   it('says so when the substance is not in the list (an old link, an archived substance)', async () => {

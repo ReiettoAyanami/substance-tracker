@@ -6,6 +6,7 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 
 import { Consumption } from '../data/consumption';
 import { Substance } from '../data/substance';
+import { Batch } from '../data/substance-batches';
 import { EntityDialog, EntityDialogData } from './entity-dialog';
 
 describe('EntityDialog', () => {
@@ -109,6 +110,55 @@ describe('EntityDialog', () => {
     backend.expectOne('/api/consumptions/31').flush({ id: 31 });
     await fixture.whenStable();
     expect(closedWith).toEqual([{ kind: 'consumption', record: { id: 31 } }]);
+  });
+
+  describe('hosting the batch form (the batch list of the substance page)', () => {
+    let backend: HttpTestingController;
+
+    /** Opens the dialog on a form that asks for the settings and the substances once drawn. */
+    async function openBatchForm(data: EntityDialogData): Promise<void> {
+      closedWith = [];
+      TestBed.configureTestingModule({
+        imports: [EntityDialog],
+        providers: [
+          provideHttpClient(),
+          provideHttpClientTesting(),
+          { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
+          { provide: MatDialogRef, useValue: { close: (value?: unknown) => closedWith.push(value) } },
+          { provide: MAT_DIALOG_DATA, useValue: data },
+        ],
+      });
+      fixture = TestBed.createComponent(EntityDialog);
+      backend = TestBed.inject(HttpTestingController);
+      TestBed.tick();
+      backend.expectOne('/api/settings').flush({ timezone: 'Europe/Rome', dayStartsAt: '00:00:00', currency: 'EUR' });
+      backend.expectOne('/api/substances').flush([{ id: 4, name: 'Birra', unit: 'bottiglia', refillQuantity: null }]);
+      await fixture.whenStable();
+    }
+
+    afterEach(() => backend.verify());
+
+    it('adds a batch for a fixed substance: the form has no substance selector', async () => {
+      await openBatchForm({ kinds: ['batch'], substanceId: 4 });
+
+      expect(element().querySelector('h2')?.textContent?.trim()).toBe('New batch');
+      expect(element().querySelector('mat-select')).toBeNull();
+      expect(element().querySelector('mat-form-field:has([formControlName="quantity"]) [matTextSuffix]')?.textContent).toBe('bottiglia');
+    });
+
+    it('edits a batch of a substance in the same form, filled in, and closes with the record saved', async () => {
+      const batch = { id: 11, name: 'Peroni 6-pack', occurredAt: '2026-09-01T06:30:45Z', quantity: '6.000', totalPrice: '7.20', note: null };
+      await openBatchForm({ kinds: ['batch'], edit: { kind: 'batch', batch: batch as Batch, substanceId: 4 } });
+
+      expect(element().querySelector('h2')?.textContent?.trim()).toBe('Edit batch');
+      expect(element().querySelector<HTMLInputElement>('input[formControlName="name"]')!.value).toBe('Peroni 6-pack');
+
+      element().querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
+      const record = { id: 11, substanceId: 4 };
+      backend.expectOne('/api/batches/11').flush(record);
+      await fixture.whenStable();
+      expect(closedWith).toEqual([{ kind: 'batch', record }]);
+    });
   });
 
   describe('with several kinds (the "+" of the substances page)', () => {

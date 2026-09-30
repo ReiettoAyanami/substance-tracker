@@ -56,6 +56,9 @@
       <mat-label>Quantity</mat-label>
       <input matInput formControlName="quantity" inputmode="decimal" autocomplete="off" />
       <span matTextSuffix>{{ unit() }}</span>
+      @if (batch()) {
+        <mat-hint>Cannot be changed</mat-hint>
+      }
       <mat-error>{{ errorOf('quantity') }}</mat-error>
     </mat-form-field>
   }

@@ -1,15 +1,20 @@
-import { Component, computed, inject, input, signal } from '@angular/core';
+import { Component, computed, inject, input, output, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
+import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatExpansionModule } from '@angular/material/expansion';
+import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule } from '@angular/material/menu';
 
 import { ApiError } from '../../data/api-error';
 import { ReportsApi } from '../../data/reports-api';
 import { Settings } from '../../data/settings';
+import { Batch } from '../../data/substance-batches';
 import { LOCALE } from '../../locale';
 import { IdentityColorPipe } from '../../ui/identity-color-pipe';
 import { StockBar } from '../../ui/stock-bar/stock-bar';
 import { UnitPricePipe } from '../../ui/unit-price-pipe';
+import { BatchActions } from './batch-actions';
 
 /** What a batch's share is of: the stock by quantity, or its value. */
 type ShareMode = 'quantity' | 'value';
@@ -37,11 +42,23 @@ function writeShareMode(mode: ShareMode): void {
  * The active batches of a substance, in its page (design.md, "stock bar": one sub-card per batch,
  * oldest first). Closed, it is the total: how many batches and the stock they make up. Open, one
  * sub-card per batch, with its own bar (maximum = what was bought, filled = what is left), its
- * prices and its share of the stock, by quantity or by value. Loads its data from the API.
+ * prices and its share of the stock, by quantity or by value, and a ⋮ menu to edit or delete it;
+ * at the top right of the open panel, "Add batch" (so the panel opens also with no batch). Loads
+ * its data from the API, asks for it again after each of those writes, and tells its page
+ * (`changed`), which has the substance's card to refresh.
  */
 @Component({
   selector: 'app-batch-list',
-  imports: [IdentityColorPipe, MatButtonToggleModule, MatExpansionModule, StockBar, UnitPricePipe],
+  imports: [
+    IdentityColorPipe,
+    MatButtonModule,
+    MatButtonToggleModule,
+    MatExpansionModule,
+    MatIconModule,
+    MatMenuModule,
+    StockBar,
+    UnitPricePipe,
+  ],
   templateUrl: './batch-list.html',
   styleUrl: './batch-list.css',
 })
@@ -50,8 +67,11 @@ export class BatchList {
   /** Unit of the substance. */
   readonly unit = input.required<string>();
   readonly settings = input.required<Settings>();
+  /** A batch was added, changed or deleted: the numbers of the substance changed with it. */
+  readonly changed = output<void>();
 
   private readonly reports = inject(ReportsApi);
+  private readonly actions = inject(BatchActions);
   protected readonly batches = rxResource({
     params: () => this.substanceId(),
     stream: ({ params }) => this.reports.getSubstanceBatches(params),
@@ -118,5 +138,23 @@ export class BatchList {
   protected chooseShare(mode: ShareMode): void {
     this.shareMode.set(mode);
     writeShareMode(mode);
+  }
+
+  protected async add(): Promise<void> {
+    if (await this.actions.add(this.substanceId())) this.written();
+  }
+
+  protected async edit(batch: Batch): Promise<void> {
+    if (await this.actions.edit(batch, this.substanceId())) this.written();
+  }
+
+  protected async remove(batch: Batch): Promise<void> {
+    if (await this.actions.delete(batch)) this.written();
+  }
+
+  /** The batches are asked again (those shown stay until the new ones arrive), and the page is told. */
+  private written(): void {
+    this.batches.reload();
+    this.changed.emit();
   }
 }

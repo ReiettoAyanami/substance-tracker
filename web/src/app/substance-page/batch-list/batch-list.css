@@ -12,6 +12,13 @@ mat-panel-title {
   font-variant-numeric: tabular-nums;
 }
 
+/* "Add batch" at the top right of the open panel. */
+.tools {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 4px;
+}
+
 /* The share toggle above the sub-cards: 48 dp to tap, like the card's price toggle. */
 .share-mode {
   display: flex;
@@ -72,6 +79,12 @@ mat-panel-title {
   flex: none;
   font: var(--mat-sys-body-small);
   color: var(--mat-sys-on-surface-variant);
+}
+
+/* The ⋮ of a sub-card: 48 dp to tap, without making its title row taller. */
+.more {
+  flex: none;
+  margin: -12px -8px -12px -4px;
 }
 
 /* What is left and the share on the first line, the prices on the second. */

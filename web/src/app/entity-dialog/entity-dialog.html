@@ -20,7 +20,13 @@
       />
     }
     @case ('batch') {
-      <app-batch-form [showTitle]="!chooser" (saved)="savedBatch($event)" (cancelled)="cancel()" />
+      <app-batch-form
+        [batch]="editedBatch"
+        [substanceId]="batchSubstanceId"
+        [showTitle]="!chooser"
+        (saved)="savedBatch($event)"
+        (cancelled)="cancel()"
+      />
     }
     @case ('consumption') {
       <app-consumption-form

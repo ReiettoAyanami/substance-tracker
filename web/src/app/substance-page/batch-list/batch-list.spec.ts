@@ -5,7 +5,8 @@ import { Observable, of, throwError } from 'rxjs';
 import { ApiError } from '../../data/api-error';
 import { ReportsApi } from '../../data/reports-api';
 import { Settings } from '../../data/settings';
-import { SubstanceBatches } from '../../data/substance-batches';
+import { Batch, SubstanceBatches } from '../../data/substance-batches';
+import { BatchActions } from './batch-actions';
 import { BatchList } from './batch-list';
 
 const settings: Settings = { timezone: 'Europe/Rome', dayStartsAt: '00:00:00', currency: 'EUR' };
@@ -48,6 +49,12 @@ const coffee: SubstanceBatches = {
 describe('BatchList', () => {
   let fixture: ComponentFixture<BatchList>;
   let answer: () => Observable<SubstanceBatches>;
+  /** How many times the batches were asked for. */
+  let asks: number;
+  /** What was asked of the actions, whether they answer that something was written, and what the list told its page. */
+  let asked: unknown[];
+  let written: boolean;
+  let told: number;
 
   const element = () => fixture.nativeElement as HTMLElement;
   const text = (e: Element | null | undefined) => (e?.textContent ?? '').replace(/\s+/g, ' ').trim();
@@ -58,6 +65,18 @@ describe('BatchList', () => {
     fixture.componentRef.setInput('substanceId', 1);
     fixture.componentRef.setInput('unit', 'capsula');
     fixture.componentRef.setInput('settings', settings);
+    told = 0;
+    fixture.componentInstance.changed.subscribe(() => told++);
+    await fixture.whenStable();
+  }
+
+  /** Opens the ⋮ menu of a sub-card and taps one of its items. */
+  async function menu(batch: number, item: string): Promise<void> {
+    element().querySelectorAll<HTMLButtonElement>('.batch button.more')[batch]!.click();
+    await fixture.whenStable();
+    Array.from(document.querySelectorAll<HTMLButtonElement>('.mat-mdc-menu-item'))
+      .find((b) => b.textContent?.includes(item))!
+      .click();
     await fixture.whenStable();
   }
 
@@ -69,10 +88,29 @@ describe('BatchList', () => {
   beforeEach(async () => {
     localStorage.clear();
     answer = () => of(coffee);
+    asks = 0;
+    asked = [];
+    written = true;
     await TestBed.configureTestingModule({
       imports: [BatchList],
       providers: [
-        { provide: ReportsApi, useValue: { getSubstanceBatches: () => answer() } },
+        {
+          provide: ReportsApi,
+          useValue: {
+            getSubstanceBatches: () => {
+              asks++;
+              return answer();
+            },
+          },
+        },
+        {
+          provide: BatchActions,
+          useValue: {
+            add: async (substanceId: number) => (asked.push(['add', substanceId]), written),
+            edit: async (batch: Batch, substanceId: number) => (asked.push(['edit', batch.id, substanceId]), written),
+            delete: async (batch: Batch) => (asked.push(['delete', batch.id]), written),
+          },
+        },
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
       ],
     }).compileComponents();
@@ -115,12 +153,59 @@ describe('BatchList', () => {
     expect(texts('.share')).toEqual(['0.5% of the value', '99.5% of the value']);
   });
 
-  it('says when there is no active batch, and cannot be opened', async () => {
+  it('says when there is no active batch, and still opens: the first one is added from here', async () => {
     answer = () => of({ substanceId: 1, stock: '0.000', stockBarMax: '0.000', batches: [] });
     await render();
 
     expect(text(element().querySelector('.total'))).toBe('No active batches');
-    expect(element().querySelector('mat-expansion-panel-header')!.getAttribute('aria-disabled')).toBe('true');
+    expect(element().querySelector('mat-expansion-panel-header')!.getAttribute('aria-disabled')).toBe('false');
+    await expand();
+    expect(text(element().querySelector('.tools button.add'))).toContain('Add batch');
+    expect(element().querySelector('.share-mode')).toBeNull();
+    expect(element().querySelector('.batch')).toBeNull();
+  });
+
+  it('adds a batch for its substance from the button at the top of the panel, then asks the batches again and tells the page', async () => {
+    await render();
+    await expand();
+    expect(asks).toBe(1);
+
+    answer = () => of({ ...coffee, batches: [...coffee.batches, { ...coffee.batches[1]!, id: 7, name: 'New one' }] });
+    element().querySelector<HTMLButtonElement>('.tools button.add')!.click();
+    await fixture.whenStable();
+
+    expect(asked).toEqual([['add', 1]]);
+    expect(asks).toBe(2);
+    expect(told).toBe(1);
+    expect(texts('.batch-name')).toEqual(['Lavazza', 'Unnamed batch', 'New one']);
+  });
+
+  it('edits and deletes a batch from the ⋮ menu of its sub-card', async () => {
+    await render();
+    await expand();
+
+    await menu(0, 'Edit');
+    await menu(1, 'Delete');
+
+    expect(asked).toEqual([
+      ['edit', 1, 1],
+      ['delete', 6],
+    ]);
+    expect(asks).toBe(3);
+    expect(told).toBe(2);
+  });
+
+  it('asks nothing again when nothing was written (a dialog cancelled)', async () => {
+    written = false;
+    await render();
+    await expand();
+
+    element().querySelector<HTMLButtonElement>('.tools button.add')!.click();
+    await menu(0, 'Delete');
+
+    expect(asked.length).toBe(2);
+    expect(asks).toBe(1);
+    expect(told).toBe(0);
   });
 
   it('says why when the batches cannot be loaded', async () => {

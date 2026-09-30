@@ -1,21 +1,31 @@
-<mat-expansion-panel class="panel" [disabled]="rows().length === 0">
+<mat-expansion-panel class="panel">
   <mat-expansion-panel-header>
     <mat-panel-title>Active batches</mat-panel-title>
     <mat-panel-description class="total">{{ total() }}</mat-panel-description>
   </mat-expansion-panel-header>
 
-  <div class="share-mode">
-    <span>Share</span>
-    <mat-button-toggle-group
-      hideSingleSelectionIndicator
-      aria-label="Batch share"
-      [value]="shareMode()"
-      (change)="chooseShare($event.value)"
-    >
-      <mat-button-toggle value="quantity">quantity</mat-button-toggle>
-      <mat-button-toggle value="value">value</mat-button-toggle>
-    </mat-button-toggle-group>
+  <!-- At the top right of the open panel (lenzi): it is there with no batch too, for the first one. -->
+  <div class="tools">
+    <button mat-button type="button" class="add" (click)="add()">
+      <mat-icon>add</mat-icon>
+      Add batch
+    </button>
   </div>
+
+  @if (rows().length > 0) {
+    <div class="share-mode">
+      <span>Share</span>
+      <mat-button-toggle-group
+        hideSingleSelectionIndicator
+        aria-label="Batch share"
+        [value]="shareMode()"
+        (change)="chooseShare($event.value)"
+      >
+        <mat-button-toggle value="quantity">quantity</mat-button-toggle>
+        <mat-button-toggle value="value">value</mat-button-toggle>
+      </mat-button-toggle-group>
+    </div>
+  }
 
   <ul class="batches">
     @for (row of rows(); track row.batch.id) {
@@ -24,6 +34,25 @@
           <span class="dot" [style.background-color]="row.batch.id | identityColor: 'batch'"></span>
           <span class="batch-name">{{ row.batch.name ?? 'Unnamed batch' }}</span>
           <span class="bought">{{ row.bought }}</span>
+          <button
+            mat-icon-button
+            type="button"
+            class="more"
+            [attr.aria-label]="'Actions for the batch ' + (row.batch.name ?? 'of ' + row.bought)"
+            [matMenuTriggerFor]="actions"
+          >
+            <mat-icon>more_vert</mat-icon>
+          </button>
+          <mat-menu #actions="matMenu" xPosition="before">
+            <button mat-menu-item type="button" (click)="edit(row.batch)">
+              <mat-icon>edit</mat-icon>
+              <span>Edit</span>
+            </button>
+            <button mat-menu-item type="button" (click)="remove(row.batch)">
+              <mat-icon>delete</mat-icon>
+              <span>Delete</span>
+            </button>
+          </mat-menu>
         </div>
         <app-stock-bar
           [segments]="row.segments"

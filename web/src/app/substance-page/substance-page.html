@@ -19,7 +19,12 @@
           (edit)="actions.edit(view.substance)"
           (remove)="delete(view.substance)"
         />
-        <app-batch-list [substanceId]="view.substance.id" [unit]="view.substance.unit" [settings]="view.settings" />
+        <app-batch-list
+          [substanceId]="view.substance.id"
+          [unit]="view.substance.unit"
+          [settings]="view.settings"
+          (changed)="reload(view.substance.id)"
+        />
         <app-one-time-list [substanceId]="view.substance.id" [unit]="view.substance.unit" [settings]="view.settings" />
       </div>
       <nav class="pager">

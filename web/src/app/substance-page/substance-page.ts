@@ -21,15 +21,16 @@ export interface PageHistoryState {
  * The substance page (design-frontend.md): child route `:id` of the substances page, a window over
  * the darkened list. It shows the substance's card (with its ⋮ menu), its active batches and its
  * one-time consumptions. It reads the substances page's list, so its position and prev/next follow
- * the list order. It closes with X, a tap on the backdrop or the browser's back (it is a route), and
- * after its substance is deleted.
+ * the list order. It closes with X, a tap on the backdrop, Esc or the browser's back (it is a route),
+ * and after its substance is deleted. When a batch is added, changed or deleted in its batch list,
+ * the substance is asked again: its card here and in the list underneath show the new numbers.
  */
 @Component({
   selector: 'app-substance-page',
   imports: [A11yModule, BatchList, MatButtonModule, MatIconModule, OneTimeList, SubstanceCard],
   templateUrl: './substance-page.html',
   styleUrl: './substance-page.css',
-  host: { '(document:keydown.escape)': 'close()' },
+  host: { '(document:keydown.escape)': 'escape($event)' },
 })
 export class SubstancePage {
   /** The `:id` of the route. */
@@ -63,6 +64,16 @@ export class SubstancePage {
       next: state.substances[index + 1]?.id ?? null,
     };
   });
+
+  /** A batch of the substance was written: its numbers are the API's, so it is asked again. */
+  protected reload(id: number): void {
+    this.list.reload(id);
+  }
+
+  /** Esc closes the page, unless something open over it (a dialog, a menu) already took the key. */
+  protected escape(event: Event): void {
+    if (!event.defaultPrevented) this.close();
+  }
 
   /** Deleted from the page's card: the page closes onto the list. */
   protected async delete(substance: Substance): Promise<void> {

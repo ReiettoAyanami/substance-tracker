@@ -80,8 +80,10 @@ type PriceIn = 'total' | 'unit';
  * refills; what was paid is the total price or the price per unit. The API computes the rest: the
  * form only previews it ("×3 = 18 bottiglia", "≈ €1.20 per unit"), and sends what was typed. The
  * day and the time are those of the settings' time zone, "now" at first. In edit mode the
- * substance is shown, not changed, and there are only a quantity and a total price: what the API
- * lets change. It says `saved` with what the Ledger returned, or `cancelled`.
+ * substance and the quantity are shown, not changed (lenzi: the consumptions of a batch count on
+ * its quantity; a wrong one is deleted and recorded again), and the price is the total one: name,
+ * total price, day and time, note can change. It says `saved` with what the Ledger returned, or
+ * `cancelled`.
  */
 @Component({
   selector: 'app-batch-form',
@@ -241,7 +243,9 @@ export class BatchForm implements OnInit {
       quantity.setValue(asTyped(edited.quantity));
       totalPrice.setValue(edited.totalPrice);
       note.setValue(edited.note ?? '');
-      substanceId.disable(); // the substance of a batch is shown, never changed
+      // The substance and the quantity of a batch are shown, never changed.
+      substanceId.disable();
+      quantity.disable();
     }
   }
 
@@ -305,11 +309,8 @@ export class BatchForm implements OnInit {
         : undefined;
     const when = occurredAt === undefined ? {} : { occurredAt };
 
-    // Every field the PATCH takes is sent; an emptied name or note is cleared (null).
-    if (edited) {
-      const changed = { name, quantity: decimal(v.quantity), totalPrice: decimal(v.totalPrice), note, ...when };
-      return this.ledger.updateBatch(edited.id, changed);
-    }
+    // Every field that can change is sent; an emptied name or note is cleared (null).
+    if (edited) return this.ledger.updateBatch(edited.id, { name, totalPrice: decimal(v.totalPrice), note, ...when });
     return this.ledger.createBatch(v.substanceId!, {
       ...(name === null ? {} : { name }),
       ...(this.amountIn() === 'refills' ? { refills: decimal(v.refills) } : { quantity: decimal(v.quantity) }),

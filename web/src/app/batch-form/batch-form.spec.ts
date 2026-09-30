@@ -363,30 +363,33 @@ describe('BatchForm', () => {
     expect(said).toEqual([]);
   });
 
-  it('edits a batch: its substance only shown, a quantity and a total price, the instant sent only when changed', async () => {
+  it('edits a batch: its substance and its quantity only shown, the rest changed, the instant sent only when changed', async () => {
     await render({ batch: peroni, substanceId: 4 });
 
     expect(text('h2')).toBe('Edit batch');
     expect(text('.fixed')).toBe('Birra');
     expect(element().querySelector('mat-select')).toBeNull();
-    expect(toggles()).toEqual([]); // the PATCH takes a quantity and a total price, nothing else
+    expect(toggles()).toEqual([]); // no refills, no price per unit: the PATCH takes a total price
     expect([input('name').value, input('quantity').value, input('totalPrice').value, input('note').value]).toEqual([
       'Peroni 6-pack',
       '6',
       '7.20',
       'on offer',
     ]);
+    // lenzi, 2026-09-30: the quantity of a batch is not changed once recorded (its consumptions count on it)
+    expect(input('quantity').disabled).toBe(true);
+    expect(hintUnder('quantity')).toBe('Cannot be changed');
     expect([input('day').value, input('time').value]).toEqual(['01/09/2026', '08:30']);
     expect(hintUnder('totalPrice')).toBe('≈ €1.20 per unit');
 
     await type('name', '');
-    await type('quantity', '12');
     await type('totalPrice', '14,40');
+    expect(hintUnder('totalPrice')).toBe('≈ €2.40 per unit');
     save();
 
     const req = backend.expectOne('/api/batches/11');
     expect(req.request.method).toBe('PATCH');
-    expect(req.request.body).toEqual({ name: null, quantity: '12', totalPrice: '14.40', note: 'on offer' }); // 06:30:45Z keeps its seconds
+    expect(req.request.body).toEqual({ name: null, totalPrice: '14.40', note: 'on offer' }); // 06:30:45Z keeps its seconds
     req.flush({ id: 11 });
     await fixture.whenStable();
     expect(said).toEqual([{ id: 11 }]);
@@ -403,7 +406,6 @@ describe('BatchForm', () => {
     const req = backend.expectOne('/api/batches/11');
     expect(req.request.body).toEqual({
       name: 'Peroni 6-pack',
-      quantity: '6',
       totalPrice: '7.20',
       note: 'on offer',
       occurredAt: '2026-09-01T07:05:00Z',
