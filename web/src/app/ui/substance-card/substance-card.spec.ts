@@ -84,13 +84,13 @@ describe('SubstanceCard', () => {
       Array.from(card.querySelectorAll<HTMLButtonElement>('.price-mode button')).find((b) => text(b) === label)!;
 
     let card = await render(cigarettes);
-    toggle(card, 'avg').click();
+    toggle(card, 'average').click();
     await fixture.whenStable();
     expect(text(card.querySelector('.price-value'))).toBe('€0.31/sigaretta');
 
     card = await render(cigarettes); // e.g. after a reload
     expect(text(card.querySelector('.price-value'))).toBe('€0.31/sigaretta');
-    expect(toggle(card, 'avg').getAttribute('aria-checked')).toBe('true');
+    expect(toggle(card, 'average').getAttribute('aria-checked')).toBe('true');
 
     card = await render({ ...cigarettes, id: 5 }); // another substance keeps the default
     expect(text(card.querySelector('.price-value'))).toBe('€0.33/sigaretta');
