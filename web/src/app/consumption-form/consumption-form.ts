@@ -238,9 +238,9 @@ export class ConsumptionForm implements OnInit {
     }
   }
 
+  /** Why a field is in error; Material shows it once the field was touched or the form was sent. */
   protected errorOf(field: keyof typeof this.form.controls): string | null {
-    const control = this.form.controls[field];
-    return control.touched ? messageFor(control.errors) : null;
+    return messageFor(this.form.controls[field].errors);
   }
 
   protected save(): void {

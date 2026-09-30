@@ -351,6 +351,27 @@ describe('ConsumptionForm', () => {
     expect(said).toEqual([]);
   });
 
+  it('once Save was refused, says that the price the one-time checkbox reveals is required too', async () => {
+    await renderForSigarette();
+    await type('quantity', '30');
+    save();
+    backend.expectOne('/api/batches/8/consumptions').flush(
+      {
+        type: 'urn:substance-tracker:problem:quantity-exceeds-remaining',
+        title: 'Conflict',
+        status: 409,
+        detail: "quantity 30.000 is more than the batch's remaining 3.000",
+        errors: [],
+      },
+      { status: 409, statusText: 'Conflict' },
+    );
+    await fixture.whenStable();
+
+    await (await harnesses.getHarness(MatCheckboxHarness)).check(); // an empty price in a form already sent
+    await fixture.whenStable();
+    expect(errorUnder('totalPrice')).toBe('Required');
+  });
+
   it('edits a consumption of a batch: kind and batch only shown, the instant sent only when changed', async () => {
     await render({ consumption: fromBatch });
     await fixture.whenStable();
