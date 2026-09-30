@@ -1,5 +1,7 @@
 @if (showTitle()) {
-  <h2 class="title">{{ consumption() ? 'Edit consumption' : 'New consumption' }}</h2>
+  <h2 class="title">
+    {{ consumption() ? 'Edit consumption' : oneTimeOnly() ? 'New one-time consumption' : 'New consumption' }}
+  </h2>
 }
 
 <form [formGroup]="form" (ngSubmit)="save()">
@@ -22,28 +24,21 @@
       </mat-form-field>
     }
 
-    @if (batchId() === null) {
-      <!-- In sight from the start, before a substance is chosen: it is the only way to a one-time consumption. -->
-      <mat-checkbox class="one-time" formControlName="oneTime">One-time: bought and used at once</mat-checkbox>
-      @if (noActiveBatch()) {
-        <p class="hint">No active batch of this substance: record it as one-time, with its price.</p>
-      }
-      @if (!oneTime() && chosenSubstanceId() !== null) {
-        <mat-form-field appearance="outline">
-          <mat-label>Batch</mat-label>
-          <mat-select class="batch" formControlName="batchId">
-            @for (batch of batchOptions(); track batch.id) {
-              <mat-option [value]="batch.id">
-                <span class="option">
-                  <span class="dot" [style.background-color]="batch.id | identityColor: 'batch'"></span>
-                  <span>{{ batch.name }} · {{ batch.left }}</span>
-                </span>
-              </mat-option>
-            }
-          </mat-select>
-          <mat-error>{{ errorOf('batchId') }}</mat-error>
-        </mat-form-field>
-      }
+    @if (batchId() === null && !oneTime() && chosenSubstanceId() !== null) {
+      <mat-form-field appearance="outline">
+        <mat-label>Batch</mat-label>
+        <mat-select class="batch" formControlName="batchId">
+          @for (batch of batchOptions(); track batch.id) {
+            <mat-option [value]="batch.id">
+              <span class="option">
+                <span class="dot" [style.background-color]="batch.id | identityColor: 'batch'"></span>
+                <span>{{ batch.name }} · {{ batch.left }}</span>
+              </span>
+            </mat-option>
+          }
+        </mat-select>
+        <mat-error>{{ errorOf('batchId') }}</mat-error>
+      </mat-form-field>
     }
   }
 
@@ -53,24 +48,6 @@
     <span matTextSuffix>{{ unit() }}</span>
     <mat-error>{{ errorOf('quantity') }}</mat-error>
   </mat-form-field>
-
-  @if (oneTime()) {
-    <mat-form-field appearance="outline">
-      <mat-label>Price paid</mat-label>
-      <span matTextPrefix>{{ currencySign() }}&nbsp;</span>
-      <input matInput formControlName="totalPrice" inputmode="decimal" autocomplete="off" />
-      @if (perUnitPreview(); as preview) {
-        <mat-hint>{{ preview }}</mat-hint>
-      }
-      <mat-error>{{ errorOf('totalPrice') }}</mat-error>
-    </mat-form-field>
-    <mat-form-field appearance="outline">
-      <mat-label>Name</mat-label>
-      <input matInput formControlName="name" autocomplete="off" />
-      <mat-hint>Optional, e.g. the bar</mat-hint>
-      <mat-error>{{ errorOf('name') }}</mat-error>
-    </mat-form-field>
-  }
 
   <div class="when">
     <mat-form-field appearance="outline">
@@ -95,6 +72,32 @@
     <mat-hint>Optional</mat-hint>
     <mat-error>{{ errorOf('note') }}</mat-error>
   </mat-form-field>
+
+  <!-- What makes a consumption one-time sits at the bottom of the form (lenzi): the checkbox, in
+       sight from the start since it is the only way to one, then the price and the name it asks for. -->
+  @if (!consumption() && batchId() === null && !oneTimeOnly()) {
+    <mat-checkbox class="one-time" formControlName="oneTime">One-time: bought and used at once</mat-checkbox>
+    @if (noActiveBatch()) {
+      <p class="hint">No active batch of this substance: record it as one-time, with its price.</p>
+    }
+  }
+  @if (oneTime()) {
+    <mat-form-field appearance="outline">
+      <mat-label>Price paid</mat-label>
+      <span matTextPrefix>{{ currencySign() }}&nbsp;</span>
+      <input matInput formControlName="totalPrice" inputmode="decimal" autocomplete="off" />
+      @if (perUnitPreview(); as preview) {
+        <mat-hint>{{ preview }}</mat-hint>
+      }
+      <mat-error>{{ errorOf('totalPrice') }}</mat-error>
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Name</mat-label>
+      <input matInput formControlName="name" autocomplete="off" />
+      <mat-hint>Optional, e.g. the bar</mat-hint>
+      <mat-error>{{ errorOf('name') }}</mat-error>
+    </mat-form-field>
+  }
 
   @if (formError(); as message) {
     <p class="form-error" role="alert">{{ message }}</p>

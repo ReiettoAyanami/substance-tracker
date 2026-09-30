@@ -69,9 +69,11 @@ const FIELD_OF: Record<string, string> = { occurredAt: 'day', unitPrice: 'totalP
 /**
  * The consumption form (design-frontend.md, "consumption form"): it records a consumption from a
  * batch, or a one-time one (bought and used at once: a price, an optional name), or edits the one
- * it is given. The substance and the batch can come fixed (their selectors are hidden). "One-time"
- * can be ticked from the start; else the active batches of the substance chosen are offered oldest
- * first, the oldest chosen; with none, the consumption can only be one-time. The day and the time are those of the settings' time zone, "now" at
+ * it is given. The substance and the batch can come fixed (their selectors are hidden), and so can
+ * the kind (`oneTimeOnly`: the one-time list of a substance adds one-time consumptions only).
+ * "One-time", at the bottom of the form, can be ticked from the start; else the active batches of
+ * the substance chosen are offered oldest first, the oldest chosen; with none, the consumption can
+ * only be one-time. The day and the time are those of the settings' time zone, "now" at
  * first. In edit mode the kind and the batch are shown, not changed (the API cannot move a
  * consumption). It says `saved` with what the Ledger returned, or `cancelled`.
  */
@@ -106,6 +108,8 @@ export class ConsumptionForm implements OnInit {
   readonly substanceId = input<number | null>(null);
   /** A fixed batch (of the fixed substance): no batch selector, never one-time. */
   readonly batchId = input<number | null>(null);
+  /** A one-time consumption and nothing else: no batches, no "One-time" checkbox. */
+  readonly oneTimeOnly = input(false);
   /** The host may show its own title instead. */
   readonly showTitle = input(true);
   /** What the Ledger returned: the recorded or changed consumption. */
@@ -134,9 +138,9 @@ export class ConsumptionForm implements OnInit {
   private readonly settings = rxResource({ stream: () => this.settingsApi.getSettings() });
   /** The substances one can record for (archived ones are read-only for the Ledger). */
   protected readonly substances = rxResource({ stream: () => this.catalog.listSubstances() });
-  /** The active batches of the chosen substance, oldest first (none to load when editing). */
+  /** The active batches of the chosen substance, oldest first (none to load when editing, or for a one-time only). */
   private readonly batches = rxResource({
-    params: () => (this.consumption() ? undefined : (this.chosenSubstanceId() ?? undefined)),
+    params: () => (this.consumption() || this.oneTimeOnly() ? undefined : (this.chosenSubstanceId() ?? undefined)),
     stream: ({ params }) => this.reports.getSubstanceBatches(params),
   });
 
@@ -236,6 +240,7 @@ export class ConsumptionForm implements OnInit {
       batchId.setValue(this.batchId());
       oneTime.disable(); // a fixed batch is a consumption from that batch
     }
+    if (this.oneTimeOnly()) oneTime.setValue(true); // no batch, a price required
   }
 
   /** Why a field is in error; Material shows it once the field was touched or the form was sent. */

@@ -288,6 +288,44 @@ describe('ConsumptionForm', () => {
     expect(element().querySelector('[formControlName="totalPrice"]')).toBeNull();
   });
 
+  it('keeps "One-time" at the bottom of the form, after the note, and shows its price and name under it', async () => {
+    await renderForSigarette();
+    /** `later` comes after `earlier` in the form. */
+    const follows = (earlier: Element, later: Element) =>
+      (earlier.compareDocumentPosition(later) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+    const checkbox = element().querySelector('mat-checkbox')!;
+    expect(follows(element().querySelector('mat-select.batch')!, input('quantity'))).toBe(true);
+    expect(follows(input('note'), checkbox)).toBe(true);
+
+    await (await harnesses.getHarness(MatCheckboxHarness)).check();
+    await fixture.whenStable();
+    expect(follows(checkbox, input('totalPrice'))).toBe(true);
+    expect(follows(input('totalPrice'), input('name'))).toBe(true);
+    expect(follows(input('name'), element().querySelector('button[type="submit"]')!)).toBe(true);
+  });
+
+  it('records only a one-time consumption when opened for one: titled so, no checkbox, no batch asked for', async () => {
+    await render({ substanceId: 4, oneTimeOnly: true });
+    await fixture.whenStable(); // nothing else was asked: a request for the batches would be left open
+
+    expect(text('h2')).toBe('New one-time consumption');
+    expect(element().querySelector('mat-checkbox')).toBeNull();
+    expect(element().querySelector('mat-select')).toBeNull();
+    expect(text('mat-form-field:has([formControlName="quantity"]) [matTextSuffix]')).toBe('bottiglia');
+
+    await type('quantity', '1');
+    save();
+    await fixture.whenStable();
+    expect(errorUnder('totalPrice')).toBe('Required');
+
+    await type('totalPrice', '5');
+    await type('name', 'Pinta al pub');
+    save();
+    const req = backend.expectOne('/api/substances/4/one-time-consumptions');
+    expect(req.request.body).toEqual({ quantity: '1', totalPrice: '5', name: 'Pinta al pub', occurredAt: '2026-09-05T18:15:00Z' });
+    req.flush({ id: 9 }, { status: 201, statusText: 'Created' });
+  });
+
   it('can only be one-time for a substance with no active batch, and says why', async () => {
     await render({ substanceId: 4 });
     request('/api/substances/4/batches').flush(noBatches);
