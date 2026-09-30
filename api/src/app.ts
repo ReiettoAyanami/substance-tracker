@@ -5,6 +5,7 @@ import { createPool, pingDatabase, type Pool } from './db/pool.js';
 import { catalogRoutes } from './modules/catalog/routes.js';
 import { CatalogService } from './modules/catalog/service.js';
 import { ledgerRoutes } from './modules/ledger/routes.js';
+import { metricsRoutes } from './modules/metrics/routes.js';
 import { LedgerService } from './modules/ledger/service.js';
 import { reportsRoutes } from './modules/reports/routes.js';
 import { ReportsService } from './modules/reports/service.js';
@@ -117,6 +118,7 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
   catalogRoutes(app, { catalog, reports });
   ledgerRoutes(app, { ledger });
   reportsRoutes(app, { reports });
+  metricsRoutes(app);
   settingsRoutes(app, { settings });
 
   if (opts.webDist) {
