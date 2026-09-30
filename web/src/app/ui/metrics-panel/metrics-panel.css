@@ -1,0 +1,78 @@
+:host {
+  display: block;
+}
+
+/* The title stays on one line; the period and the scale wrap if they must. */
+mat-panel-title {
+  flex: none;
+}
+
+.summary {
+  justify-content: flex-end;
+}
+
+/* Period, scale and the explanation switch, above the numbers. */
+.choices {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.period {
+  flex: 1 1 160px;
+}
+
+.per {
+  flex: 0 1 132px;
+}
+
+.explain {
+  margin-left: auto;
+}
+
+/* One number per line: the value is what is read first, what it is under it (the value comes
+   after the label in the markup, for screen readers; the order puts it on top). */
+.metrics {
+  display: grid;
+  gap: 4px 24px;
+  margin: 12px 0 0;
+}
+
+.metric {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 0;
+}
+
+.value {
+  order: -1;
+  margin: 0;
+  font: var(--mat-sys-title-medium);
+  font-variant-numeric: tabular-nums;
+  color: var(--mat-sys-on-surface);
+}
+
+.label {
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.description {
+  margin: 4px 0 0;
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.message {
+  margin: 16px 0 0;
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+/* On a wide window the numbers stand in two columns. */
+@media (min-width: 600px) {
+  .metrics {
+    grid-template-columns: 1fr 1fr;
+  }
+}

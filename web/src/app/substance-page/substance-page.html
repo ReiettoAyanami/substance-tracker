@@ -31,6 +31,14 @@
           [settings]="view.settings"
           (changed)="reload(view.substance.id)"
         />
+        <!-- The substance as reloaded after a write: its metrics are asked again with it. -->
+        <app-metrics-panel
+          scope="substance"
+          [entityId]="view.substance.id"
+          [unit]="view.substance.unit"
+          [settings]="view.settings"
+          [refresh]="view.substance"
+        />
       </div>
       <nav class="pager">
         <button

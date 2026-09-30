@@ -1,0 +1,58 @@
+<mat-expansion-panel class="panel" [expanded]="open()" (opened)="wasOpened.set(true)">
+  <mat-expansion-panel-header>
+    <mat-panel-title>Metrics</mat-panel-title>
+    <mat-panel-description class="summary">{{ summary() }}</mat-panel-description>
+  </mat-expansion-panel-header>
+
+  <div class="choices">
+    @if (hasPeriod()) {
+      <mat-form-field class="period" appearance="outline" subscriptSizing="dynamic">
+        <mat-label>Period</mat-label>
+        <mat-select [value]="days()" (selectionChange)="chooseDays($event.value)">
+          @for (period of periods; track period.days) {
+            <mat-option [value]="period.days">{{ period.label }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    }
+    @if (hasScales()) {
+      <mat-form-field class="per" appearance="outline" subscriptSizing="dynamic">
+        <mat-label>Per</mat-label>
+        <mat-select [value]="per()" (selectionChange)="choosePer($event.value)">
+          @for (scale of scales; track scale) {
+            <mat-option [value]="scale">{{ scale }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    }
+    <button
+      mat-icon-button
+      type="button"
+      class="explain"
+      [attr.aria-pressed]="explain()"
+      [attr.aria-label]="explain() ? 'Hide what each number is' : 'Show what each number is'"
+      (click)="explain.set(!explain())"
+    >
+      <mat-icon>{{ explain() ? 'info' : 'info_outline' }}</mat-icon>
+    </button>
+  </div>
+
+  @if (failure(); as failure) {
+    <p class="message">{{ failure }}</p>
+  } @else if (values(); as values) {
+    <!-- A definition list, not a Material list: a description can take the lines it needs. -->
+    <dl class="metrics">
+      @for (metric of shown(); track metric.key) {
+        <div class="metric">
+          <dt class="label">{{ metric.label }}</dt>
+          <dd class="value">{{ values[metric.key] | metricValue: metric : reading() }}</dd>
+          @if (explain()) {
+            <dd class="description">{{ metric.description }}</dd>
+          }
+        </div>
+      }
+    </dl>
+  } @else {
+    <p class="message">…</p>
+  }
+</mat-expansion-panel>
