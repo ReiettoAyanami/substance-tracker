@@ -17,10 +17,22 @@
   white-space: pre-line;
 }
 
-/* The toggles ("last | avg", "quantity | value", "total | per unit"): a little flatter and less
-   round than a pill (lenzi, 2026-09-30). Set here once, for every one of them: Material's own 40 px
-   of height, and the corners of the sub-cards instead of its fully rounded ends. */
+/* The toggles ("last | avg", "quantity | value", "total | per unit"): pills, as Material draws
+   them, only a little flatter (lenzi, 2026-09-30: less tall, not less round) and no narrower, so
+   each label gets a little more room at its sides. Set here once, for every one of them. */
 :root {
-  --mat-button-toggle-height: 40px;
-  --mat-button-toggle-shape: 12px;
+  --mat-button-toggle-height: 36px;
+}
+
+.mat-button-toggle-group .mat-button-toggle-appearance-standard .mat-button-toggle-label-content {
+  padding: 0 16px;
+}
+
+/* A search bar is an elongated circle, like a browser's (lenzi, 2026-09-30): a little lower than a
+   text field, its ends fully rounded. Only search bars: every other text field keeps Material's
+   corners. Any search field takes this class; there is one today, in the substances page. */
+.search-bar {
+  --mat-form-field-container-height: 48px;
+  --mat-form-field-container-vertical-padding: 12px;
+  --mat-form-field-outlined-container-shape: 24px;
 }

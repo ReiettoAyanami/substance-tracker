@@ -250,6 +250,15 @@ describe('SubstancesPage', () => {
       await fixture.whenStable();
     });
 
+    it('is a search bar: the elongated circle of styles.css, with what it looks for written inside it', () => {
+      const bar = field().closest('mat-form-field')!;
+
+      expect(bar.classList.contains('search-bar')).toBe(true);
+      expect(field().placeholder).toBe('Search substances and batches');
+      expect(field().getAttribute('aria-label')).toBe('Search substances and batches by name');
+      expect(bar.querySelector('mat-label')).toBeNull();
+    });
+
     it('searches as it is typed, after a pause: the text goes into the URL in place of the current entry, the API finds', async () => {
       const entries = history.length;
       await search(' per ');

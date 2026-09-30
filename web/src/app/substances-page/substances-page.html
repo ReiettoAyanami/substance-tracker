@@ -2,16 +2,24 @@
 <main class="substances">
   @switch (current.status) {
     @case ('loaded') {
-      <mat-form-field appearance="outline" class="search">
-        <mat-label>Search</mat-label>
+      <!-- A search bar (styles.css): what it looks for is said inside it, as in a browser's. -->
+      <mat-form-field appearance="outline" class="search search-bar" subscriptSizing="dynamic">
         <mat-icon matPrefix>search</mat-icon>
-        <input matInput type="search" autocomplete="off" [value]="typed()" (input)="type(searchField.value)" #searchField />
+        <input
+          matInput
+          type="search"
+          autocomplete="off"
+          placeholder="Search substances and batches"
+          aria-label="Search substances and batches by name"
+          [value]="typed()"
+          (input)="type(searchField.value)"
+          #searchField
+        />
         @if (typed()) {
           <button mat-icon-button matSuffix type="button" aria-label="Clear the search" (click)="clear()">
             <mat-icon>close</mat-icon>
           </button>
         }
-        <mat-hint>By the name of a substance or of one of its batches</mat-hint>
       </mat-form-field>
 
       @for (substance of current.substances; track substance.id) {
