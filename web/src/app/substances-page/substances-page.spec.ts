@@ -237,10 +237,15 @@ describe('SubstancesPage', () => {
     const field = () => fixture.nativeElement.querySelector('input[type="search"]') as HTMLInputElement;
 
     /** Types in the search field, then waits for the pause after which the search starts. */
+    /**
+     * Types a search and waits until the pause is over and its URL is there (not a fixed time: under
+     * load the 300 ms pause can end late), then until the list has asked for it.
+     */
     async function search(typed: string): Promise<void> {
       field().value = typed;
       field().dispatchEvent(new Event('input'));
-      await new Promise((resolve) => setTimeout(resolve, 400));
+      const url = `/?q=${encodeURIComponent(typed.trim())}`;
+      await vi.waitFor(() => expect(TestBed.inject(Router).url).toBe(url), { timeout: 5000, interval: 50 });
       await fixture.whenStable();
     }
 
@@ -272,8 +277,7 @@ describe('SubstancesPage', () => {
     });
 
     it('waits for the typing to pause before it asks', async () => {
-      // Two keys in a row, no pause between them (a real-time wait here was flaky under load: 50 ms
-      // could stretch past the 300 ms pause).
+      // Two keys in a row, no pause between them.
       field().value = 'p';
       field().dispatchEvent(new Event('input'));
       backend.expectNone('/api/substances?q=p');
