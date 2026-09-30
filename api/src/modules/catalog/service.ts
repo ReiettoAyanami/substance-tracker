@@ -79,8 +79,13 @@ export class CatalogService {
     return toSubstanceDto(row);
   }
 
-  async list(opts: { includeArchived: boolean }): Promise<SubstanceDto[]> {
-    const rows = await repo.listSubstances(this.pool, opts);
+  /**
+   * The substances, by name then id. `search` keeps those with the text in their name or in the
+   * name of one of their batches (case and accents ignored); blank, it keeps them all.
+   */
+  async list(opts: { includeArchived: boolean; search?: string }): Promise<SubstanceDto[]> {
+    const search = opts.search?.trim() || null;
+    const rows = await repo.listSubstances(this.pool, { includeArchived: opts.includeArchived, search });
     return rows.map(toSubstanceDto);
   }
 

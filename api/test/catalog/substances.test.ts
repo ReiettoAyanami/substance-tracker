@@ -80,6 +80,45 @@ describe('GET /api/substances', () => {
     expect(all.body.map((s: any) => s.id)).toEqual([active.id, archived.id]);
   });
 
+  it('?q= finds by name only: the substance\'s, or one of its batches\', finished ones too; case and accents ignored', async () => {
+    const coffee = await api.substance({ name: 'Caffè', unit: 'capsula' });
+    const beer = await api.substance({ name: 'Birra', unit: 'bottiglia' });
+    const weed = await api.substance({ name: 'Erba', unit: 'g' });
+    await api.batch(beer.id, { name: 'Peroni 6-pack', quantity: 6, totalPrice: 6 });
+    const finished = await api.batch(weed.id, { name: 'Amnesia Haze', quantity: 1, totalPrice: 10 });
+    await api.consume(finished.id, { quantity: 1 }); // finishes it
+    const deleted = await api.batch(coffee.id, { name: 'Lavazza', quantity: 10, totalPrice: 3 });
+    expect((await api.del(`/api/batches/${deleted.id}`)).status).toBe(204);
+    await api.oneTime(coffee.id, { name: 'Bar Peroni', quantity: 1, totalPrice: 1 }); // a one-time name is not searched
+    const ids = async (query: string) => (await api.get(`/api/substances?${query}`)).body.map((s: any) => s.id);
+
+    expect(await ids('q=caffe')).toEqual([coffee.id]); // no accent, other case
+    expect(await ids('q=IRR')).toEqual([beer.id]); // anywhere in the name
+    expect(await ids('q=peroni')).toEqual([beer.id]); // by a batch of it, not by the one-time consumption of the coffee
+    expect(await ids('q=amnesia')).toEqual([weed.id]); // a finished batch still counts
+    expect(await ids('q=lavazza')).toEqual([]); // a deleted batch counts nowhere
+    expect(await ids('q=r')).toEqual([beer.id, weed.id]); // Birra, Erba: in the order of the list (name, then id)
+    expect(await ids('q=zzz')).toEqual([]);
+    expect((await api.get('/api/substances?q=peroni')).body[0].summary).toBeDefined();
+  });
+
+  it('?q= takes the text as it is: blanks around it dropped, an empty one ignored, % and _ not wildcards; archived as asked', async () => {
+    const plain = await api.substance({ name: 'Te verde' });
+    const odd = await api.substance({ name: '100% agave_anejo' });
+    const archived = await api.substance({ name: 'Te nero' });
+    expect((await api.patch(`/api/substances/${archived.id}`, { archived: true })).status).toBe(200);
+    const ids = async (query: string) => (await api.get(`/api/substances?${query}`)).body.map((s: any) => s.id);
+
+    expect(await ids('q=')).toEqual([odd.id, plain.id]);
+    expect(await ids('q=%20%20')).toEqual([odd.id, plain.id]);
+    expect(await ids(`q=${encodeURIComponent('  verde ')}`)).toEqual([plain.id]);
+    expect(await ids(`q=${encodeURIComponent('%')}`)).toEqual([odd.id]);
+    expect(await ids(`q=${encodeURIComponent('e_a')}`)).toEqual([odd.id]); // "agave_anejo", not "Te verde"
+    expect(await ids('q=te')).toEqual([plain.id]);
+    expect(await ids('q=te&archived=true')).toEqual([archived.id, plain.id]);
+    expectProblem(await api.get(`/api/substances?q=${'x'.repeat(101)}`), 400, 'validation');
+  });
+
   it('GET /api/substances/:id returns archived substances and 404s missing or deleted ones', async () => {
     const s = await api.substance();
     await api.patch(`/api/substances/${s.id}`, { archived: true });

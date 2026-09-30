@@ -7,12 +7,17 @@ export const listSubstancesSchema = {
   querystring: {
     type: 'object',
     additionalProperties: false,
-    properties: { archived: { type: 'boolean', default: false } },
+    properties: {
+      archived: { type: 'boolean', default: false },
+      // A text to find in the names (the search bar of the substances page); as long as a name at most.
+      q: { type: 'string', maxLength: 100 },
+    },
   },
 } as const;
 
 export interface ListSubstancesQuery {
   archived?: boolean;
+  q?: string;
 }
 
 export const createSubstanceSchema = {

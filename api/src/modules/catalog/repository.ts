@@ -38,12 +38,28 @@ export async function findSubstance(
   return rows[0] ? toRow(rows[0]) : null;
 }
 
-/** Non-deleted substances; archived ones only when asked. */
-export async function listSubstances(db: Queryable, opts: { includeArchived: boolean }): Promise<SubstanceRow[]> {
+/**
+ * Non-deleted substances; archived ones only when asked. With `search`, only those with the text
+ * in their name or in the name of one of their non-deleted batches, finished ones too: compared
+ * as the names are collated (utf8mb4_0900_ai_ci: case and accents ignored), the text taken as it
+ * is (`%` and `_` are not wildcards).
+ */
+export async function listSubstances(
+  db: Queryable,
+  opts: { includeArchived: boolean; search: string | null },
+): Promise<SubstanceRow[]> {
+  const found = opts.search === null ? null : `%${opts.search.replace(/[|%_]/g, '|$&')}%`;
   const [rows] = await db.query<RowDataPacket[]>(
-    `SELECT ${COLUMNS} FROM substances
-      WHERE deleted_at IS NULL${opts.includeArchived ? '' : ' AND archived_at IS NULL'}
-      ORDER BY name, id`,
+    `SELECT ${COLUMNS} FROM substances s
+      WHERE s.deleted_at IS NULL${opts.includeArchived ? '' : ' AND s.archived_at IS NULL'}${
+        found === null
+          ? ''
+          : ` AND (s.name LIKE ? ESCAPE '|' OR EXISTS (
+                SELECT 1 FROM batches b
+                 WHERE b.substance_id = s.id AND b.deleted_at IS NULL AND b.name LIKE ? ESCAPE '|'))`
+      }
+      ORDER BY s.name, s.id`,
+    found === null ? [] : [found, found],
   );
   return rows.map(toRow);
 }

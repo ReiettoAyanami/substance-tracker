@@ -28,7 +28,7 @@ export function catalogRoutes(app: FastifyInstance, deps: { catalog: CatalogServ
   });
 
   app.get<{ Querystring: ListSubstancesQuery }>('/api/substances', { schema: listSubstancesSchema }, async (req) => {
-    const substances = await catalog.list({ includeArchived: req.query.archived ?? false });
+    const substances = await catalog.list({ includeArchived: req.query.archived ?? false, search: req.query.q });
     const summaries = await reports.summaries(substances.map((s) => s.id));
     return substances.map((s) => ({ ...s, summary: summaries.get(s.id) }));
   });
