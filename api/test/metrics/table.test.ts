@@ -67,3 +67,55 @@ describe('GET /api/metrics/table?scope=substance', () => {
     expectProblem(await table('scope=substance&days=7&to=2026-09-01'), 400, 'validation');
   });
 });
+
+describe('GET /api/metrics/table?scope=batch', () => {
+  it('one row per batch, by substance (name) and newest first, with the numbers of each batch', async () => {
+    const { beer, coffee, a, b, coffeeBatch } = await beerLedger(api);
+    const res = await table('scope=batch&keys=batch.used,batch.pace&per=week');
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    expect(res.body.keys).toEqual(['batch.used', 'batch.pace']);
+    expect(res.body.rows.map((r: any) => [r.substanceName, r.name, r.id])).toEqual([
+      ['beer', 'B', b.id],
+      ['beer', 'A', a.id],
+      ['coffee', null, coffeeBatch.id],
+    ]);
+    expect(res.body.rows[0]).toEqual({
+      id: b.id,
+      substanceId: beer.id,
+      substanceName: 'beer',
+      unit: 'beer',
+      name: 'B',
+      occurredAt: '2026-09-15T10:00:00Z',
+      deactivatedAt: null,
+      values: { 'batch.used': '0.3333', 'batch.pace': '1.000' },
+    });
+    expect(res.body.rows[1].deactivatedAt).not.toBeNull();
+    expect(res.body.rows[2].substanceId).toBe(coffee.id);
+  });
+
+  it('the same numbers as each batch has on its own page', async () => {
+    const { a, b, coffeeBatch } = await beerLedger(api);
+    const res = await table('scope=batch&per=hour');
+    for (const batch of [a, b, coffeeBatch]) {
+      const own = await api.get(`/api/batches/${batch.id}/metrics?per=hour`);
+      expect(res.body.rows.find((r: any) => r.id === batch.id).values).toEqual(own.body.values);
+    }
+  });
+
+  it('the period keeps the batches bought in it; substanceId those of one substance', async () => {
+    const { beer, b } = await beerLedger(api);
+    expect((await table('scope=batch&from=2026-09-10')).body.rows.map((r: any) => r.id)).toEqual([b.id]);
+    expect((await table('scope=batch&days=7')).body.rows).toEqual([]);
+    const beers = await table(`scope=batch&substanceId=${beer.id}&keys=batch.used`);
+    expect(beers.body.rows.map((r: any) => r.substanceName)).toEqual(['beer', 'beer']);
+    expectProblem(await table('scope=batch&substanceId=999999'), 404, 'not-found');
+    expectProblem(await table('scope=batch&keys=substance.pace'), 400, 'validation');
+  });
+
+  it('leaves out deleted batches, and those of archived substances unless one is asked', async () => {
+    const { beer, a, b } = await beerLedger(api);
+    await api.patch(`/api/substances/${beer.id}`, { archived: true });
+    expect((await table('scope=batch')).body.rows.map((r: any) => r.substanceName)).toEqual(['coffee']);
+    expect((await table(`scope=batch&substanceId=${beer.id}`)).body.rows.map((r: any) => r.id)).toEqual([b.id, a.id]);
+  });
+});

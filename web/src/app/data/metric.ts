@@ -48,7 +48,7 @@ export interface MetricsQuery {
 }
 
 /** The tables of the metrics page built so far. */
-export type TableScope = 'substance';
+export type TableScope = 'substance' | 'batch';
 
 /** One row of the substances table. */
 export interface SubstanceMetricsRow {
@@ -58,6 +58,20 @@ export interface SubstanceMetricsRow {
   values: MetricValues;
 }
 
+/** One row of the batches table: the batch, its substance, and its metrics. */
+export interface BatchMetricsRow {
+  id: number;
+  substanceId: number;
+  substanceName: string;
+  unit: string;
+  name: string | null;
+  occurredAt: string;
+  deactivatedAt: string | null;
+  values: MetricValues;
+}
+
+export type MetricsRow = SubstanceMetricsRow | BatchMetricsRow;
+
 /** GET /api/metrics/table: one row per entity, one value per key asked. */
 export interface MetricsTable {
   scope: TableScope;
@@ -65,11 +79,12 @@ export interface MetricsTable {
   from: string | null;
   to: string | null;
   keys: string[];
-  rows: SubstanceMetricsRow[];
+  rows: MetricsRow[];
 }
 
-/** What a table is asked for: its scope, the keys (its columns), the scale and the period. */
+/** What a table is asked for: its scope, the keys (its columns), the scale, the period, one substance. */
 export interface MetricsTableQuery extends MetricsQuery {
   scope: TableScope;
   keys: string[];
+  substanceId?: number;
 }

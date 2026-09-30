@@ -5,9 +5,11 @@ import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { Observable, of, throwError } from 'rxjs';
 
+import { CatalogApi } from '../data/catalog-api';
 import { MetricDefinition, MetricsTable, MetricsTableQuery } from '../data/metric';
 import { MetricsApi } from '../data/metrics-api';
 import { Settings } from '../data/settings';
+import { Substance } from '../data/substance';
 import { SettingsApi } from '../data/settings-api';
 import { Surface, ViewItem } from '../data/view-item';
 import { ViewsApi } from '../data/views-api';
@@ -24,22 +26,47 @@ const catalog: MetricDefinition[] = [
   { key: 'substance.pace', scope: 'substance', label: 'Pace', unit: 'quantity', scales: ALL, period: true, description: 'Per interval.' },
   { key: 'substance.cost', scope: 'substance', label: 'Cost', unit: 'money', scales: [], period: true, description: 'What it cost.' },
   { key: 'batch.used', scope: 'batch', label: 'Used', unit: 'share', scales: [], period: false, description: 'Of a batch.' },
+  { key: 'batch.valueConsumed', scope: 'batch', label: 'Value consumed', unit: 'money', scales: [], period: false, description: 'Money.' },
 ];
 
 const itemsOf = (surface: Surface, metrics: string[]): ViewItem[] =>
   metrics.map((metric, i) => ({ id: i + 1, surface, section: null, position: i + 1, metric, chart: null, scale: null, createdAt: '' }));
 
 const table = (query: MetricsTableQuery): MetricsTable => ({
-  scope: 'substance',
+  scope: query.scope,
   per: query.per ?? 'day',
   from: null,
   to: null,
   keys: query.keys,
-  rows: [
-    { id: 4, name: 'Birra', unit: 'bottiglia', values: { 'substance.cost': '27.20', 'substance.pace': '0.345' } },
-    { id: 1, name: 'Caffè', unit: 'capsula', values: { 'substance.cost': '3.10', 'substance.pace': null } },
-    { id: 3, name: 'Erba', unit: 'g', values: { 'substance.cost': '40.00', 'substance.pace': '0.100' } },
-  ],
+  rows:
+    query.scope === 'batch'
+      ? [
+          {
+            id: 7,
+            substanceId: 4,
+            substanceName: 'Birra',
+            unit: 'bottiglia',
+            name: 'Corona',
+            occurredAt: '2026-09-15T10:00:00Z',
+            deactivatedAt: null,
+            values: { 'batch.used': '0.3333', 'batch.valueConsumed': '3.00' },
+          },
+          {
+            id: 2,
+            substanceId: 1,
+            substanceName: 'Caffè',
+            unit: 'capsula',
+            name: null,
+            occurredAt: '2026-07-01T08:00:00Z',
+            deactivatedAt: null,
+            values: { 'batch.used': '0.9900', 'batch.valueConsumed': '34.65' },
+          },
+        ]
+      : [
+          { id: 4, name: 'Birra', unit: 'bottiglia', values: { 'substance.cost': '27.20', 'substance.pace': '0.345' } },
+          { id: 1, name: 'Caffè', unit: 'capsula', values: { 'substance.cost': '3.10', 'substance.pace': null } },
+          { id: 3, name: 'Erba', unit: 'g', values: { 'substance.cost': '40.00', 'substance.pace': '0.100' } },
+        ],
 });
 
 describe('MetricsPage', () => {
@@ -64,17 +91,28 @@ describe('MetricsPage', () => {
   beforeEach(async () => {
     harness = undefined;
     asked = [];
-    shownKeys = ['substance.cost', 'batch.used', 'substance.pace'];
+    shownKeys = ['substance.cost', 'batch.used', 'substance.pace', 'batch.valueConsumed'];
     answer = (query) => of(table(query));
     await TestBed.configureTestingModule({
       providers: [
         provideRouter([
           { path: 'metrics', component: MetricsPage },
           { path: 'substances/:id', component: Blank },
+          { path: 'substances/:id/batches/:batchId', component: Blank },
         ]),
         { provide: MetricsApi, useValue: { getCatalog: () => of(catalog), getTable: (q: MetricsTableQuery) => (asked.push(q), answer(q)) } },
         { provide: ViewsApi, useValue: { list: (surface: Surface) => of(itemsOf(surface, shownKeys)) } },
         { provide: SettingsApi, useValue: { getSettings: () => of(settings) } },
+        {
+          provide: CatalogApi,
+          useValue: {
+            listSubstances: () =>
+              of([
+                { id: 4, name: 'Birra' },
+                { id: 1, name: 'Caffè' },
+              ] as Substance[]),
+          },
+        },
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
       ],
     }).compileComponents();
@@ -132,6 +170,50 @@ describe('MetricsPage', () => {
     await harness!.fixture.whenStable();
 
     expect(TestBed.inject(Router).url).toBe('/substances/1');
+  });
+
+  it('the Batches tab: each batch with its substance and the day it was bought, the period always offered', async () => {
+    await open('/metrics?table=batch');
+
+    expect(asked.at(-1)).toEqual({ scope: 'batch', keys: ['batch.used', 'batch.valueConsumed'], per: 'day', days: 30 });
+    expect(texts('a[mat-tab-link]')).toEqual(['Substances', 'Batches']);
+    expect(element().querySelector('a[mat-tab-link].mdc-tab--active')?.textContent?.trim()).toBe('Batches');
+    expect(texts('th')).toEqual(['Batch', 'Used', 'Value consumed']);
+    expect(column(1)).toEqual(['Corona Birra · 15 Sept 2026', 'Unnamed batch Caffè · 1 Jul 2026']);
+    expect(column(2)).toEqual(['33.3%', '99%']);
+    expect(element().querySelector('.period')).not.toBeNull(); // it picks the batches bought in it
+    expect(element().querySelector('.per')).toBeNull(); // no batch column reads in a scale
+  });
+
+  it('the batches of one substance: the URL keeps it', async () => {
+    await open('/metrics?table=batch');
+    element().querySelector<HTMLElement>('.substance-filter mat-select')!.click();
+    await harness!.fixture.whenStable();
+    Array.from(document.querySelectorAll<HTMLElement>('mat-option'))
+      .find((o) => text(o) === 'Birra')!
+      .click();
+    await harness!.fixture.whenStable();
+
+    expect(TestBed.inject(Router).url).toBe('/metrics?table=batch&substanceId=4');
+    expect(asked.at(-1)).toEqual({ scope: 'batch', keys: ['batch.used', 'batch.valueConsumed'], per: 'day', days: 30, substanceId: 4 });
+  });
+
+  it("a batch's row opens its page, over its substance's", async () => {
+    await open('/metrics?table=batch');
+    element().querySelector<HTMLElement>('tr.row')!.click();
+    await harness!.fixture.whenStable();
+
+    expect(TestBed.inject(Router).url).toBe('/substances/4/batches/7');
+  });
+
+  it('a tab opens in the order of the API, keeping the period and the scale', async () => {
+    await open('/metrics?per=week&sort=substance.pace&dir=desc');
+    Array.from(element().querySelectorAll<HTMLElement>('a[mat-tab-link]'))
+      .find((a) => text(a) === 'Batches')!
+      .click();
+    await harness!.fixture.whenStable();
+
+    expect(TestBed.inject(Router).url).toBe('/metrics?per=week&table=batch');
   });
 
   it('says when the page lists no substance metric, and when the table cannot be loaded', async () => {

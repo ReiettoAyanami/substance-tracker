@@ -8,6 +8,13 @@
   padding: 16px 16px 32px;
 }
 
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 16px;
+}
+
 .intro {
   margin: 0;
   font: var(--mat-sys-body-medium);
@@ -54,11 +61,34 @@ td {
   gap: 8px;
 }
 
-/* A long name is cut; the whole name is on the substance's page. */
+/* A long name is cut; the whole name is on its page. */
 .name-text {
   max-width: 160px;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* A batch: its name, and under it its substance and the day it was bought; both cut when long. */
+.name-lines {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  max-width: 200px;
+  padding: 6px 0;
+}
+
+.name-lines > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.name-detail {
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.substance-filter {
+  flex: 1 1 200px;
 }
 
 .dot {
