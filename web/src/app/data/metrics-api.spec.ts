@@ -36,6 +36,16 @@ describe('MetricsApi', () => {
     expect(await result).toEqual(table);
   });
 
+  it("gets a consumption's metrics, of a batch or one-time", async () => {
+    const metrics: MetricsResult = { per: 'day', from: null, to: null, values: { 'consumption.rankInDay': '2' } };
+    const batch = firstValueFrom(api.getConsumptionMetrics('consumption', 40, { per: 'day' }));
+    backend.expectOne('/api/consumptions/40/metrics?per=day').flush(metrics);
+    expect(await batch).toEqual(metrics);
+    const oneTime = firstValueFrom(api.getConsumptionMetrics('one_time', 9));
+    backend.expectOne('/api/one-time-consumptions/9/metrics').flush(metrics);
+    expect(await oneTime).toEqual(metrics);
+  });
+
   it("gets a batch's metrics, in the scale asked", async () => {
     const metrics: MetricsResult = { per: 'week', from: null, to: null, values: { 'batch.pace': '1.000' } };
     const result = firstValueFrom(api.getBatchMetrics(7, { per: 'week' }));

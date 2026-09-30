@@ -8,6 +8,12 @@
   padding: 16px 16px 32px;
 }
 
+/* Three tabs fit a phone: less room at the sides of each label than Material's 24 px. */
+.tab {
+  min-width: 0;
+  padding: 0 8px;
+}
+
 .panel {
   display: flex;
   flex-direction: column;
@@ -87,8 +93,15 @@ td {
   color: var(--mat-sys-on-surface-variant);
 }
 
-.substance-filter {
+.substance-filter,
+.batch-filter {
   flex: 1 1 200px;
+}
+
+.capped {
+  margin: 0;
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
 }
 
 .dot {

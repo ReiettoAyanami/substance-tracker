@@ -119,3 +119,64 @@ describe('GET /api/metrics/table?scope=batch', () => {
     expect((await table(`scope=batch&substanceId=${beer.id}`)).body.rows.map((r: any) => r.id)).toEqual([b.id, a.id]);
   });
 });
+
+describe('GET /api/metrics/table?scope=consumption', () => {
+  it('the consumptions made in the period, of both kinds, newest first, with their numbers', async () => {
+    const { beer, coffee, b, c5, c4, o1 } = await beerLedger(api);
+    const res = await table('scope=consumption&keys=consumption.rankInSubstance,consumption.deltaCost');
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    expect(res.body.rows.map((r: any) => [r.substanceName, r.type, r.values['consumption.rankInSubstance']])).toEqual([
+      ['coffee', 'consumption', '1'],
+      ['beer', 'consumption', '6'],
+      ['beer', 'consumption', '5'],
+      ['beer', 'one_time', '4'],
+      ['beer', 'consumption', '3'],
+      ['beer', 'consumption', '2'],
+      ['beer', 'consumption', '1'],
+    ]);
+    expect(res.body.rows[1]).toEqual({
+      type: 'consumption',
+      id: c5.id,
+      substanceId: beer.id,
+      substanceName: 'beer',
+      unit: 'beer',
+      batchId: b.id,
+      batchName: 'B',
+      name: null,
+      occurredAt: '2026-09-25T20:00:00Z',
+      quantity: '1.000',
+      values: { 'consumption.rankInSubstance': '6', 'consumption.deltaCost': '0.0000' },
+    });
+    expect(res.body.rows[3]).toMatchObject({ type: 'one_time', id: o1.id, batchId: null, batchName: null, name: 'bar' });
+    expect(res.body.rows[0].substanceId).toBe(coffee.id);
+    expect(res.body.rows[2].id).toBe(c4.id);
+  });
+
+  it('the same numbers as each consumption has on its own', async () => {
+    const { c4, o1 } = await beerLedger(api);
+    const res = await table('scope=consumption&per=hour');
+    const own = async (url: string) => (await api.get(url)).body.values;
+    expect(res.body.rows.find((r: any) => r.type === 'consumption' && r.id === c4.id).values).toEqual(
+      await own(`/api/consumptions/${c4.id}/metrics?per=hour`),
+    );
+    expect(res.body.rows.find((r: any) => r.type === 'one_time' && r.id === o1.id).values).toEqual(
+      await own(`/api/one-time-consumptions/${o1.id}/metrics?per=hour`),
+    );
+  });
+
+  it('the period, one substance, one batch (no one-time ones), and a limit', async () => {
+    const { beer, a, b } = await beerLedger(api);
+    const ids = async (query: string) => (await table(`scope=consumption&keys=consumption.rankInDay&${query}`)).body.rows.map((r: any) => r.occurredAt);
+    expect(await ids('days=7')).toEqual(['2026-09-27T08:00:00Z', '2026-09-25T20:00:00Z']);
+    expect(await ids(`substanceId=${beer.id}&from=2026-09-11`)).toEqual([
+      '2026-09-25T20:00:00Z',
+      '2026-09-20T18:00:00Z',
+      '2026-09-12T20:00:00Z',
+    ]);
+    expect(await ids(`batchId=${a.id}`)).toEqual(['2026-09-10T18:00:00Z', '2026-09-05T18:00:00Z', '2026-09-02T18:00:00Z']);
+    expect(await ids(`batchId=${b.id}&limit=1`)).toEqual(['2026-09-25T20:00:00Z']);
+    expectProblem(await table('scope=consumption&batchId=999999'), 404, 'not-found');
+    expectProblem(await table('scope=consumption&limit=0'), 400, 'validation');
+    expectProblem(await table('scope=substance&batchId=1'), 400, 'validation');
+  });
+});

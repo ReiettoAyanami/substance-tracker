@@ -8,6 +8,7 @@ import { ApiError } from '../data/api-error';
 import { CatalogApi } from '../data/catalog-api';
 import { Consumption, ConsumptionFilter, ConsumptionScope } from '../data/consumption';
 import { ReportsApi } from '../data/reports-api';
+import { Settings } from '../data/settings';
 import { SettingsApi } from '../data/settings-api';
 import { ConsumptionCard } from '../ui/consumption-card/consumption-card';
 import { ConsumptionActions } from './consumption-actions';
@@ -137,6 +138,11 @@ export class ConsumptionsPage {
 
   protected async add(): Promise<void> {
     if (await this.actions.add()) this.reload();
+  }
+
+  /** Its details (its metrics): nothing is written, nothing is asked again. */
+  protected details(consumption: Consumption, settings: Settings): void {
+    void this.actions.details(consumption, settings);
   }
 
   protected async edit(consumption: Consumption): Promise<void> {

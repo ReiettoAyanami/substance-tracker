@@ -1,8 +1,10 @@
 import { Injectable, inject } from '@angular/core';
 
 import { ConfirmDialog, ConfirmDialogData } from '../confirm-dialog/confirm-dialog';
+import { ConsumptionDetails, ConsumptionDetailsData, ConsumptionHeader } from '../consumption-details/consumption-details';
 import { Consumption } from '../data/consumption';
 import { LedgerApi } from '../data/ledger-api';
+import { Settings } from '../data/settings';
 import { EntityDialog, EntityDialogData, EntityDialogResult } from '../entity-dialog/entity-dialog';
 import { HistoryDialogs } from '../history-dialogs';
 import { LOCALE } from '../locale';
@@ -10,7 +12,7 @@ import { LOCALE } from '../locale';
 const quantityFormat = new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 3 });
 
 /**
- * What can be done to a consumption, of a batch or one-time: add, edit, delete. It opens the
+ * What can be done to a consumption, of a batch or one-time: add, edit, delete, see its details. It opens the
  * dialogs (each one does its own request, and back closes it) and answers true once something was
  * written: every number of a list of consumptions is the API's (costs, deltas, slider bounds), so
  * whoever shows one loads it again instead of patching it.
@@ -50,6 +52,15 @@ export class ConsumptionActions {
       { ariaLabel: 'Edit consumption' },
     );
     return result?.kind === 'consumption';
+  }
+
+  /** Its details: what it was, and its metrics. Nothing is written. */
+  async details(consumption: ConsumptionHeader, settings: Settings): Promise<void> {
+    await this.dialogs.open<ConsumptionDetails, ConsumptionDetailsData, void>(
+      ConsumptionDetails,
+      { consumption, settings },
+      { ariaLabel: `Details of the consumption of ${consumption.substanceName}` },
+    );
   }
 
   /** Asks, then deletes. */

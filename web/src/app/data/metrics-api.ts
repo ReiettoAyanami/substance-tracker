@@ -35,6 +35,19 @@ export class MetricsApi {
     return this.http.get<MetricsResult>(`/api/batches/${batchId}/metrics`, { params: queryOf(query) });
   }
 
+  /**
+   * GET /api/consumptions/:id/metrics or /api/one-time-consumptions/:id/metrics: a consumption's
+   * metrics, of either kind, in the scale asked.
+   */
+  getConsumptionMetrics(
+    type: 'consumption' | 'one_time',
+    id: number,
+    query: Pick<MetricsQuery, 'per'> = {},
+  ): Observable<MetricsResult> {
+    const path = type === 'consumption' ? 'consumptions' : 'one-time-consumptions';
+    return this.http.get<MetricsResult>(`/api/${path}/${id}/metrics`, { params: queryOf(query) });
+  }
+
   /** GET /api/substances/:id/metrics: the substance's metrics in the scale and the period asked. */
   getSubstanceMetrics(substanceId: number, query: MetricsQuery = {}): Observable<MetricsResult> {
     return this.http.get<MetricsResult>(`/api/substances/${substanceId}/metrics`, { params: queryOf(query) });

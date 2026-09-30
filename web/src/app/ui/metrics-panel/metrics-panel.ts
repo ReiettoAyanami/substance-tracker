@@ -3,7 +3,6 @@ import { rxResource } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
-import { of } from 'rxjs';
 
 import { ApiError } from '../../data/api-error';
 import { MetricDefinition, MetricScope, TIME_SCALES, TimeScale } from '../../data/metric';
@@ -53,8 +52,10 @@ const readDays = () => read<number>(DAYS_KEY, (v) => (PERIODS.some((p) => String
 })
 export class MetricsPanel {
   readonly scope = input.required<MetricScope>();
-  /** The id of the substance or of the batch. */
+  /** The id of the substance, the batch or the consumption. */
   readonly entityId = input.required<number>();
+  /** A consumption's kind: of a batch, or one-time (their ids are of two tables). */
+  readonly consumptionType = input<'consumption' | 'one_time'>('consumption');
   /** Unit of the substance the numbers are about. */
   readonly unit = input.required<string>();
   readonly settings = input.required<Settings>();
@@ -87,7 +88,14 @@ export class MetricsPanel {
   protected readonly metrics = rxResource({
     params: () =>
       this.wasOpened()
-        ? { scope: this.scope(), id: this.entityId(), per: this.per(), days: this.days(), refresh: this.refresh() }
+        ? {
+            scope: this.scope(),
+            id: this.entityId(),
+            type: this.consumptionType(),
+            per: this.per(),
+            days: this.days(),
+            refresh: this.refresh(),
+          }
         : undefined,
     stream: ({ params }) => {
       switch (params.scope) {
@@ -95,8 +103,8 @@ export class MetricsPanel {
           return this.api.getSubstanceMetrics(params.id, { per: params.per, ...(params.days ? { days: params.days } : {}) });
         case 'batch':
           return this.api.getBatchMetrics(params.id, { per: params.per });
-        default:
-          return of(null);
+        case 'consumption':
+          return this.api.getConsumptionMetrics(params.type, params.id, { per: params.per });
       }
     },
   });

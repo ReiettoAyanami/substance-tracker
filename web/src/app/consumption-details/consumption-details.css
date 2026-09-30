@@ -1,0 +1,40 @@
+h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dot {
+  flex: none;
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.when,
+.source,
+.amount {
+  margin: 0 0 4px;
+}
+
+.when,
+.source {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.amount {
+  margin-bottom: 16px;
+  font: var(--mat-sys-title-medium);
+  font-variant-numeric: tabular-nums;
+}

@@ -1,4 +1,5 @@
 import type { Pool } from '../../db/pool.js';
+import { fmtQty } from '../../shared/decimal.js';
 import { badRequest, notFound } from '../../shared/errors.js';
 import { toIso, toIsoOrNull, type Clock, type TimeScale } from '../../shared/time.js';
 import type { CatalogService, SubstanceDto } from '../catalog/service.js';
@@ -6,6 +7,7 @@ import * as reportsRepo from '../reports/repository.js';
 import type { SettingsService } from '../settings/service.js';
 import {
   batchValues,
+  consumptionValues,
   substanceLedgerOf,
   substanceLedgers,
   substanceValues,
@@ -14,6 +16,7 @@ import {
 } from './calculations.js';
 import { findMetric, metricsOf, type MetricScope } from './catalog.js';
 import { inPeriod, resolvePeriod, type PeriodQuery } from './period.js';
+import * as repo from './repository.js';
 
 /** The metrics of one entity, with the scale and the period they were computed in. */
 export interface MetricsResult {
@@ -35,7 +38,14 @@ export interface TableQuery extends MetricsQuery {
   keys?: string | undefined;
   /** Only the rows of this substance (archived or not); none: every substance not archived. */
   substanceId?: number | undefined;
+  /** Consumptions: only this batch's (no one-time ones). */
+  batchId?: number | undefined;
+  /** Consumptions: at most this many, the newest (default 100). */
+  limit?: number | undefined;
 }
+
+/** The kind of a consumption, as the consumptions list says it. */
+export type ConsumptionType = 'consumption' | 'one_time';
 
 /** A row of the substances table of the metrics page. */
 export interface SubstanceRow {
@@ -57,12 +67,30 @@ export interface BatchRow {
   values: MetricValues;
 }
 
+/** A row of the consumptions table: the consumption, as the consumptions list has it, and its metrics. */
+export interface ConsumptionRow {
+  type: ConsumptionType;
+  id: number;
+  substanceId: number;
+  substanceName: string;
+  unit: string;
+  batchId: number | null;
+  batchName: string | null;
+  name: string | null;
+  occurredAt: string;
+  quantity: string;
+  values: MetricValues;
+}
+
 /** GET /api/metrics/table: one row per entity, one value per key asked. */
 export interface MetricsTable extends Omit<MetricsResult, 'values'> {
   scope: MetricScope;
   keys: string[];
-  rows: SubstanceRow[] | BatchRow[];
+  rows: SubstanceRow[] | BatchRow[] | ConsumptionRow[];
 }
+
+/** How many consumptions a table shows at most, by default. */
+const CONSUMPTION_ROWS = 100;
 
 /** Only the keys asked, in their order. */
 function pick(values: MetricValues, keys: string[]): MetricValues {
@@ -123,6 +151,17 @@ export class MetricsService {
     return { per: ctx.scale, from: period.from, to: period.to, values: substanceValues(ledger, period, ctx) };
   }
 
+  /** A consumption's metrics, of either kind, over all time: no period. 404 when it does not count. */
+  async consumptionMetrics(type: ConsumptionType, id: number, per: TimeScale | undefined): Promise<MetricsResult> {
+    const substanceId =
+      type === 'consumption' ? await repo.findConsumptionSubstance(this.pool, id) : await repo.findOneTimeSubstance(this.pool, id);
+    if (substanceId === null) throw notFound(type === 'consumption' ? 'Consumption' : 'One-time consumption', id);
+    const ctx = await this.context(per);
+    const ledger = await this.substanceLedger(substanceId);
+    const entry = ledger.entries.find((e) => e.type === type && e.id === id)!;
+    return { per: ctx.scale, from: null, to: null, values: consumptionValues(entry, ledger, ctx) };
+  }
+
   /** A batch's metrics, over its life: no period. 404 when it does not exist or is deleted. */
   async batchMetrics(batchId: number, per: TimeScale | undefined): Promise<MetricsResult> {
     const [found] = await reportsRepo.loadBatches(this.pool, { batchIds: [batchId] });
@@ -141,9 +180,21 @@ export class MetricsService {
    */
   async table(query: TableQuery): Promise<MetricsTable> {
     const keys = this.keysOf(query.scope, query.keys);
+    if (query.scope !== 'consumption' && query.batchId !== undefined) {
+      throw badRequest('batchId narrows the consumptions table only', 'batchId');
+    }
     const ctx = await this.context(query.per);
     const period = resolvePeriod(query, ctx.day, ctx.now);
-    const substances = await this.substancesOf(query.substanceId);
+    let substanceId = query.substanceId;
+    if (query.batchId !== undefined) {
+      const [batch] = await reportsRepo.loadBatches(this.pool, { batchIds: [query.batchId] });
+      if (!batch) throw notFound('Batch', query.batchId);
+      if (substanceId !== undefined && batch.substance_id !== substanceId) {
+        return { scope: query.scope, per: ctx.scale, from: period.from, to: period.to, keys, rows: [] };
+      }
+      substanceId = batch.substance_id;
+    }
+    const substances = await this.substancesOf(substanceId);
     const ledgers = await this.substanceLedgersOf(substances.map((s) => s.id));
     const head = { scope: query.scope, per: ctx.scale, from: period.from, to: period.to, keys };
 
@@ -164,6 +215,39 @@ export class MetricsService {
             values: pick(batchValues(b, ledger, ctx), keys),
           }));
       });
+      return { ...head, rows };
+    }
+    if (query.scope === 'consumption') {
+      const bySubstance = new Map(substances.map((s) => [s.id, s]));
+      const rows = substances
+        .flatMap((s) => ledgers.get(s.id)!.entries)
+        .filter(
+          (e) => inPeriod(period, e.occurred_at) && (query.batchId === undefined || (e.type === 'consumption' && e.batch_id === query.batchId)),
+        )
+        .sort(
+          (x, y) =>
+            y.occurred_at.getTime() - x.occurred_at.getTime() ||
+            y.created_at.getTime() - x.created_at.getTime() ||
+            (x.type === y.type ? 0 : x.type === 'one_time' ? -1 : 1) ||
+            y.id - x.id,
+        )
+        .slice(0, query.limit ?? CONSUMPTION_ROWS)
+        .map((e) => {
+          const s = bySubstance.get(e.substance_id)!;
+          return {
+            type: e.type,
+            id: e.id,
+            substanceId: s.id,
+            substanceName: s.name,
+            unit: s.unit,
+            batchId: e.batch_id,
+            batchName: e.batch_name,
+            name: e.name,
+            occurredAt: toIso(e.occurred_at),
+            quantity: fmtQty(e.quantity),
+            values: pick(consumptionValues(e, ledgers.get(s.id)!, ctx), keys),
+          };
+        });
       return { ...head, rows };
     }
     return {

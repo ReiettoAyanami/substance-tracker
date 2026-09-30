@@ -10,10 +10,21 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { ActivatedRoute, ParamMap, Router, RouterLink } from '@angular/router';
 import { map, of } from 'rxjs';
 
+import { ConsumptionActions } from '../consumptions-page/consumption-actions';
 import { ApiError } from '../data/api-error';
 import { CatalogApi } from '../data/catalog-api';
-import { BatchMetricsRow, MetricDefinition, MetricsRow, MetricsTable, TIME_SCALES, TableScope, TimeScale } from '../data/metric';
+import {
+  BatchMetricsRow,
+  ConsumptionMetricsRow,
+  MetricDefinition,
+  MetricsRow,
+  MetricsTable,
+  TIME_SCALES,
+  TableScope,
+  TimeScale,
+} from '../data/metric';
 import { MetricsApi } from '../data/metrics-api';
+import { ReportsApi } from '../data/reports-api';
 import { SettingsApi } from '../data/settings-api';
 import { ViewsApi } from '../data/views-api';
 import { LOCALE } from '../locale';
@@ -36,15 +47,26 @@ export const TABLES: readonly { scope: TableScope; label: string; first: string;
     first: 'Batch',
     intro: 'Each batch bought in the period in a row; its numbers are over its whole life.',
   },
+  {
+    scope: 'consumption',
+    label: 'Consumptions',
+    first: 'Consumption',
+    intro: 'Each consumption made in the period in a row, against its substance, its batch and its day.',
+  },
 ];
+
+/** The consumptions table shows at most this many, the newest (the API's default). */
+export const CONSUMPTION_ROWS = 100;
 
 /** What the URL says: the table, the period, the scale, one substance, the order of the rows. */
 interface PageQuery {
   table: TableScope;
   days: number;
   per: TimeScale;
-  /** Only the rows of this substance (batches); null: every one. */
+  /** Only the rows of this substance (batches, consumptions); null: every one. */
   substanceId: number | null;
+  /** Only the consumptions of this batch; null: every one. */
+  batchId: number | null;
   /** The column the rows are ordered by ('name' or a metric's key); '' = the API's order. */
   sort: string;
   dir: 'asc' | 'desc' | '';
@@ -58,12 +80,14 @@ function pageQueryOf(params: ParamMap): PageQuery {
   const days = Number(params.get('days'));
   const per = params.get('per') as TimeScale;
   const substanceId = Number(params.get('substanceId'));
+  const batchId = Number(params.get('batchId'));
   const dir = params.get('dir');
   return {
     table,
     days: params.has('days') && PERIODS.some((p) => p.days === days) ? days : DEFAULT_DAYS,
     per: TIME_SCALES.includes(per) ? per : DEFAULT_PER,
     substanceId: table !== 'substance' && Number.isInteger(substanceId) && substanceId > 0 ? substanceId : null,
+    batchId: table === 'consumption' && Number.isInteger(batchId) && batchId > 0 ? batchId : null,
     sort: params.get('sort') ?? '',
     dir: dir === 'asc' || dir === 'desc' ? dir : '',
   };
@@ -83,16 +107,18 @@ function compareCells(a: string | number | null, b: string | number | null, dir:
   return dir === 'asc' ? order : -order;
 }
 
-const isBatch = (row: MetricsRow): row is BatchMetricsRow => 'substanceName' in row;
+const isConsumption = (row: MetricsRow): row is ConsumptionMetricsRow => 'type' in row;
+const isBatch = (row: MetricsRow): row is BatchMetricsRow => 'substanceName' in row && !isConsumption(row);
 
 /**
  * The metrics page (design-statistics.md, "metrics page"): tables that compare the entities, one
- * per kind in its tab (substances, batches), one row per entity, one column per metric the page
- * lists of that kind (view items of the surface `metrics`). Substances compare in the period;
- * batches are those bought in it, with their numbers over their life, and can be narrowed to one
- * substance. The table, the period, the scale, the substance and the column the rows are ordered
- * by are in the URL (a link, a refresh and back keep them); a row opens its entity's page. Every
- * number comes from the API.
+ * per kind in its tab (substances, batches, consumptions), one row per entity, one column per metric
+ * the page lists of that kind (view items of the surface `metrics`). Substances compare in the
+ * period; batches are those bought in it and consumptions those made in it (the newest 100), with
+ * their numbers over all time; both can be narrowed to one substance, consumptions to one batch.
+ * The table, the period, the scale, the substance, the batch and the column the rows are ordered by
+ * are in the URL (a link, a refresh and back keep them); a row opens its entity's page, or a
+ * consumption's details. Every number comes from the API.
  */
 @Component({
   selector: 'app-metrics-page',
@@ -119,6 +145,8 @@ export class MetricsPage {
   private readonly views = inject(ViewsApi);
   private readonly settingsApi = inject(SettingsApi);
   private readonly catalogApi = inject(CatalogApi);
+  private readonly reportsApi = inject(ReportsApi);
+  private readonly consumptionActions = inject(ConsumptionActions);
 
   protected readonly tables = TABLES;
   protected readonly query = toSignal(this.route.queryParamMap.pipe(map(pageQueryOf)), { requireSync: true });
@@ -128,8 +156,13 @@ export class MetricsPage {
   protected readonly catalog = rxResource({ stream: () => this.metricsApi.getCatalog() });
   protected readonly items = rxResource({ stream: () => this.views.list('metrics') });
   protected readonly settings = rxResource({ stream: () => this.settingsApi.getSettings() });
-  /** The substances a table of batches can be narrowed to. */
+  /** The substances a table of batches or consumptions can be narrowed to. */
   protected readonly substances = rxResource({ stream: () => this.catalogApi.listSubstances() });
+  /** The batches of the substance chosen, the consumptions table can be narrowed to. */
+  protected readonly batches = rxResource({
+    params: () => (this.query().table === 'consumption' ? (this.query().substanceId ?? undefined) : undefined),
+    stream: ({ params }) => this.reportsApi.listBatches({ substanceId: params }),
+  });
 
   /** The columns of the table shown: what the metrics page lists of its kind, in order. */
   protected readonly columns = computed<MetricDefinition[] | null>(() => {
@@ -146,10 +179,10 @@ export class MetricsPage {
     params: () => {
       const columns = this.columns();
       if (columns === null) return undefined;
-      const { table, days, per, substanceId } = this.query();
-      return { scope: table, keys: columns.map((c) => c.key), days, per, substanceId };
+      const { table, days, per, substanceId, batchId } = this.query();
+      return { scope: table, keys: columns.map((c) => c.key), days, per, substanceId, batchId };
     },
-    stream: ({ params: { scope, keys, days, per, substanceId } }) =>
+    stream: ({ params: { scope, keys, days, per, substanceId, batchId } }) =>
       keys.length === 0
         ? of<MetricsTable>({ scope, per, from: null, to: null, keys: [], rows: [] })
         : this.metricsApi.getTable({
@@ -158,6 +191,7 @@ export class MetricsPage {
             per,
             ...(days ? { days } : {}),
             ...(substanceId !== null ? { substanceId } : {}),
+            ...(batchId !== null ? { batchId } : {}),
           }),
   });
 
@@ -176,7 +210,8 @@ export class MetricsPage {
     const { sort, dir } = this.query();
     if (!sort || !dir) return rows;
     const cell = (row: MetricsRow) => {
-      if (sort === 'name') return row.name ?? '';
+      // A consumption's first column is when it happened: ISO instants order as strings do.
+      if (sort === 'name') return isConsumption(row) ? row.occurredAt : (row.name ?? '');
       const value = row.values[sort];
       return value == null ? null : Number(value);
     };
@@ -184,6 +219,19 @@ export class MetricsPage {
   });
 
   protected readonly currency = computed(() => (this.settings.hasValue() ? this.settings.value().currency : 'EUR'));
+
+  /** "25 Sept 2026, 22:00", when a consumption happened, in the zone of the settings. */
+  protected readonly momentFormat = computed(
+    () =>
+      new Intl.DateTimeFormat(LOCALE, {
+        timeZone: this.settings.hasValue() ? this.settings.value().timezone : undefined,
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+  );
 
   /** "5 Sept 2026", the day a batch was bought, in the zone of the settings. */
   protected readonly dayFormat = computed(
@@ -206,16 +254,40 @@ export class MetricsPage {
     if (this.columns()?.length === 0) return { status: 'empty' as const, message: 'No metric is chosen for this table.' };
     if (!this.table.hasValue() || !this.settings.hasValue()) return { status: 'loading' as const };
     if (this.table.value().rows.length === 0) {
-      return { status: 'empty' as const, message: this.query().table === 'batch' ? 'No batch bought in the period' : 'No substances' };
+      const empty = { substance: 'No substances', batch: 'No batch bought in the period', consumption: 'No consumption made in the period' };
+      return { status: 'empty' as const, message: empty[this.query().table] };
     }
     return { status: 'loaded' as const };
   });
 
   protected isBatch = isBatch;
+  protected isConsumption = isConsumption;
+
+  /** The newest 100 are shown: there may be older ones in the period. */
+  protected readonly capped = computed(
+    () => this.query().table === 'consumption' && this.table.hasValue() && this.table.value().rows.length >= CONSUMPTION_ROWS,
+  );
+
+  /** When a consumption happened: "25 Sept 2026, 22:00". */
+  protected moment(row: ConsumptionMetricsRow): string {
+    return this.momentFormat().format(new Date(row.occurredAt));
+  }
+
+  /** Where a consumption came from, and how much: "Corona · 1 bottiglia", "One-time · bar · 1 bottiglia". */
+  protected consumptionSource(row: ConsumptionMetricsRow): string {
+    const source = row.type === 'one_time' ? `One-time${row.name ? ` · ${row.name}` : ''}` : (row.batchName ?? 'Unnamed batch');
+    const quantity = new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 3 }).format(row.quantity as unknown as number);
+    return `${source} · ${quantity} ${row.unit}`;
+  }
 
   /** The day a batch was bought. */
   protected bought(row: BatchMetricsRow): string {
-    return this.dayFormat().format(new Date(row.occurredAt));
+    return this.day(row.occurredAt);
+  }
+
+  /** A day, in the zone of the settings: "5 Sept 2026". */
+  protected day(instant: string): string {
+    return this.dayFormat().format(new Date(instant));
   }
 
   protected chooseDays(days: number): void {
@@ -226,8 +298,13 @@ export class MetricsPage {
     this.go({ per });
   }
 
+  /** One substance, or every one: a batch chosen before is dropped (it may be another substance's). */
   protected chooseSubstance(substanceId: number): void {
-    this.go({ substanceId: substanceId || null });
+    this.go({ substanceId: substanceId || null, batchId: null });
+  }
+
+  protected chooseBatch(batchId: number): void {
+    this.go({ batchId: batchId || null });
   }
 
   /** A header was tapped: the rows follow it, and the URL keeps it. */
@@ -235,8 +312,15 @@ export class MetricsPage {
     this.go({ sort: sort.direction ? sort.active : null, dir: sort.direction || null });
   }
 
-  /** A row opens its entity's page (a substance's, a batch's over its substance's); closing it comes back here. */
+  /**
+   * A row opens its entity's page (a substance's, a batch's over its substance's; closing it comes
+   * back here), or a consumption's details.
+   */
   protected open(row: MetricsRow): void {
+    if (isConsumption(row)) {
+      if (this.settings.hasValue()) void this.consumptionActions.details(row, this.settings.value());
+      return;
+    }
     const state: PageHistoryState = { fromList: true };
     const path = isBatch(row) ? ['/substances', row.substanceId, 'batches', row.id] : ['/substances', row.id];
     void this.router.navigate(path, { state });

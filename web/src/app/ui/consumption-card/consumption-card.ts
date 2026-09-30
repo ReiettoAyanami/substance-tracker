@@ -22,8 +22,8 @@ const exact = (format: Intl.NumberFormat, value: string) => format.format(value 
  * One consumption (design-frontend.md, "consumption card"). Presentational: every number is the
  * API's (the cost, the change from the previous consumption); it only formats them. Full, it says
  * when, what, from which batch (or "One-time"), how much, what it cost, the change from the
- * previous one (a delta pill) and the note, with a ⋮ menu that asks the parent to edit or delete
- * it. Compact, only when, how much, the cost and the delta pill.
+ * previous one (a delta pill) and the note, with a ⋮ menu that asks the parent for its details, to
+ * edit it or to delete it. Compact, only when, how much, the cost and the delta pill.
  */
 @Component({
   selector: 'app-consumption-card',
@@ -35,6 +35,8 @@ export class ConsumptionCard {
   readonly consumption = input.required<Consumption>();
   readonly settings = input.required<Settings>();
   readonly variant = input<ConsumptionCardVariant>('full');
+  /** "Details" in the ⋮ menu. */
+  readonly details = output<void>();
   /** "Edit" in the ⋮ menu. */
   readonly edit = output<void>();
   /** "Delete" in the ⋮ menu. */

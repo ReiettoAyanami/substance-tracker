@@ -44,7 +44,7 @@ export interface ScaleQuery {
 }
 
 /** Scopes whose table is built so far. */
-export const TABLE_SCOPES = ['substance', 'batch'] as const;
+export const TABLE_SCOPES = ['substance', 'batch', 'consumption'] as const;
 export type TableScope = (typeof TABLE_SCOPES)[number];
 
 export const metricsTableSchema = {
@@ -60,6 +60,10 @@ export const metricsTableSchema = {
       ...periodProperties,
       /** Only the rows of this substance (archived or not). */
       substanceId: { type: 'integer', minimum: 1, maximum: 4294967295 },
+      /** Consumptions: only this batch's (no one-time ones). */
+      batchId: { type: 'integer', minimum: 1, maximum: 4294967295 },
+      /** Consumptions: at most this many, the newest. */
+      limit: { type: 'integer', minimum: 1, maximum: 500 },
     },
   },
 } as const;
@@ -68,6 +72,8 @@ export interface MetricsTableQuery {
   scope: TableScope;
   keys?: string;
   substanceId?: number;
+  batchId?: number;
+  limit?: number;
   per?: TimeScale;
   from?: string;
   to?: string;

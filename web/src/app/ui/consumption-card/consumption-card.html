@@ -19,6 +19,10 @@
           </button>
         </div>
         <mat-menu #actions="matMenu" xPosition="before">
+          <button mat-menu-item type="button" (click)="details.emit()">
+            <mat-icon>insights</mat-icon>
+            <span>Details</span>
+          </button>
           <button mat-menu-item type="button" (click)="edit.emit()">
             <mat-icon>edit</mat-icon>
             <span>Edit</span>

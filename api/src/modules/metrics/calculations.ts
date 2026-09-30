@@ -1,5 +1,6 @@
 import { Dec, fmt, fmtMoney, fmtOrNull, fmtQty, fromDb, SCALE, sum, ZERO } from '../../shared/decimal.js';
-import { durationIn, type DayConfig, type TimeScale } from '../../shared/time.js';
+import { DateTime } from 'luxon';
+import { durationIn, logicalDate, type DayConfig, type TimeScale } from '../../shared/time.js';
 import type * as repo from '../reports/repository.js';
 import {
   compareWithPrevious,
@@ -200,5 +201,85 @@ export function batchValues(batch: repo.BatchStatRow, ledger: SubstanceLedger, c
     'batch.waitBeforeFirst': own[0] ? fmt(length(batch.occurred_at, own[0].occurred_at), TWO) : null,
     'batch.timeToFinish': fmtOrNull(timeToFinish, TWO),
     'batch.costPerTime': fmtOrNull(perLife(valueConsumed), SCALE.money),
+  };
+}
+
+/** The average unit price of the stock left now: Σ(remaining × unit price) ÷ stock; null with no stock. */
+export function stockUnitPrice(ledger: SubstanceLedger): Dec | null {
+  const active = ledger.batches.filter((b) => !b.deactivated_at);
+  const stock = sum(active.map(remainingOf));
+  return stock.isZero() ? null : sum(active.map((b) => remainingOf(b).times(unitPriceOf(b)))).div(stock);
+}
+
+const mean = (values: Dec[]): Dec | null => (values.length === 0 ? null : sum(values).div(values.length));
+
+/** The hour of the clock an instant was at, in the zone: 20.5 for 20:30. */
+function clockHour(instant: Date, zone: string): number {
+  const local = DateTime.fromJSDate(instant, { zone });
+  return local.hour + local.minute / 60 + local.second / 3600;
+}
+
+/**
+ * The usual hour of a series of instants: their circular mean on the 24-hour clock (23:00 and 01:00
+ * average to midnight, not noon). Null when they cancel out (no usual hour). A time of day, not a
+ * quantity or money: plain JS numbers are fine here.
+ */
+export function usualHour(hours: number[]): number | null {
+  let x = 0;
+  let y = 0;
+  for (const h of hours) {
+    const angle = (h / 24) * 2 * Math.PI;
+    x += Math.cos(angle);
+    y += Math.sin(angle);
+  }
+  if (hours.length === 0 || Math.hypot(x, y) < 1e-9 * hours.length) return null;
+  const mean = (Math.atan2(y, x) / (2 * Math.PI)) * 24;
+  return mean < 0 ? mean + 24 : mean;
+}
+
+/** a − b on the 24-hour clock, the short way round: in (−12, 12]. */
+function clockDifference(a: number, b: number): number {
+  let d = a - b;
+  while (d > 12) d -= 24;
+  while (d <= -12) d += 24;
+  return d;
+}
+
+/**
+ * The consumption metrics (design-statistics.md): one consumption against its substance (never
+ * another one), its batch (for a one-time one, the one-time ones) and its logical day, over all
+ * time. `ledger` is its substance's; its entries carry the deltas from the one before of the
+ * substance.
+ */
+export function consumptionValues(entry: ConsumptionEntry, ledger: SubstanceLedger, ctx: MetricContext): MetricValues {
+  const zone = ctx.day.timezone;
+  const entries = ledger.entries;
+  const index = entries.indexOf(entry);
+  const previous = index > 0 ? entries[index - 1]! : null;
+  const group =
+    entry.type === 'consumption'
+      ? entries.filter((e) => e.type === 'consumption' && e.batch_id === entry.batch_id)
+      : entries.filter((e) => e.type === 'one_time');
+  const day = logicalDate(entry.occurred_at, ctx.day);
+  const rankInDay = entries.slice(0, index + 1).filter((e) => logicalDate(e.occurred_at, ctx.day) === day).length;
+  const usual = usualHour(entries.map((e) => clockHour(e.occurred_at, zone)));
+  const batch = entry.type === 'consumption' ? ledger.batches.find((b) => b.id === entry.batch_id) : undefined;
+
+  return {
+    'consumption.deltaQuantity': fmtOrNull(entry.deltaQuantity, SCALE.ratio),
+    'consumption.quantityVsSubstanceAverage': fmtOrNull(changeFrom(entry.quantity, mean(entries.map((e) => e.quantity))), SCALE.ratio),
+    'consumption.quantityVsBatchAverage': fmtOrNull(changeFrom(entry.quantity, mean(group.map((e) => e.quantity))), SCALE.ratio),
+    'consumption.deltaCost': fmtOrNull(entry.deltaCost, SCALE.ratio),
+    'consumption.unitPriceVsStock': fmtOrNull(changeFrom(entry.unitPrice, stockUnitPrice(ledger)), SCALE.ratio),
+    'consumption.unitPriceVsBatches': fmtOrNull(changeFrom(entry.unitPrice, batchesUnitPrice(ledger)), SCALE.ratio),
+    'consumption.rankInSubstance': String(index + 1),
+    'consumption.rankInBatch': String(group.indexOf(entry) + 1),
+    'consumption.rankInDay': String(rankInDay),
+    'consumption.sincePrevious': previous
+      ? fmt(durationIn(previous.occurred_at, entry.occurred_at, ctx.scale, zone), TWO)
+      : null,
+    'consumption.hourVsUsual':
+      usual === null ? null : fmt(new Dec(clockDifference(clockHour(entry.occurred_at, zone), usual).toFixed(6)), TWO),
+    'consumption.shareOfBatch': batch ? fmt(entry.quantity.div(fromDb(batch.quantity)), SCALE.share) : null,
   };
 }

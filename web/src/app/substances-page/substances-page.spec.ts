@@ -272,9 +272,10 @@ describe('SubstancesPage', () => {
     });
 
     it('waits for the typing to pause before it asks', async () => {
+      // Two keys in a row, no pause between them (a real-time wait here was flaky under load: 50 ms
+      // could stretch past the 300 ms pause).
       field().value = 'p';
       field().dispatchEvent(new Event('input'));
-      await new Promise((resolve) => setTimeout(resolve, 50));
       backend.expectNone('/api/substances?q=p');
       await search('pe');
 

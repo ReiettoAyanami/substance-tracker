@@ -27,6 +27,18 @@ export function metricsRoutes(app: FastifyInstance, deps: { metrics: MetricsServ
   );
 
   app.get<{ Params: IdParams; Querystring: ScaleQuery }>(
+    '/api/consumptions/:id/metrics',
+    { schema: scaleOnlyMetricsSchema },
+    async (req) => metrics.consumptionMetrics('consumption', req.params.id, req.query.per),
+  );
+
+  app.get<{ Params: IdParams; Querystring: ScaleQuery }>(
+    '/api/one-time-consumptions/:id/metrics',
+    { schema: scaleOnlyMetricsSchema },
+    async (req) => metrics.consumptionMetrics('one_time', req.params.id, req.query.per),
+  );
+
+  app.get<{ Params: IdParams; Querystring: ScaleQuery }>(
     '/api/batches/:id/metrics',
     { schema: scaleOnlyMetricsSchema },
     async (req) => metrics.batchMetrics(req.params.id, req.query.per),

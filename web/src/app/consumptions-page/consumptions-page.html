@@ -20,7 +20,13 @@
     <p class="error">Could not load the consumptions: {{ why }}</p>
   } @else if (list(); as shown) {
     @for (item of shown.items; track item.type + ':' + item.id) {
-      <app-consumption-card [consumption]="item" [settings]="shown.settings" (edit)="edit(item)" (remove)="remove(item)" />
+      <app-consumption-card
+        [consumption]="item"
+        [settings]="shown.settings"
+        (details)="details(item, shown.settings)"
+        (edit)="edit(item)"
+        (remove)="remove(item)"
+      />
     } @empty {
       <p class="empty">No consumptions</p>
     }

@@ -113,9 +113,10 @@ describe('ConsumptionCard', () => {
     expect(pill(first)).toBeNull();
   });
 
-  it('asks to edit or delete the consumption from its ⋮ menu', async () => {
+  it('asks for its details, to edit it or to delete it from its ⋮ menu', async () => {
     const card = await render(coffee);
     const asked: string[] = [];
+    fixture.componentInstance.details.subscribe(() => asked.push('details'));
     fixture.componentInstance.edit.subscribe(() => asked.push('edit'));
     fixture.componentInstance.remove.subscribe(() => asked.push('remove'));
     const item = (label: string) =>
@@ -125,12 +126,20 @@ describe('ConsumptionCard', () => {
     expect(more.getAttribute('aria-label')).toBe('Actions for the consumption of 28 Sept 2026, 08:45');
     more.click();
     await fixture.whenStable();
+    expect(Array.from(document.querySelectorAll('.mat-mdc-menu-item')).map((b) => text(b))).toEqual([
+      'insightsDetails',
+      'editEdit',
+      'deleteDelete',
+    ]);
+    item('Details').click();
+    more.click();
+    await fixture.whenStable();
     item('Edit').click();
     more.click();
     await fixture.whenStable();
     item('Delete').click();
 
-    expect(asked).toEqual(['edit', 'remove']);
+    expect(asked).toEqual(['details', 'edit', 'remove']);
   });
 
   it('compact: only when, how much, the cost and the delta, with no menu', async () => {

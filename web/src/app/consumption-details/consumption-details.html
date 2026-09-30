@@ -1,0 +1,27 @@
+@let item = data.consumption;
+@let shown = view();
+<h2 mat-dialog-title>
+  <span class="dot" [style.background-color]="item.substanceId | identityColor: 'substance'"></span>
+  <span class="title">{{ item.substanceName }}</span>
+</h2>
+<mat-dialog-content>
+  <p class="when">{{ shown.when }}</p>
+  <p class="source">
+    @if (item.type === 'consumption') {
+      <span class="dot" [style.background-color]="item.batchId! | identityColor: 'batch'"></span>
+    }
+    {{ shown.source }}
+  </p>
+  <p class="amount">{{ shown.amount }}</p>
+  <app-metrics-panel
+    scope="consumption"
+    [entityId]="item.id"
+    [consumptionType]="item.type"
+    [unit]="item.unit"
+    [settings]="data.settings"
+    [open]="true"
+  />
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button type="button" mat-dialog-close>Close</button>
+</mat-dialog-actions>

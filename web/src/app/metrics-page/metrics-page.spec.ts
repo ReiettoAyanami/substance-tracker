@@ -5,9 +5,11 @@ import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { Observable, of, throwError } from 'rxjs';
 
+import { ConsumptionActions } from '../consumptions-page/consumption-actions';
 import { CatalogApi } from '../data/catalog-api';
 import { MetricDefinition, MetricsTable, MetricsTableQuery } from '../data/metric';
 import { MetricsApi } from '../data/metrics-api';
+import { ReportsApi } from '../data/reports-api';
 import { Settings } from '../data/settings';
 import { Substance } from '../data/substance';
 import { SettingsApi } from '../data/settings-api';
@@ -27,6 +29,7 @@ const catalog: MetricDefinition[] = [
   { key: 'substance.cost', scope: 'substance', label: 'Cost', unit: 'money', scales: [], period: true, description: 'What it cost.' },
   { key: 'batch.used', scope: 'batch', label: 'Used', unit: 'share', scales: [], period: false, description: 'Of a batch.' },
   { key: 'batch.valueConsumed', scope: 'batch', label: 'Value consumed', unit: 'money', scales: [], period: false, description: 'Money.' },
+  { key: 'consumption.rankInDay', scope: 'consumption', label: 'Number that day', unit: 'rank', scales: [], period: false, description: '' },
 ];
 
 const itemsOf = (surface: Surface, metrics: string[]): ViewItem[] =>
@@ -39,7 +42,36 @@ const table = (query: MetricsTableQuery): MetricsTable => ({
   to: null,
   keys: query.keys,
   rows:
-    query.scope === 'batch'
+    query.scope === 'consumption'
+      ? [
+          {
+            type: 'consumption',
+            id: 40,
+            substanceId: 4,
+            substanceName: 'Birra',
+            unit: 'bottiglia',
+            batchId: 7,
+            batchName: 'Corona',
+            name: null,
+            occurredAt: '2026-09-25T20:00:00Z',
+            quantity: '1.000',
+            values: { 'consumption.rankInDay': '1' },
+          },
+          {
+            type: 'one_time',
+            id: 9,
+            substanceId: 4,
+            substanceName: 'Birra',
+            unit: 'bottiglia',
+            batchId: null,
+            batchName: null,
+            name: 'bar',
+            occurredAt: '2026-09-12T20:00:00Z',
+            quantity: '1.000',
+            values: { 'consumption.rankInDay': '2' },
+          },
+        ]
+      : query.scope === 'batch'
       ? [
           {
             id: 7,
@@ -74,6 +106,7 @@ describe('MetricsPage', () => {
   let asked: MetricsTableQuery[];
   let shownKeys: string[];
   let answer: (query: MetricsTableQuery) => Observable<MetricsTable>;
+  let details: Array<[string, number]>;
 
   const element = () => harness!.routeNativeElement as HTMLElement;
   const text = (e: Element | null | undefined) => (e?.textContent ?? '').replace(/\s+/g, ' ').trim();
@@ -91,7 +124,8 @@ describe('MetricsPage', () => {
   beforeEach(async () => {
     harness = undefined;
     asked = [];
-    shownKeys = ['substance.cost', 'batch.used', 'substance.pace', 'batch.valueConsumed'];
+    shownKeys = ['substance.cost', 'batch.used', 'substance.pace', 'batch.valueConsumed', 'consumption.rankInDay'];
+    details = [];
     answer = (query) => of(table(query));
     await TestBed.configureTestingModule({
       providers: [
@@ -103,6 +137,17 @@ describe('MetricsPage', () => {
         { provide: MetricsApi, useValue: { getCatalog: () => of(catalog), getTable: (q: MetricsTableQuery) => (asked.push(q), answer(q)) } },
         { provide: ViewsApi, useValue: { list: (surface: Surface) => of(itemsOf(surface, shownKeys)) } },
         { provide: SettingsApi, useValue: { getSettings: () => of(settings) } },
+        {
+          provide: ReportsApi,
+          useValue: {
+            listBatches: () =>
+              of([{ id: 7, substanceId: 4, substanceName: 'Birra', name: 'Corona', occurredAt: '2026-09-15T10:00:00Z', deactivatedAt: null }]),
+          },
+        },
+        {
+          provide: ConsumptionActions,
+          useValue: { details: async (row: { type: string; id: number }) => void details.push([row.type, row.id]) },
+        },
         {
           provide: CatalogApi,
           useValue: {
@@ -176,7 +221,7 @@ describe('MetricsPage', () => {
     await open('/metrics?table=batch');
 
     expect(asked.at(-1)).toEqual({ scope: 'batch', keys: ['batch.used', 'batch.valueConsumed'], per: 'day', days: 30 });
-    expect(texts('a[mat-tab-link]')).toEqual(['Substances', 'Batches']);
+    expect(texts('a[mat-tab-link]')).toEqual(['Substances', 'Batches', 'Consumptions']);
     expect(element().querySelector('a[mat-tab-link].mdc-tab--active')?.textContent?.trim()).toBe('Batches');
     expect(texts('th')).toEqual(['Batch', 'Used', 'Value consumed']);
     expect(column(1)).toEqual(['Corona Birra · 15 Sept 2026', 'Unnamed batch Caffè · 1 Jul 2026']);
@@ -214,6 +259,37 @@ describe('MetricsPage', () => {
     await harness!.fixture.whenStable();
 
     expect(TestBed.inject(Router).url).toBe('/metrics?per=week&table=batch');
+  });
+
+  it('the Consumptions tab: each consumption with its substance, when, where from and how much; a row opens its details', async () => {
+    await open('/metrics?table=consumption');
+
+    expect(asked.at(-1)).toEqual({ scope: 'consumption', keys: ['consumption.rankInDay'], per: 'day', days: 30 });
+    expect(texts('th')).toEqual(['Consumption', 'Number that day']);
+    expect(column(1)).toEqual([
+      'Birra 25 Sept 2026, 22:00 Corona · 1 bottiglia',
+      'Birra 12 Sept 2026, 22:00 One-time · bar · 1 bottiglia',
+    ]);
+    expect(column(2)).toEqual(['1st', '2nd']);
+    expect(element().querySelector('.batch-filter')).toBeNull(); // a batch is chosen within a substance
+
+    element().querySelectorAll<HTMLElement>('tr.row')[1]!.click();
+    await harness!.fixture.whenStable();
+    expect(details).toEqual([['one_time', 9]]);
+    expect(TestBed.inject(Router).url).toBe('/metrics?table=consumption');
+  });
+
+  it('the consumptions of one batch of the substance chosen', async () => {
+    await open('/metrics?table=consumption&substanceId=4');
+    element().querySelector<HTMLElement>('.batch-filter mat-select')!.click();
+    await harness!.fixture.whenStable();
+    const options = Array.from(document.querySelectorAll<HTMLElement>('mat-option'));
+    expect(options.map(text)).toEqual(['Every batch and one-time', 'Corona · 15 Sept 2026']);
+    options[1]!.click();
+    await harness!.fixture.whenStable();
+
+    expect(TestBed.inject(Router).url).toBe('/metrics?table=consumption&substanceId=4&batchId=7');
+    expect(asked.at(-1)).toMatchObject({ scope: 'consumption', substanceId: 4, batchId: 7 });
   });
 
   it('says when the page lists no substance metric, and when the table cannot be loaded', async () => {

@@ -94,6 +94,7 @@ describe('ConsumptionsPage', () => {
           provide: ConsumptionActions,
           useValue: {
             add: async () => (asked.push('add'), written),
+            details: async (item: Consumption, given: Settings) => void asked.push(['details', item.id, given.currency]),
             edit: async (item: Consumption) => (asked.push(['edit', item.id]), written),
             delete: async (item: Consumption) => (asked.push(['delete', item.id]), written),
           },
@@ -221,6 +222,16 @@ describe('ConsumptionsPage', () => {
       ['delete', consumption(1, 'one_time').id],
     ]);
     expect(calls.length).toBe(3);
+  });
+
+  it("opens a consumption's details from its card, and loads nothing again", async () => {
+    await render();
+
+    card(1).details.emit();
+    await harness.fixture.whenStable();
+
+    expect(asked).toEqual([['details', consumption(1, 'one_time').id, 'EUR']]);
+    expect(calls.length).toBe(1);
   });
 
   it('loads nothing again when nothing was written (a dialog cancelled)', async () => {
