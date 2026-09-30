@@ -37,7 +37,9 @@ td {
   white-space: nowrap;
 }
 
+/* Numbers line up at the right, under their header (whose sort arrow sits before the label). */
 .number {
+  text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
