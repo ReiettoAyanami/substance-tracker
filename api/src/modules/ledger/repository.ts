@@ -244,19 +244,6 @@ export async function batchMovementSums(
   return { consumed: str(rows[0]?.consumed ?? '0'), adjusted: str(rows[0]?.adjusted ?? '0') };
 }
 
-export async function countLiveBatchMovements(
-  db: Queryable,
-  batchId: number,
-): Promise<{ consumptions: number; adjustments: number }> {
-  const [rows] = await db.query<RowDataPacket[]>(
-    `SELECT
-       (SELECT COUNT(*) FROM consumptions WHERE batch_id = ? AND deleted_at IS NULL) AS consumptions,
-       (SELECT COUNT(*) FROM adjustments WHERE batch_id = ? AND deleted_at IS NULL) AS adjustments`,
-    [batchId, batchId],
-  );
-  return { consumptions: Number(rows[0]?.consumptions ?? 0), adjustments: Number(rows[0]?.adjustments ?? 0) };
-}
-
 export interface BatchInsert {
   substance_id: number;
   name: string | null;
@@ -292,6 +279,16 @@ export async function updateBatch(db: Queryable, id: number, update: BatchUpdate
 
 export async function softDeleteBatch(db: Queryable, id: number, at: string): Promise<void> {
   await db.query('UPDATE batches SET deleted_at = ? WHERE id = ? AND deleted_at IS NULL', [at, id]);
+}
+
+/**
+ * Soft delete of what was recorded on a batch: its consumptions and adjustments. Rows already
+ * deleted keep their own `deleted_at`.
+ */
+export async function softDeleteMovementsOfBatch(db: Queryable, batchId: number, at: string): Promise<void> {
+  for (const table of ['consumptions', 'adjustments']) {
+    await db.query(`UPDATE ${table} SET deleted_at = ? WHERE batch_id = ? AND deleted_at IS NULL`, [at, batchId]);
+  }
 }
 
 /** Stamps the batch as deactivated by exactly one consumption or one adjustment. */

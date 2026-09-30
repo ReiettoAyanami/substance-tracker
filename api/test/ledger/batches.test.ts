@@ -150,18 +150,54 @@ describe('PATCH /api/batches/:id', () => {
 });
 
 describe('DELETE /api/batches/:id', () => {
-  it('409 while the batch has non-deleted consumptions or adjustments', async () => {
+  it('takes its consumptions and adjustments with it: soft-deleted at the same instant (lenzi, 2026-09-30)', async () => {
     const s = await api.substance();
     const b = await api.batch(s.id, { quantity: 10, totalPrice: 10 });
     const c = await api.consume(b.id, { quantity: 1 });
-    expectProblem(await api.del(`/api/batches/${b.id}`), 409, 'batch-has-movements');
-    expect((await api.del(`/api/consumptions/${c.id}`)).status).toBe(204);
-
     const a = await api.adjust(b.id, { delta: -1, reason: 'lost' });
-    expectProblem(await api.del(`/api/batches/${b.id}`), 409, 'batch-has-movements');
-    expect((await api.del(`/api/adjustments/${a.id}`)).status).toBe(204);
+    const other = await api.batch(s.id, { quantity: 5, totalPrice: 5 });
+    const kept = await api.consume(other.id, { quantity: 1 });
 
     expect((await api.del(`/api/batches/${b.id}`)).status).toBe(204);
+
+    const deletedAt = async (table: string, id: number) =>
+      (await rawRows(`SELECT deleted_at FROM ${table} WHERE id = ?`, [id]))[0]?.deleted_at;
+    const at = await deletedAt('batches', b.id);
+    expect(at).toBeInstanceOf(Date);
+    // the rows stay, all deleted at the same instant as the batch
+    expect(await deletedAt('consumptions', c.id)).toEqual(at);
+    expect(await deletedAt('adjustments', a.id)).toEqual(at);
+    expect(await deletedAt('batches', other.id)).toBeNull();
+    expect(await deletedAt('consumptions', kept.id)).toBeNull();
+    expectProblem(await api.patch(`/api/consumptions/${c.id}`, { quantity: 2 }), 404);
+  });
+
+  it('a deleted batch counts nowhere, and neither do its consumptions: the numbers are computed without them', async () => {
+    const s = await api.substance();
+    const keep = await api.batch(s.id, { quantity: 10, totalPrice: 10, occurredAt: '2026-09-01T10:00:00Z' });
+    const gone = await api.batch(s.id, { quantity: 6, totalPrice: 12, occurredAt: '2026-09-02T10:00:00Z' });
+    const k1 = await api.consume(keep.id, { quantity: 2, occurredAt: '2026-09-03T10:00:00Z' });
+    await api.consume(gone.id, { quantity: 3, occurredAt: '2026-09-04T10:00:00Z' });
+    const k2 = await api.consume(keep.id, { quantity: 4, occurredAt: '2026-09-05T10:00:00Z' });
+    const month = '/api/stats?from=2026-09-01&to=2026-09-30&groupBy=month';
+    // with the batch: 2 + 3 + 4 consumed, 2.00 + 6.00 + 4.00 of cost, 10 + 12 spent
+    expect((await api.get(month)).body).toEqual([{ period: '2026-09', consumed: '9.000', cost: '12.00', spend: '22.00' }]);
+
+    expect((await api.del(`/api/batches/${gone.id}`)).status).toBe(204);
+
+    expect((await api.get(month)).body).toEqual([{ period: '2026-09', consumed: '6.000', cost: '6.00', spend: '10.00' }]);
+    // the consumption after the deleted one is now compared with the one before it (2 -> 4)
+    const list = await api.get(`/api/consumptions?substanceId=${s.id}`);
+    expect(list.body.map((c: any) => [c.id, c.deltaQuantity])).toEqual([
+      [k2.id, '1.0000'],
+      [k1.id, null],
+    ]);
+    const summary = (await api.get(`/api/substances/${s.id}`)).body.summary;
+    expect(summary.stock).toBe('4.000');
+    expect(summary.stockBarMax).toBe('10.000');
+    expect(summary.lastBatch.id).toBe(keep.id);
+    expect(summary.lastConsumption.quantity).toBe('4.000');
+    expect(summary.avgQuantityPerConsumption).toBe('3.000');
   });
 
   it('soft delete: the row stays, the batch disappears from stock and statistics', async () => {

@@ -371,20 +371,19 @@ export class LedgerService {
     return toBatchDto(row as repo.BatchRow);
   }
 
-  /** Soft delete; only an active batch with no non-deleted consumptions or adjustments. */
+  /**
+   * Soft delete of an active batch and, at the same instant, of its consumptions and adjustments
+   * (lenzi, 2026-09-30): what is deleted counts nowhere, so the statistics are computed without
+   * them. A deactivated batch is not deleted: it was used up, and it keeps counting.
+   */
   async deleteBatch(batchId: number): Promise<void> {
     await withTransaction(this.pool, async (conn) => {
       const batch = await repo.lockBatch(conn, batchId);
       assertBatchWritable(batch, batchId);
       if (batch.deactivated_at) throw batchDeactivated(batchId);
-      const live = await repo.countLiveBatchMovements(conn, batchId);
-      if (live.consumptions > 0 || live.adjustments > 0) {
-        throw conflict(
-          'batch-has-movements',
-          `Batch ${batchId} has ${live.consumptions} consumption(s) and ${live.adjustments} adjustment(s); cancel them first`,
-        );
-      }
-      await repo.softDeleteBatch(conn, batchId, this.nowDb());
+      const at = this.nowDb();
+      await repo.softDeleteMovementsOfBatch(conn, batchId, at);
+      await repo.softDeleteBatch(conn, batchId, at);
     });
   }
 
