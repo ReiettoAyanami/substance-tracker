@@ -12,6 +12,13 @@ mat-panel-title {
   font-variant-numeric: tabular-nums;
 }
 
+/* "Add one-time" at the top right of the open panel. */
+.tools {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
 .items {
   display: flex;
   flex-direction: column;

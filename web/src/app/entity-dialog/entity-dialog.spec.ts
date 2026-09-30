@@ -112,7 +112,7 @@ describe('EntityDialog', () => {
     expect(closedWith).toEqual([{ kind: 'consumption', record: { id: 31 } }]);
   });
 
-  describe('hosting the batch form (the batch list of the substance page)', () => {
+  describe('for a fixed substance (the panels of the substance page)', () => {
     let backend: HttpTestingController;
 
     /** Opens the dialog on a form that asks for the settings and the substances once drawn. */
@@ -158,6 +158,15 @@ describe('EntityDialog', () => {
       backend.expectOne('/api/batches/11').flush(record);
       await fixture.whenStable();
       expect(closedWith).toEqual([{ kind: 'batch', record }]);
+    });
+
+    it('adds a one-time consumption of a fixed substance: the consumption form opened for that alone', async () => {
+      await openBatchForm({ kinds: ['consumption'], substanceId: 4, oneTime: true });
+
+      expect(element().querySelector('h2')?.textContent?.trim()).toBe('New one-time consumption');
+      expect(element().querySelector('mat-select')).toBeNull();
+      expect(element().querySelector('mat-checkbox')).toBeNull();
+      expect(element().querySelector('input[formControlName="totalPrice"]')).not.toBeNull();
     });
   });
 

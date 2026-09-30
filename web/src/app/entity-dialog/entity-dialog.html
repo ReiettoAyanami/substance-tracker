@@ -31,6 +31,8 @@
     @case ('consumption') {
       <app-consumption-form
         [consumption]="editedConsumption"
+        [substanceId]="data.substanceId ?? null"
+        [oneTimeOnly]="data.oneTime ?? false"
         [showTitle]="!chooser"
         (saved)="savedConsumption($event)"
         (cancelled)="cancel()"

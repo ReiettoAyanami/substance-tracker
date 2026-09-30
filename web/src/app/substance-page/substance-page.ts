@@ -23,7 +23,8 @@ export interface PageHistoryState {
  * one-time consumptions. It reads the substances page's list, so its position and prev/next follow
  * the list order. It closes with X, a tap on the backdrop, Esc or the browser's back (it is a route),
  * and after its substance is deleted. When a batch is added, changed or deleted in its batch list,
- * the substance is asked again: its card here and in the list underneath show the new numbers.
+ * or a one-time consumption added in its one-time list, the substance is asked again: its card
+ * here and in the list underneath show the new numbers.
  */
 @Component({
   selector: 'app-substance-page',
@@ -65,7 +66,7 @@ export class SubstancePage {
     };
   });
 
-  /** A batch of the substance was written: its numbers are the API's, so it is asked again. */
+  /** A batch or a one-time consumption of the substance was written: its numbers are the API's, so it is asked again. */
   protected reload(id: number): void {
     this.list.reload(id);
   }

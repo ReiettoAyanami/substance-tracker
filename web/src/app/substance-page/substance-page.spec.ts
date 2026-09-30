@@ -13,6 +13,7 @@ import { ReportsApi } from '../data/reports-api';
 import { Substance } from '../data/substance';
 import { SubstanceBatches } from '../data/substance-batches';
 import { BatchList } from './batch-list/batch-list';
+import { OneTimeList } from './one-time-list/one-time-list';
 
 const settings = { timezone: 'Europe/Rome', dayStartsAt: '00:00:00', currency: 'EUR' };
 
@@ -213,6 +214,17 @@ describe('SubstancePage', () => {
 
     expect(bars()).toBe(2); // the card of the page and the one in the list
     expect(TestBed.inject(Router).url).toBe('/substances/1');
+  });
+
+  it('asks its substance again also when a one-time consumption was added in its one-time list', async () => {
+    await open('/substances/1');
+
+    const oneTimeList = harness.fixture.debugElement.query(By.directive(OneTimeList)).componentInstance as OneTimeList;
+    oneTimeList.changed.emit();
+    TestBed.inject(HttpTestingController).expectOne('/api/substances/1').flush(substance(1, 'Caffè'));
+    await harness.fixture.whenStable();
+
+    expect(text(page()?.querySelector('app-substance-card .name'))).toBe('Caffè');
   });
 
   it('closes on Esc, unless something open over it (a dialog, a menu) already took the key', async () => {

@@ -1,8 +1,16 @@
-<mat-expansion-panel class="panel" [disabled]="!openable()">
+<mat-expansion-panel class="panel">
   <mat-expansion-panel-header>
     <mat-panel-title>One-time</mat-panel-title>
     <mat-panel-description class="total">{{ total() }}</mat-panel-description>
   </mat-expansion-panel-header>
+
+  <!-- At the top right of the open panel, like "Add batch" in the batch list: there with none too. -->
+  <div class="tools">
+    <button mat-button type="button" class="add" (click)="add()">
+      <mat-icon>add</mat-icon>
+      Add one-time
+    </button>
+  </div>
 
   <ul class="items">
     @for (row of rows(); track row.item.id) {

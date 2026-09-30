@@ -32,6 +32,16 @@ export class ConsumptionActions {
     return result?.kind === 'consumption';
   }
 
+  /** The consumption form for a one-time consumption of this substance, and nothing else (its one-time list). */
+  async addOneTime(substanceId: number): Promise<boolean> {
+    const result = await this.dialogs.open<EntityDialog, EntityDialogData, EntityDialogResult>(
+      EntityDialog,
+      { kinds: ['consumption'], substanceId, oneTime: true },
+      { ariaLabel: 'New one-time consumption' },
+    );
+    return result?.kind === 'consumption';
+  }
+
   /** The consumption form filled in with the consumption. */
   async edit(consumption: Consumption): Promise<boolean> {
     const result = await this.dialogs.open<EntityDialog, EntityDialogData, EntityDialogResult>(

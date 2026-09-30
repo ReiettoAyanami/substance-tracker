@@ -28,8 +28,10 @@ export interface EntityDialogData {
     | { kind: 'substance'; substance: Substance }
     | { kind: 'batch'; batch: Batch; substanceId: number }
     | { kind: 'consumption'; consumption: Consumption };
-  /** The substance a new batch is for, when the opener knows it: the batch form hides its selector. */
+  /** The substance a new batch or consumption is for, when the opener knows it: the form hides its selector. */
   substanceId?: number;
+  /** A new consumption can only be a one-time one: the consumption form shows neither batches nor its checkbox. */
+  oneTime?: boolean;
 }
 
 /** What it closes with: the saved record and its kind. Nothing when cancelled or closed by back. */

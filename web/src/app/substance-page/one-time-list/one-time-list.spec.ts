@@ -5,6 +5,7 @@ import { Observable, of } from 'rxjs';
 import { HistoryPage, OneTimeConsumption, OneTimeStats } from '../../data/one-time';
 import { ReportsApi } from '../../data/reports-api';
 import { Settings } from '../../data/settings';
+import { ConsumptionActions } from '../../consumptions-page/consumption-actions';
 import { OneTimeList } from './one-time-list';
 
 const settings: Settings = { timezone: 'Europe/Rome', dayStartsAt: '00:00:00', currency: 'EUR' };
@@ -34,6 +35,11 @@ describe('OneTimeList', () => {
   let statsAnswer: () => Observable<OneTimeStats>;
   let pages: HistoryPage[];
   let pageAnswer: (page: HistoryPage) => OneTimeConsumption[];
+  /** How many times the total was asked for, what was asked of the actions, their answer, and what the list told its page. */
+  let totals: number;
+  let asked: number[];
+  let written: boolean;
+  let told: number;
 
   const element = () => fixture.nativeElement as HTMLElement;
   const text = (e: Element | null | undefined) => (e?.textContent ?? '').replace(/\s+/g, ' ').trim();
@@ -44,11 +50,21 @@ describe('OneTimeList', () => {
     fixture.componentRef.setInput('substanceId', 4);
     fixture.componentRef.setInput('unit', 'bottiglia');
     fixture.componentRef.setInput('settings', settings);
+    told = 0;
+    fixture.componentInstance.changed.subscribe(() => told++);
+    await fixture.whenStable();
+  }
+
+  async function expand(): Promise<void> {
+    element().querySelector<HTMLElement>('mat-expansion-panel-header')!.click();
     await fixture.whenStable();
   }
 
   beforeEach(async () => {
     pages = [];
+    totals = 0;
+    asked = [];
+    written = true;
     statsAnswer = () => of(stats(2, '4.000', '18.00'));
     pageAnswer = () => [consumption(0, 'Bar sotto casa', 'con Luca'), consumption(1)];
     await TestBed.configureTestingModule({
@@ -57,13 +73,17 @@ describe('OneTimeList', () => {
         {
           provide: ReportsApi,
           useValue: {
-            getOneTimeStats: () => statsAnswer(),
+            getOneTimeStats: () => {
+              totals++;
+              return statsAnswer();
+            },
             listOneTimeConsumptions: (_id: number, page: HistoryPage) => {
               pages.push(page);
               return of(pageAnswer(page));
             },
           },
         },
+        { provide: ConsumptionActions, useValue: { addOneTime: async (id: number) => (asked.push(id), written) } },
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
       ],
     }).compileComponents();
@@ -107,12 +127,53 @@ describe('OneTimeList', () => {
     expect(element().querySelector('.more')).toBeNull();
   });
 
-  it('says when there are none, and cannot be opened', async () => {
+  it('says when there are none, and still opens: the first one is added from here', async () => {
     statsAnswer = () => of(stats(0));
     pageAnswer = () => [];
     await render();
 
     expect(text(element().querySelector('.total'))).toBe('No consumptions');
-    expect(element().querySelector('mat-expansion-panel-header')!.getAttribute('aria-disabled')).toBe('true');
+    expect(element().querySelector('mat-expansion-panel-header')!.getAttribute('aria-disabled')).toBe('false');
+    await expand();
+    expect(text(element().querySelector('.tools button.add'))).toContain('Add one-time');
+    expect(element().querySelector('.item')).toBeNull();
+  });
+
+  it('adds a one-time consumption of its substance from the button at the top of the panel, then asks the total and the list again and tells the page', async () => {
+    statsAnswer = () => of(stats(25, '50.000', '225.00'));
+    pageAnswer = (page) =>
+      page.before
+        ? Array.from({ length: 5 }, (_, i) => consumption(20 + i))
+        : Array.from({ length: 20 }, (_, i) => consumption(i));
+    await render();
+    await expand();
+    element().querySelector<HTMLButtonElement>('.more')!.click(); // a second page is shown
+    await fixture.whenStable();
+    expect(element().querySelectorAll('.item').length).toBe(25);
+
+    statsAnswer = () => of(stats(26, '52.000', '234.00'));
+    element().querySelector<HTMLButtonElement>('.tools button.add')!.click();
+    await fixture.whenStable();
+
+    expect(asked).toEqual([4]);
+    expect(totals).toBe(2);
+    expect(pages.at(-1)).toEqual({ limit: 20 }); // from the first page again
+    expect(element().querySelectorAll('.item').length).toBe(20);
+    expect(text(element().querySelector('.total'))).toBe('26 consumptions · 52 bottiglia · €234.00');
+    expect(told).toBe(1);
+  });
+
+  it('asks nothing again when nothing was written (the dialog cancelled)', async () => {
+    written = false;
+    await render();
+    await expand();
+
+    element().querySelector<HTMLButtonElement>('.tools button.add')!.click();
+    await fixture.whenStable();
+
+    expect(asked).toEqual([4]);
+    expect(totals).toBe(1);
+    expect(pages.length).toBe(1);
+    expect(told).toBe(0);
   });
 });

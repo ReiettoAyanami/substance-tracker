@@ -1,8 +1,10 @@
-import { Component, computed, inject, input, linkedSignal, signal } from '@angular/core';
+import { Component, computed, inject, input, linkedSignal, output, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatExpansionModule } from '@angular/material/expansion';
+import { MatIconModule } from '@angular/material/icon';
 
+import { ConsumptionActions } from '../../consumptions-page/consumption-actions';
 import { ApiError } from '../../data/api-error';
 import { OneTimeConsumption } from '../../data/one-time';
 import { ReportsApi } from '../../data/reports-api';
@@ -15,12 +17,14 @@ const PAGE = 20;
 /**
  * The one-time consumptions of a substance, in its page (design.md, "one-time consumption":
  * bought and used at once, no batch, never in stock). Closed, it is the total: how many, how much
- * and what they cost. Open, one item per consumption, newest first, a page at a time. Loads its
- * data from the API.
+ * and what they cost. Open, one item per consumption, newest first, a page at a time, and at the
+ * top right "Add one-time" (lenzi: a quick way to one from its list; every other consumption is
+ * added in the consumptions page), so the panel opens also with none. Loads its data from the API,
+ * asks for it again after an addition, and tells its page (`changed`).
  */
 @Component({
   selector: 'app-one-time-list',
-  imports: [MatButtonModule, MatExpansionModule],
+  imports: [MatButtonModule, MatExpansionModule, MatIconModule],
   templateUrl: './one-time-list.html',
   styleUrl: './one-time-list.css',
 })
@@ -29,8 +33,11 @@ export class OneTimeList {
   /** Unit of the substance. */
   readonly unit = input.required<string>();
   readonly settings = input.required<Settings>();
+  /** A one-time consumption was added: the numbers of the substance changed with it. */
+  readonly changed = output<void>();
 
   private readonly reports = inject(ReportsApi);
+  private readonly actions = inject(ConsumptionActions);
   private readonly stats = rxResource({
     params: () => this.substanceId(),
     stream: ({ params }) => this.reports.getOneTimeStats(params),
@@ -72,9 +79,6 @@ export class OneTimeList {
     return format.format(value as unknown as number);
   }
 
-  /** The panel opens only when there is something in it. */
-  protected readonly openable = computed(() => this.stats.hasValue() && this.stats.value().count > 0);
-
   /** The closed panel: how many one-time consumptions, how much, and what they cost. */
   protected readonly total = computed(() => {
     const failure = this.stats.error();
@@ -104,6 +108,16 @@ export class OneTimeList {
   });
 
   protected readonly hasMore = computed(() => this.lastPageFull() && !this.moreFailed());
+
+  /** The consumption form for a one-time consumption of this substance; once saved, total and list start again. */
+  protected async add(): Promise<void> {
+    if (!(await this.actions.addOneTime(this.substanceId()))) return;
+    this.olderPages.set([]);
+    this.moreFailed.set(false);
+    this.stats.reload();
+    this.firstPage.reload();
+    this.changed.emit();
+  }
 
   /** The next page: the consumptions before the oldest one shown. */
   protected showMore(): void {
