@@ -9,6 +9,15 @@
   padding: 16px 16px calc(96px + env(safe-area-inset-bottom, 0px));
 }
 
+/* The search bar, as wide as the cards. The browser's own ✕ of a search input is hidden: the field has its own. */
+.search {
+  width: 100%;
+}
+
+.search input::-webkit-search-cancel-button {
+  display: none;
+}
+
 .empty,
 .error {
   margin: 48px 0;

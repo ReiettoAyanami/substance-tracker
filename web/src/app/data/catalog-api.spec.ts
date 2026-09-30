@@ -34,6 +34,16 @@ describe('CatalogApi', () => {
     expect(await all).toEqual([beer]);
   });
 
+  it('lists the substances a search finds, by their name or a batch of theirs (the API decides)', async () => {
+    const found = firstValueFrom(api.listSubstances({ q: 'peroni 6' }));
+    backend.expectOne('/api/substances?q=peroni%206').flush([beer]);
+    expect(await found).toEqual([beer]);
+
+    const none = firstValueFrom(api.listSubstances({ q: '' })); // no search: the whole list
+    backend.expectOne('/api/substances').flush([beer]);
+    expect(await none).toEqual([beer]);
+  });
+
   it('gets one substance by id', async () => {
     const result = firstValueFrom(api.getSubstance(1));
     const req = backend.expectOne('/api/substances/1');

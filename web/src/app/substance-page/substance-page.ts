@@ -84,9 +84,16 @@ export class SubstancePage {
     }
   }
 
-  /** prev/next replace the route: browser back closes the page instead of walking through it. */
+  /**
+   * prev/next replace the route: browser back closes the page instead of walking through it. The
+   * search of the URL stays: the list underneath, and the order followed, are those it found.
+   */
   protected go(id: number): void {
-    void this.router.navigate(['/substances', id], { replaceUrl: true, state: this.historyState() });
+    void this.router.navigate(['/substances', id], {
+      replaceUrl: true,
+      state: this.historyState(),
+      queryParamsHandling: 'preserve',
+    });
   }
 
   /**
@@ -95,7 +102,7 @@ export class SubstancePage {
    */
   protected close(): void {
     if (this.historyState().fromList) this.location.back();
-    else void this.router.navigate(['/substances'], { replaceUrl: true });
+    else void this.router.navigate(['/substances'], { replaceUrl: true, queryParamsHandling: 'preserve' });
   }
 
   private historyState(): PageHistoryState {

@@ -242,6 +242,24 @@ describe('SubstancePage', () => {
     expect(TestBed.inject(Router).url).toBe('/substances');
   });
 
+  it('keeps the search of the URL: over the list it found, through prev/next, and when it closes', async () => {
+    harness = await RouterTestingHarness.create('/substances/1?q=a');
+    const backend = TestBed.inject(HttpTestingController);
+    backend.expectOne('/api/settings').flush(settings);
+    backend.expectOne('/api/substances?q=a').flush([substance(1, 'Caffè'), substance(3, 'Erba')]);
+    await harness.fixture.whenStable();
+    expect(text(page()?.querySelector('.position'))).toBe('1 / 2');
+
+    page()!.querySelector<HTMLButtonElement>('button[aria-label="Next substance"]')!.click();
+    await harness.fixture.whenStable();
+    expect(TestBed.inject(Router).url).toBe('/substances/3?q=a');
+
+    page()!.querySelector<HTMLButtonElement>('button[aria-label="Close"]')!.click();
+    await harness.fixture.whenStable();
+    expect(TestBed.inject(Router).url).toBe('/substances?q=a');
+    backend.verify(); // the list was not asked again: the search did not change
+  });
+
   it('says so when the substance is not in the list (an old link, an archived substance)', async () => {
     await open('/substances/99');
 

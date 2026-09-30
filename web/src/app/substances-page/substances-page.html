@@ -2,6 +2,18 @@
 <main class="substances">
   @switch (current.status) {
     @case ('loaded') {
+      <mat-form-field appearance="outline" class="search">
+        <mat-label>Search</mat-label>
+        <mat-icon matPrefix>search</mat-icon>
+        <input matInput type="search" autocomplete="off" [value]="typed()" (input)="type(searchField.value)" #searchField />
+        @if (typed()) {
+          <button mat-icon-button matSuffix type="button" aria-label="Clear the search" (click)="clear()">
+            <mat-icon>close</mat-icon>
+          </button>
+        }
+        <mat-hint>By the name of a substance or of one of its batches</mat-hint>
+      </mat-form-field>
+
       @for (substance of current.substances; track substance.id) {
         <app-substance-card
           [substance]="substance"
@@ -11,7 +23,7 @@
           (remove)="actions.delete(substance)"
         />
       } @empty {
-        <p class="empty">No substances</p>
+        <p class="empty">{{ query() ? 'No substance or batch with “' + query() + '” in its name' : 'No substances' }}</p>
       }
     }
     @case ('failed') {

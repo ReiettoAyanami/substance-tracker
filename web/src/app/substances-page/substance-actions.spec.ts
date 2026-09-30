@@ -78,6 +78,7 @@ describe('SubstanceActions, once its dialog has answered', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
+        provideRouter([]),
         {
           provide: HistoryDialogs,
           useValue: {

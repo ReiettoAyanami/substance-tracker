@@ -11,9 +11,14 @@ import { CreateSubstanceInput, Substance, UpdateSubstanceInput } from './substan
 export class CatalogApi {
   private readonly http = inject(HttpClient);
 
-  /** GET /api/substances: ordered by name, then id; archived ones only with `archived: true`. */
-  listSubstances(options: { archived?: boolean } = {}): Observable<Substance[]> {
-    const params: Record<string, boolean> = options.archived ? { archived: true } : {};
+  /**
+   * GET /api/substances: ordered by name, then id; archived ones only with `archived: true`; with
+   * `q`, only those with that text in their name or in the name of one of their batches.
+   */
+  listSubstances(options: { archived?: boolean; q?: string } = {}): Observable<Substance[]> {
+    const params: Record<string, string | boolean> = {};
+    if (options.archived) params['archived'] = true;
+    if (options.q) params['q'] = options.q;
     return this.http.get<Substance[]>('/api/substances', { params });
   }
 

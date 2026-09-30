@@ -1,5 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
-import { forkJoin } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ActivatedRoute } from '@angular/router';
+import { catchError, distinctUntilChanged, forkJoin, map, of, shareReplay, switchMap } from 'rxjs';
 
 import { ApiError } from '../data/api-error';
 import { CatalogApi } from '../data/catalog-api';
@@ -15,9 +17,10 @@ export type SubstanceListState =
   | { status: 'failed'; error: ApiError };
 
 /**
- * The substances shown by the substances page, loaded once. Provided by the SubstancesPage
- * component (not root), so the substance page, its child route, reads the same list and the same
- * order for prev/next.
+ * The substances shown by the substances page: all of them, or those the search of the URL finds
+ * (`?q=`, design-frontend.md, "substances search bar"), asked again whenever that search changes.
+ * Provided by the SubstancesPage component (not root), so the substance page, its child route,
+ * reads the same list and the same order for prev/next.
  */
 @Injectable()
 export class SubstanceList {
@@ -26,10 +29,21 @@ export class SubstanceList {
   readonly state = this.current.asReadonly();
 
   constructor() {
-    forkJoin([inject(SettingsApi).getSettings(), this.catalog.listSubstances()]).subscribe({
-      next: ([settings, substances]) => this.current.set({ status: 'loaded', settings, substances }),
-      error: (error: ApiError) => this.current.set({ status: 'failed', error }),
-    });
+    // The settings are asked once; the substances, for every search. The list shown stays until the next one arrives.
+    const settings = inject(SettingsApi).getSettings().pipe(shareReplay(1));
+    inject(ActivatedRoute)
+      .queryParamMap.pipe(
+        map((query) => searchOf(query.get('q'))),
+        distinctUntilChanged(),
+        switchMap((q) =>
+          forkJoin([settings, this.catalog.listSubstances(q ? { q } : {})]).pipe(
+            map(([settings, substances]): SubstanceListState => ({ status: 'loaded', settings, substances })),
+            catchError((error: ApiError) => of<SubstanceListState>({ status: 'failed', error })),
+          ),
+        ),
+        takeUntilDestroyed(),
+      )
+      .subscribe((state) => this.current.set(state));
   }
 
   /** A substance just created (the 201 of POST): shown right away, where the API would list it. */
@@ -62,6 +76,9 @@ export class SubstanceList {
     this.current.update((state) => (state.status === 'loaded' ? { ...state, substances: next(state.substances) } : state));
   }
 }
+
+/** The search of a URL's `?q=`: its text without the blanks around it; '' for none. */
+export const searchOf = (q: string | null) => (q ?? '').trim();
 
 /**
  * Like the API: ORDER BY name (utf8mb4_0900_ai_ci: case and accents ignored), id. The English

@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 
 import { errorInterceptor } from '../data/error-interceptor';
 import { Substance } from '../data/substance';
@@ -231,5 +231,82 @@ describe('SubstancesPage', () => {
 
     expect(document.querySelector('app-delete-substance-dialog')).toBeNull();
     expect(names()).toEqual(['Erba']);
+  });
+
+  describe('search', () => {
+    const field = () => fixture.nativeElement.querySelector('input[type="search"]') as HTMLInputElement;
+
+    /** Types in the search field, then waits for the pause after which the search starts. */
+    async function search(typed: string): Promise<void> {
+      field().value = typed;
+      field().dispatchEvent(new Event('input'));
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      await fixture.whenStable();
+    }
+
+    beforeEach(async () => {
+      backend.expectOne('/api/settings').flush(settings);
+      backend.expectOne('/api/substances').flush([substance(4, 'Birra'), substance(1, 'Caffè'), substance(3, 'Erba')]);
+      await fixture.whenStable();
+    });
+
+    it('searches as it is typed, after a pause: the text goes into the URL in place of the current entry, the API finds', async () => {
+      const entries = history.length;
+      await search(' per ');
+
+      expect(TestBed.inject(Router).url).toBe('/?q=per');
+      expect(history.length).toBe(entries);
+      backend.expectOne('/api/substances?q=per').flush([substance(4, 'Birra')]); // it has a batch called Peroni
+      await fixture.whenStable();
+      expect(names()).toEqual(['Birra']);
+      expect(field().value).toBe(' per '); // what is typed is not rewritten
+    });
+
+    it('waits for the typing to pause before it asks', async () => {
+      field().value = 'p';
+      field().dispatchEvent(new Event('input'));
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      backend.expectNone('/api/substances?q=p');
+      await search('pe');
+
+      backend.expectOne('/api/substances?q=pe').flush([]);
+      backend.expectNone('/api/substances?q=p');
+    });
+
+    it('says when no name has the text, and the ✕ brings the whole list back at once', async () => {
+      await search('zzz');
+      backend.expectOne('/api/substances?q=zzz').flush([]);
+      await fixture.whenStable();
+      expect(fixture.nativeElement.querySelector('.empty')?.textContent?.trim()).toBe('No substance or batch with “zzz” in its name');
+
+      fixture.nativeElement.querySelector('button[aria-label="Clear the search"]').click();
+      await fixture.whenStable();
+      expect(TestBed.inject(Router).url).toBe('/');
+      backend.expectOne('/api/substances').flush([substance(4, 'Birra'), substance(3, 'Erba')]);
+      await fixture.whenStable();
+      expect(names()).toEqual(['Birra', 'Erba']);
+      expect(field().value).toBe('');
+      expect(fixture.nativeElement.querySelector('button[aria-label="Clear the search"]')).toBeNull();
+    });
+
+    it('shows in its field the search of the URL (a link, back), and what it finds', async () => {
+      await TestBed.inject(Router).navigateByUrl('/?q=erb');
+      backend.expectOne('/api/substances?q=erb').flush([substance(3, 'Erba')]);
+      await fixture.whenStable();
+
+      expect(field().value).toBe('erb');
+      expect(names()).toEqual(['Erba']);
+    });
+
+    it('keeps the search in the URL when a substance is opened from the list found', async () => {
+      await TestBed.inject(Router).navigateByUrl('/?q=erb');
+      backend.expectOne('/api/substances?q=erb').flush([substance(3, 'Erba')]);
+      await fixture.whenStable();
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+
+      fixture.nativeElement.querySelector('app-substance-card .last-purchase').click();
+
+      expect(navigate).toHaveBeenCalledWith(['/substances', 3], { state: { fromList: true }, queryParamsHandling: 'preserve' });
+    });
   });
 });
