@@ -14,7 +14,7 @@ export interface Res<T = any> {
   headers: Record<string, unknown>;
 }
 
-type Method = 'GET' | 'POST' | 'PATCH' | 'DELETE' | 'HEAD';
+type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD';
 
 /** Thin HTTP client over app.inject(), plus helpers to build a ledger quickly. */
 export class Api {
@@ -36,6 +36,9 @@ export class Api {
   }
   post<T = any>(url: string, payload: unknown = {}) {
     return this.req<T>('POST', url, payload);
+  }
+  put<T = any>(url: string, payload: unknown) {
+    return this.req<T>('PUT', url, payload);
   }
   patch<T = any>(url: string, payload: unknown) {
     return this.req<T>('PATCH', url, payload);

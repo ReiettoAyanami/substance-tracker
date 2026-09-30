@@ -8,9 +8,10 @@ import { MatSelectModule } from '@angular/material/select';
 import { of } from 'rxjs';
 
 import { ApiError } from '../../data/api-error';
-import { MetricScope, TIME_SCALES, TimeScale } from '../../data/metric';
+import { MetricDefinition, MetricScope, TIME_SCALES, TimeScale } from '../../data/metric';
 import { MetricsApi } from '../../data/metrics-api';
 import { Settings } from '../../data/settings';
+import { ViewsApi } from '../../data/views-api';
 import { MetricReading, MetricValuePipe } from '../metric-value-pipe';
 
 /** The periods offered: the last N logical days (the API resolves them), or all time (0). */
@@ -73,6 +74,7 @@ export class MetricsPanel {
   readonly refresh = input<unknown>(null);
 
   private readonly api = inject(MetricsApi);
+  private readonly views = inject(ViewsApi);
 
   protected readonly periods = PERIODS;
   protected readonly scales = TIME_SCALES;
@@ -88,6 +90,12 @@ export class MetricsPanel {
     stream: () => this.api.getCatalog(),
   });
 
+  /** What this page shows (the panel's surface is its scope), in order: lenzi's choices. */
+  protected readonly items = rxResource({
+    params: () => (this.wasOpened() ? this.scope() : undefined),
+    stream: ({ params }) => this.views.list(params),
+  });
+
   protected readonly metrics = rxResource({
     params: () =>
       this.wasOpened()
@@ -99,12 +107,19 @@ export class MetricsPanel {
         : of(null),
   });
 
-  /** The metrics of the scope, in the catalog's order. */
-  protected readonly shown = computed(() =>
-    this.catalog.hasValue() ? this.catalog.value().filter((m) => m.scope === this.scope()) : [],
-  );
+  /** The metrics its surface lists, in their order (one the catalog no longer has is left out). */
+  protected readonly shown = computed(() => {
+    if (!this.catalog.hasValue() || !this.items.hasValue()) return [];
+    const byKey = new Map(this.catalog.value().map((m) => [m.key, m]));
+    return this.items
+      .value()
+      .map((item) => byKey.get(item.metric))
+      .filter((m): m is MetricDefinition => m !== undefined && m.scope === this.scope());
+  });
   protected readonly hasScales = computed(() => this.shown().some((m) => m.scales.length > 0));
   protected readonly hasPeriod = computed(() => this.shown().some((m) => m.period));
+  /** Everything is loaded, and this page shows nothing. */
+  protected readonly empty = computed(() => this.catalog.hasValue() && this.items.hasValue() && this.shown().length === 0);
 
   protected readonly reading = computed<MetricReading>(() => ({
     unit: this.unit(),
@@ -117,15 +132,15 @@ export class MetricsPanel {
   /** What the closed panel says: the period and the scale the numbers are in. */
   protected readonly summary = computed(() =>
     [
-      this.hasPeriod() || !this.catalog.hasValue() ? PERIODS.find((p) => p.days === this.days())?.label : null,
-      this.hasScales() || !this.catalog.hasValue() ? `per ${this.per()}` : null,
+      this.hasPeriod() || !this.items.hasValue() ? PERIODS.find((p) => p.days === this.days())?.label : null,
+      this.hasScales() || !this.items.hasValue() ? `per ${this.per()}` : null,
     ]
       .filter(Boolean)
       .join(' · '),
   );
 
   protected readonly failure = computed(() => {
-    const failure = this.catalog.error() ?? this.metrics.error();
+    const failure = this.catalog.error() ?? this.items.error() ?? this.metrics.error();
     if (!failure) return null;
     // The interceptor's ApiError is not an Error: the resource wraps it, as its cause.
     const error = (failure.cause ?? failure) as Partial<ApiError>;

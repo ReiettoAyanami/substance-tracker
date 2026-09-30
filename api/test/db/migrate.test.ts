@@ -9,7 +9,19 @@ import {
   resolveMigrationsDir,
   runMigrations,
 } from '../../src/db/migrate.js';
+import { METRICS } from '../../src/modules/metrics/catalog.js';
 import { rawRows, testDbConfig } from '../support/db.js';
+
+/** Runs one migration file again on the test database, as the runner would. */
+async function rerun(file: string): Promise<void> {
+  const sql = await readFile(join(DEFAULT_MIGRATIONS_DIR, file), 'utf8');
+  const conn = await mysql.createConnection({ ...testDbConfig(), multipleStatements: true });
+  try {
+    await conn.query(sql);
+  } finally {
+    await conn.end();
+  }
+}
 
 describe('migrations', () => {
   it('finds the numbered files in api/migrations, or in MIGRATIONS_DIR when set', async () => {
@@ -50,6 +62,7 @@ describe('migrations', () => {
       'schema_migrations',
       'settings',
       'substances',
+      'view_items',
     ]);
     const unique = await rawRows(
       `SELECT TABLE_NAME AS t, COLUMN_NAME AS c FROM information_schema.STATISTICS
@@ -78,7 +91,14 @@ describe('migrations', () => {
       `SELECT TABLE_NAME AS t FROM information_schema.COLUMNS
         WHERE TABLE_SCHEMA = DATABASE() AND COLUMN_NAME = 'deleted_at' ORDER BY TABLE_NAME`,
     );
-    expect(deletedAt.map((d) => d.t)).toEqual(['adjustments', 'batches', 'consumptions', 'one_time_consumptions', 'substances']);
+    expect(deletedAt.map((d) => d.t)).toEqual([
+      'adjustments',
+      'batches',
+      'consumptions',
+      'one_time_consumptions',
+      'substances',
+      'view_items',
+    ]);
   });
 
   it('002 drops the stored default unit price of substances, and is safe to re-run', async () => {
@@ -100,6 +120,47 @@ describe('migrations', () => {
       await conn.end();
     }
     expect(await columns()).toEqual(expected);
+  });
+
+  it('003 puts on every page what it shows by default, only into an empty table, with metrics of the catalog', async () => {
+    // The tests empty every table before each test: here the table is as a new database has it.
+    await rerun('003_view_items.sql');
+    const rows = await rawRows('SELECT surface, position, metric, section, chart, scale FROM view_items ORDER BY surface, position');
+    const of = (surface: string) => rows.filter((r) => r.surface === surface);
+    const keys = (scope: string) => METRICS.filter((m) => m.scope === scope).map((m) => m.key);
+
+    // every panel: every metric of its entity, in the catalog's order
+    expect(of('substance').map((r) => r.metric)).toEqual(keys('substance'));
+    expect(of('batch').map((r) => r.metric)).toEqual(keys('batch'));
+    expect(of('consumption').map((r) => r.metric)).toEqual(keys('consumption'));
+    // the metrics page: a few columns per table
+    expect(of('metrics').map((r) => r.metric)).toEqual([
+      'substance.consumed',
+      'substance.pace',
+      'substance.cost',
+      'substance.spend',
+      'substance.sinceLast',
+      'substance.stockTime',
+      'batch.used',
+      'batch.unitPriceVsAverage',
+      'batch.pace',
+      'batch.timeToFinish',
+      'batch.valueConsumed',
+      'consumption.deltaQuantity',
+      'consumption.quantityVsSubstanceAverage',
+      'consumption.unitPriceVsBatches',
+      'consumption.sincePrevious',
+      'consumption.rankInDay',
+    ]);
+    for (const surface of ['substance', 'batch', 'consumption', 'metrics']) {
+      expect(of(surface).map((r) => r.position)).toEqual(of(surface).map((_, i) => i + 1));
+    }
+    expect(rows.every((r) => r.section === null && r.chart === null && r.scale === null)).toBe(true);
+
+    // run again (or after lenzi's own choices): nothing is added
+    await rawRows('UPDATE view_items SET deleted_at = UTC_TIMESTAMP() WHERE surface = ?', ['substance']);
+    await rerun('003_view_items.sql');
+    expect(await rawRows('SELECT id FROM view_items')).toHaveLength(rows.length);
   });
 
   it('the session and the stored instants are UTC', async () => {

@@ -5,6 +5,8 @@ import { Observable, of, throwError } from 'rxjs';
 import { MetricDefinition, MetricsQuery, MetricsResult } from '../../data/metric';
 import { MetricsApi } from '../../data/metrics-api';
 import { Settings } from '../../data/settings';
+import { Surface, ViewItem } from '../../data/view-item';
+import { ViewsApi } from '../../data/views-api';
 import { MetricsPanel } from './metrics-panel';
 
 const settings: Settings = { timezone: 'Europe/Rome', dayStartsAt: '00:00:00', currency: 'EUR' };
@@ -28,8 +30,23 @@ const result = (query: MetricsQuery): MetricsResult => ({
   },
 });
 
+/** What a surface shows, as the API gives it: here, in an order that is not the catalog's. */
+const itemsOf = (surface: Surface, metrics: string[]): ViewItem[] =>
+  metrics.map((metric, i) => ({
+    id: i + 1,
+    surface,
+    section: null,
+    position: i + 1,
+    metric,
+    chart: null,
+    scale: null,
+    createdAt: '2026-09-29T10:00:00Z',
+  }));
+
 describe('MetricsPanel', () => {
   let fixture: ComponentFixture<MetricsPanel>;
+  let shownKeys: string[];
+  let surfaces: Surface[];
   let asked: Array<{ id: number; query: MetricsQuery }>;
   let catalogs: number;
   let answer: (query: MetricsQuery) => Observable<MetricsResult>;
@@ -65,6 +82,8 @@ describe('MetricsPanel', () => {
     localStorage.clear();
     asked = [];
     catalogs = 0;
+    surfaces = [];
+    shownKeys = ['substance.consumed', 'substance.pace', 'substance.sinceLast'];
     answer = (query) => of(result(query));
     await TestBed.configureTestingModule({
       imports: [MetricsPanel],
@@ -82,6 +101,15 @@ describe('MetricsPanel', () => {
             },
           },
         },
+        {
+          provide: ViewsApi,
+          useValue: {
+            list: (surface: Surface) => {
+              surfaces.push(surface);
+              return of(itemsOf(surface, shownKeys));
+            },
+          },
+        },
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
       ],
     }).compileComponents();
@@ -96,14 +124,41 @@ describe('MetricsPanel', () => {
     expect(catalogs).toBe(0);
   });
 
-  it('opened, shows every metric of its scope, the value first and what it is under it', async () => {
+  it('opened, shows the metrics its page lists, the value first and what it is under it', async () => {
     await render();
     await expand();
 
+    expect(surfaces).toEqual(['substance']);
     expect(asked).toEqual([{ id: 4, query: { per: 'day', days: 30 } }]);
     expect(texts('.metric .value')).toEqual(['9 beer', '0.321 beer / day', '—']);
     expect(texts('.metric .label')).toEqual(['Consumed', 'Pace', 'Since the last one']);
     expect(element().querySelector('.description')).toBeNull();
+  });
+
+  it('in the order its page lists them, leaving out a key the catalog does not have', async () => {
+    shownKeys = ['substance.sinceLast', 'substance.retired', 'substance.consumed'];
+    await render({ open: true });
+
+    expect(texts('.metric .label')).toEqual(['Since the last one', 'Consumed']);
+  });
+
+  it('says when its page shows no metric, and offers no scale or period', async () => {
+    shownKeys = [];
+    await render({ open: true });
+
+    expect(text(element().querySelector('.message'))).toBe('No metric is chosen for this page.');
+    expect(element().querySelector('.per')).toBeNull();
+    expect(element().querySelector('.period')).toBeNull();
+    expect(text(element().querySelector('.summary'))).toBe('');
+  });
+
+  it('offers the period only when a metric shown follows one', async () => {
+    shownKeys = ['substance.sinceLast'];
+    await render({ open: true });
+
+    expect(element().querySelector('.period')).toBeNull();
+    expect(element().querySelector('.per')).not.toBeNull();
+    expect(text(element().querySelector('.summary'))).toBe('per day');
   });
 
   it('a new scale or period asks again, and is remembered for the next panel', async () => {

@@ -12,6 +12,8 @@ import { reportsRoutes } from './modules/reports/routes.js';
 import { ReportsService } from './modules/reports/service.js';
 import { settingsRoutes } from './modules/settings/routes.js';
 import { SettingsService } from './modules/settings/service.js';
+import { viewsRoutes } from './modules/views/routes.js';
+import { ViewsService } from './modules/views/service.js';
 import {
   PROBLEM_CONTENT_TYPE,
   ProblemError,
@@ -103,6 +105,7 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
   const reports = new ReportsService(pool, catalog, settings, clock);
   const ledger = new LedgerService(pool, clock);
   const metrics = new MetricsService(pool, catalog, settings, clock);
+  const views = new ViewsService(pool, clock);
 
   app.get('/api/health', async (request, reply) => {
     try {
@@ -121,6 +124,7 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
   ledgerRoutes(app, { ledger });
   reportsRoutes(app, { reports });
   metricsRoutes(app, { metrics });
+  viewsRoutes(app, { views });
   settingsRoutes(app, { settings });
 
   if (opts.webDist) {

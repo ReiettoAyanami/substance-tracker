@@ -39,6 +39,8 @@
 
   @if (failure(); as failure) {
     <p class="message">{{ failure }}</p>
+  } @else if (empty()) {
+    <p class="message">No metric is chosen for this page.</p>
   } @else if (values(); as values) {
     <!-- A definition list, not a Material list: a description can take the lines it needs. -->
     <dl class="metrics">
