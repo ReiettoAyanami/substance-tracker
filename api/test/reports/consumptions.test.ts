@@ -271,6 +271,26 @@ describe('GET /api/batches', () => {
     expect((await api.get(`/api/batches?substanceId=${coffee.id}`)).body.map((b: any) => b.id)).toEqual([moka.id]);
   });
 
+  it('keeps substances and batches with the same name apart: only the id identifies them', async () => {
+    const first = await api.substance({ name: 'twin beer', unit: 'beer' });
+    const second = await api.substance({ name: 'twin beer', unit: 'beer' });
+    const bought = '2026-09-01T10:00:00Z';
+    const a = await api.batch(first.id, { name: 'Peroni', quantity: 6, totalPrice: 6, occurredAt: bought });
+    // Newer than the other two, but of the second substance: it must not come between them.
+    const b = await api.batch(second.id, { name: 'Peroni', quantity: 6, totalPrice: 6, occurredAt: '2026-09-03T10:00:00Z' });
+    const c = await api.batch(first.id, { name: 'Peroni', quantity: 6, totalPrice: 6, occurredAt: bought });
+    const fromA = await api.consume(a.id, { quantity: 1, occurredAt: '2026-09-04T20:00:00Z' });
+    await api.consume(c.id, { quantity: 2, occurredAt: '2026-09-04T21:00:00Z' });
+
+    const twins = (await api.get('/api/batches')).body.filter((x: any) => x.substanceName === 'twin beer');
+    expect(twins.map((x: any) => [x.substanceId, x.id])).toEqual([
+      [first.id, c.id],
+      [first.id, a.id],
+      [second.id, b.id],
+    ]);
+    expect((await api.get(`/api/consumptions?batchId=${a.id}`)).body.map(C)).toEqual([C(fromA)]);
+  });
+
   it('refuses an unknown substance and unknown query fields', async () => {
     expectProblem(await api.get('/api/batches?substanceId=8080'), 404);
     expectProblem(await api.get('/api/batches?includeDeactivated=true'), 400);

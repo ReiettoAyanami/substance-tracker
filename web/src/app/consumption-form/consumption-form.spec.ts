@@ -80,7 +80,7 @@ describe('ConsumptionForm', () => {
   }
 
   /** The form as it opens, its settings and substances answered. */
-  async function render(inputs: Record<string, unknown> = {}): Promise<void> {
+  async function render(inputs: Record<string, unknown> = {}, offered: Substance[] = substances): Promise<void> {
     fixture = TestBed.createComponent(ConsumptionForm);
     for (const [name, value] of Object.entries(inputs)) fixture.componentRef.setInput(name, value);
     harnesses = TestbedHarnessEnvironment.loader(fixture);
@@ -88,7 +88,7 @@ describe('ConsumptionForm', () => {
     fixture.componentInstance.saved.subscribe((saved) => said.push(saved));
     fixture.componentInstance.cancelled.subscribe(() => said.push('cancelled'));
     request('/api/settings').flush(settings);
-    backend.expectOne('/api/substances').flush(substances);
+    backend.expectOne('/api/substances').flush(offered);
   }
 
   /** The form for a consumption of the Sigarette, their two packs offered. */
@@ -109,12 +109,14 @@ describe('ConsumptionForm', () => {
     element().querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
   }
 
-  /** Opens a selector and answers its options (in the overlay), by their text. */
-  function optionsOf(select: string): Map<string, HTMLElement> {
+  /** Opens a selector and answers its options (in the overlay), in order, each with its text. */
+  function optionsOf(select: string): { text: string; option: HTMLElement }[] {
     element().querySelector<HTMLElement>(`mat-select.${select}`)!.click();
     TestBed.tick();
-    const options = Array.from(document.querySelectorAll<HTMLElement>('mat-option'));
-    return new Map(options.map((option) => [(option.textContent ?? '').replace(/\s+/g, ' ').trim(), option]));
+    return Array.from(document.querySelectorAll<HTMLElement>('mat-option')).map((option) => ({
+      text: (option.textContent ?? '').replace(/\s+/g, ' ').trim(),
+      option,
+    }));
   }
 
   /** The error shown under a field, if any. */
@@ -157,17 +159,46 @@ describe('ConsumptionForm', () => {
     expect(element().querySelector('mat-checkbox')).toBeNull();
 
     const offered = optionsOf('substance');
-    expect([...offered.keys()]).toEqual(['Sigarette', 'Birra']);
-    offered.get('Sigarette')!.click();
+    expect(offered.map((o) => o.text)).toEqual(['Sigarette', 'Birra']);
+    offered[0]!.option.click();
     request('/api/substances/2/batches').flush(packs);
     await fixture.whenStable();
 
     expect(text('mat-select.batch .mat-mdc-select-value-text')).toBe('Pack A · 3 sigaretta left');
     const batches = optionsOf('batch');
-    expect([...batches.keys()]).toEqual(['Pack A · 3 sigaretta left', 'Unnamed batch · 20 sigaretta left']);
-    batches.get('Pack A · 3 sigaretta left')!.click();
+    expect(batches.map((o) => o.text)).toEqual(['Pack A · 3 sigaretta left', 'Unnamed batch · 20 sigaretta left']);
+    batches[0]!.option.click();
     await fixture.whenStable();
     expect(text('mat-form-field:has([formControlName="quantity"]) [matTextSuffix]')).toBe('sigaretta');
+  });
+
+  it('offers substances and batches with the same name one by one, and records from the one chosen', async () => {
+    const twins = [...substances, { id: 9, name: 'Birra', unit: 'bottiglia' } as Substance];
+    await render({}, twins);
+    await fixture.whenStable();
+
+    const offered = optionsOf('substance');
+    expect(offered.map((o) => o.text)).toEqual(['Sigarette', 'Birra', 'Birra']);
+    offered[2]!.option.click();
+    request('/api/substances/9/batches').flush({
+      substanceId: 9,
+      stock: '12.000',
+      stockBarMax: '12.000',
+      batches: [
+        { id: 40, name: 'Peroni', remaining: '6.000' },
+        { id: 41, name: 'Peroni', remaining: '6.000' },
+      ] as Batch[],
+    });
+    await fixture.whenStable();
+
+    const batches = optionsOf('batch');
+    expect(batches.map((o) => o.text)).toEqual(['Peroni · 6 bottiglia left', 'Peroni · 6 bottiglia left']);
+    batches[1]!.option.click();
+    await fixture.whenStable();
+    await type('quantity', '1');
+    save();
+
+    backend.expectOne('/api/batches/41/consumptions').flush({ id: 80 }, { status: 201, statusText: 'Created' });
   });
 
   it('starts at "now" on the clock of the settings, whatever the browser’s', async () => {

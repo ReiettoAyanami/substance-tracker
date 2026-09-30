@@ -35,11 +35,15 @@ describe('ConsumptionFilters', () => {
   const element = () => fixture.nativeElement as HTMLElement;
   const text = (e: Element | null | undefined) => (e?.textContent ?? '').replace(/\s+/g, ' ').trim();
 
-  async function render(filter: ConsumptionFilter, withBounds: ConsumptionBounds | null = bounds): Promise<void> {
+  async function render(
+    filter: ConsumptionFilter,
+    withBounds: ConsumptionBounds | null = bounds,
+    lists: { substances: Substance[]; batches: BatchListItem[] } = { substances, batches },
+  ): Promise<void> {
     fixture = TestBed.createComponent(ConsumptionFilters);
     fixture.componentRef.setInput('filter', filter);
-    fixture.componentRef.setInput('substances', substances);
-    fixture.componentRef.setInput('batches', batches);
+    fixture.componentRef.setInput('substances', lists.substances);
+    fixture.componentRef.setInput('batches', lists.batches);
     fixture.componentRef.setInput('bounds', withBounds);
     fixture.componentRef.setInput('settings', settings);
     emitted = [];
@@ -100,6 +104,44 @@ describe('ConsumptionFilters', () => {
     options = await open('batch');
     expect(document.querySelector('mat-optgroup')).toBeNull();
     expect(options.map(text)).toEqual(['All batches', 'Unnamed batch · 20 Sept 2026', 'Unnamed batch · 1 Aug 2026']);
+  });
+
+  it('lists substances and batches with the same name one by one: only the id tells them apart', async () => {
+    // Two substances called Birra, three batches called Peroni bought at the same moment: naming is lenzi's business.
+    const bought = '2026-09-05T17:00:00Z';
+    const peroni = (id: number, substanceId: number): BatchListItem => ({
+      id,
+      substanceId,
+      substanceName: 'Birra',
+      name: 'Peroni',
+      occurredAt: bought,
+      deactivatedAt: null,
+    });
+    const twins = {
+      substances: [substance(4, 'Birra', '2026-08-01T10:00:00Z'), substance(9, 'Birra', '2026-08-01T10:00:00Z')],
+      batches: [peroni(21, 4), peroni(20, 4), peroni(30, 9)],
+    };
+
+    await render({}, bounds, twins);
+    let options = await open('substance');
+    expect(options.map(text)).toEqual(['All substances', 'Birra', 'Birra']);
+    options[2]!.click();
+    expect(emitted).toEqual([{ substanceId: 9 }]);
+
+    document.querySelectorAll('.cdk-overlay-container').forEach((overlay) => (overlay.innerHTML = ''));
+    await render({}, bounds, twins);
+    options = await open('batch');
+    expect(Array.from(document.querySelectorAll('mat-optgroup')).map((g) => text(g.querySelector('.mat-mdc-optgroup-label')))).toEqual([
+      'Birra',
+      'Birra',
+    ]);
+    expect(options.map(text)).toEqual(['All batches', 'Peroni · 5 Sept 2026', 'Peroni · 5 Sept 2026', 'Peroni · 5 Sept 2026']);
+    options[2]!.click();
+    options[3]!.click();
+    expect(emitted).toEqual([
+      { batchId: 20, substanceId: 4 },
+      { batchId: 30, substanceId: 9 },
+    ]);
   });
 
   it('fills in the substance of the batch chosen', async () => {
