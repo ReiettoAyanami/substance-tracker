@@ -3,16 +3,18 @@ import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/materia
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 
+import { BatchForm } from '../batch-form/batch-form';
 import { ConsumptionForm } from '../consumption-form/consumption-form';
+import { BatchRecord } from '../data/batch';
 import { Consumption, ConsumptionRecord } from '../data/consumption';
 import { OneTimeRecord } from '../data/one-time';
 import { Substance } from '../data/substance';
 import { SubstanceForm } from '../substance-form/substance-form';
 
 /** What the entity dialog creates or edits: one form per entity (design-frontend.md, "entity form"). */
-export type EntityKind = 'substance' | 'consumption';
+export type EntityKind = 'substance' | 'batch' | 'consumption';
 
-const KIND_LABELS: Record<EntityKind, string> = { substance: 'Substance', consumption: 'Consumption' };
+const KIND_LABELS: Record<EntityKind, string> = { substance: 'Substance', batch: 'Batch', consumption: 'Consumption' };
 
 /** What the dialog opens with. */
 export interface EntityDialogData {
@@ -27,6 +29,7 @@ export interface EntityDialogData {
 /** What it closes with: the saved record and its kind. Nothing when cancelled or closed by back. */
 export type EntityDialogResult =
   | { kind: 'substance'; substance: Substance }
+  | { kind: 'batch'; record: BatchRecord }
   | { kind: 'consumption'; record: ConsumptionRecord | OneTimeRecord };
 
 /**
@@ -37,7 +40,7 @@ export type EntityDialogResult =
  */
 @Component({
   selector: 'app-entity-dialog',
-  imports: [ConsumptionForm, MatDialogModule, MatFormFieldModule, MatSelectModule, SubstanceForm],
+  imports: [BatchForm, ConsumptionForm, MatDialogModule, MatFormFieldModule, MatSelectModule, SubstanceForm],
   templateUrl: './entity-dialog.html',
   styleUrl: './entity-dialog.css',
 })
@@ -56,6 +59,10 @@ export class EntityDialog {
 
   protected savedSubstance(substance: Substance): void {
     this.dialog.close({ kind: 'substance', substance });
+  }
+
+  protected savedBatch(record: BatchRecord): void {
+    this.dialog.close({ kind: 'batch', record });
   }
 
   protected savedConsumption(record: ConsumptionRecord | OneTimeRecord): void {

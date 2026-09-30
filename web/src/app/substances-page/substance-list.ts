@@ -21,11 +21,12 @@ export type SubstanceListState =
  */
 @Injectable()
 export class SubstanceList {
+  private readonly catalog = inject(CatalogApi);
   private readonly current = signal<SubstanceListState>({ status: 'loading' });
   readonly state = this.current.asReadonly();
 
   constructor() {
-    forkJoin([inject(SettingsApi).getSettings(), inject(CatalogApi).listSubstances()]).subscribe({
+    forkJoin([inject(SettingsApi).getSettings(), this.catalog.listSubstances()]).subscribe({
       next: ([settings, substances]) => this.current.set({ status: 'loaded', settings, substances }),
       error: (error: ApiError) => this.current.set({ status: 'failed', error }),
     });
@@ -39,6 +40,17 @@ export class SubstanceList {
   /** A substance just changed (the PATCH): in its new place, since its name may have changed. */
   replace(substance: Substance): void {
     this.change((substances) => substances.map((s) => (s.id === substance.id ? substance : s)).sort(apiOrder));
+  }
+
+  /**
+   * A substance whose numbers changed with a write elsewhere (a batch recorded for it): asked again,
+   * since its card summary is the API's. If it cannot be, the card stays as it was.
+   */
+  reload(id: number): void {
+    this.catalog.getSubstance(id).subscribe({
+      next: (substance) => this.replace(substance),
+      error: () => undefined,
+    });
   }
 
   /** A substance just deleted: gone. */

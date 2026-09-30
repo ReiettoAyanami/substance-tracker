@@ -9,7 +9,7 @@ import { SubstanceList } from './substance-list';
 
 /**
  * The substances page (design-frontend.md, "substances page", the former home): the substance
- * cards in the API's order (name, id) and the "+" that opens the substance form. The list is this
+ * cards in the API's order (name, id) and the "+" that adds a substance or a batch. The list is this
  * template, not a component of its own. It is the parent route of the substance page, which opens
  * in its outlet and shares the list and the actions on a substance (SubstanceList,
  * SubstanceActions, provided here).

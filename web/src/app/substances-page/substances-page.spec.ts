@@ -117,10 +117,10 @@ describe('SubstancesPage', () => {
     backend.expectOne('/api/substances').flush([substance(4, 'Birra'), substance(3, 'Erba')]);
     await fixture.whenStable();
 
-    fixture.nativeElement.querySelector('app-add-button button[aria-label="Add substance"]').click();
+    fixture.nativeElement.querySelector('app-add-button button[aria-label="Add substance or batch"]').click();
     await fixture.whenStable();
     const form = document.querySelector('app-substance-form')!;
-    expect(form).not.toBeNull();
+    expect(form).not.toBeNull(); // "New": Substance, the first of the two
 
     for (const [field, value] of [['name', 'Caffè'], ['unit', 'capsula']]) {
       const input = form.querySelector<HTMLInputElement>(`input[formControlName="${field}"]`)!;
@@ -134,6 +134,56 @@ describe('SubstancesPage', () => {
     await settle();
     expect(document.querySelector('app-substance-form')).toBeNull();
     expect(names()).toEqual(['Birra', 'Caffè', 'Erba']);
+  });
+
+  it('records a batch from the "+" (New: Batch) and asks its substance again, so the card shows the new stock', async () => {
+    backend.expectOne('/api/settings').flush(settings);
+    backend.expectOne('/api/substances').flush([substance(4, 'Birra'), substance(3, 'Erba')]);
+    await fixture.whenStable();
+    const segments = () => fixture.nativeElement.querySelectorAll('app-substance-card .segment').length;
+    expect(segments()).toBe(0);
+
+    fixture.nativeElement.querySelector('app-add-button button').click();
+    await fixture.whenStable();
+    document.querySelector<HTMLElement>('app-entity-dialog mat-select.kind-select')!.click();
+    await fixture.whenStable();
+    Array.from(document.querySelectorAll<HTMLElement>('mat-option'))
+      .find((o) => o.textContent?.trim() === 'Batch')!
+      .click();
+    TestBed.tick(); // the batch form asks for the settings and the substances once drawn
+    backend.expectOne('/api/settings').flush(settings);
+    backend.expectOne('/api/substances').flush([substance(4, 'Birra'), substance(3, 'Erba')]);
+    await fixture.whenStable();
+
+    const form = document.querySelector('app-batch-form')!;
+    form.querySelector<HTMLElement>('mat-select.substance')!.click();
+    await fixture.whenStable();
+    Array.from(document.querySelectorAll<HTMLElement>('mat-option'))
+      .find((o) => o.textContent?.trim() === 'Erba')!
+      .click();
+    await fixture.whenStable();
+    for (const [field, value] of [['quantity', '5'], ['totalPrice', '50']]) {
+      const input = form.querySelector<HTMLInputElement>(`input[formControlName="${field}"]`)!;
+      input.value = value;
+      input.dispatchEvent(new Event('input'));
+    }
+    form.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
+    backend.expectOne('/api/substances/3/batches').flush({ id: 60, substanceId: 3 }, { status: 201, statusText: 'Created' });
+    await settle();
+
+    const restocked = substance(3, 'Erba');
+    restocked.summary = {
+      ...restocked.summary,
+      stock: '5.000',
+      stockBarMax: '5.000',
+      stockBarSegments: [{ batchId: 60, name: null, remaining: '5.000', unitPrice: '10.000000' }],
+    };
+    backend.expectOne('/api/substances/3').flush(restocked);
+    await fixture.whenStable();
+
+    expect(document.querySelector('app-batch-form')).toBeNull();
+    expect(segments()).toBe(1);
+    expect(names()).toEqual(['Birra', 'Erba']);
   });
 
   it('edits a substance from its ⋮ menu: the same form, filled in; the card changes in its place', async () => {

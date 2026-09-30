@@ -1,0 +1,68 @@
+:host {
+  display: block;
+}
+
+/* Like a Material dialog's title: the form is shown in the entity dialog. */
+.title {
+  margin: 0 0 16px;
+  font: var(--mat-sys-headline-small);
+  color: var(--mat-sys-on-surface);
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 8px;
+}
+
+.fixed {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  font: var(--mat-sys-body-large);
+}
+
+.dot {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+/* The way a number is typed (quantity | refills, total | per unit), above its field: 48 dp to tap,
+   like the share toggle of the batch list. */
+.way {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.way mat-button-toggle-group {
+  --mat-button-toggle-height: 48px;
+}
+
+/* Day and time side by side: they fit at 390 px too. */
+.when {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.form-error {
+  margin: 8px 0 0;
+  color: var(--mat-sys-error);
+  font: var(--mat-sys-body-medium);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}

@@ -110,4 +110,65 @@ describe('EntityDialog', () => {
     await fixture.whenStable();
     expect(closedWith).toEqual([{ kind: 'consumption', record: { id: 31 } }]);
   });
+
+  describe('with several kinds (the "+" of the substances page)', () => {
+    let backend: HttpTestingController;
+
+    /** Picks a kind in the "New" selector; the batch form then asks for the settings and the substances. */
+    async function chooseKind(label: string): Promise<void> {
+      element().querySelector<HTMLElement>('mat-select.kind-select')!.click();
+      await fixture.whenStable();
+      Array.from(document.querySelectorAll<HTMLElement>('mat-option'))
+        .find((o) => o.textContent?.trim() === label)!
+        .click();
+      TestBed.tick();
+    }
+
+    beforeEach(async () => {
+      await open({ kinds: ['substance', 'batch'] });
+      backend = TestBed.inject(HttpTestingController);
+    });
+
+    afterEach(() => backend.verify());
+
+    it('shows a "New" selector with the first kind chosen, and the forms without their own titles', async () => {
+      expect(element().querySelector('.kind mat-label')?.textContent?.trim()).toBe('New');
+      expect(element().querySelector('mat-select.kind-select .mat-mdc-select-value-text')?.textContent?.trim()).toBe('Substance');
+      expect(element().querySelector('app-substance-form')).not.toBeNull();
+      expect(element().querySelector('app-batch-form')).toBeNull();
+      expect(element().querySelector('h2')).toBeNull();
+
+      await chooseKind('Batch');
+      backend.expectOne('/api/settings').flush({ timezone: 'Europe/Rome', dayStartsAt: '00:00:00', currency: 'EUR' });
+      backend.expectOne('/api/substances').flush([]);
+      await fixture.whenStable();
+
+      expect(element().querySelector('app-batch-form')).not.toBeNull();
+      expect(element().querySelector('app-substance-form')).toBeNull();
+      expect(element().querySelector('h2')).toBeNull();
+    });
+
+    it('closes with the batch its form saved, and its kind', async () => {
+      await chooseKind('Batch');
+      backend.expectOne('/api/settings').flush({ timezone: 'Europe/Rome', dayStartsAt: '00:00:00', currency: 'EUR' });
+      backend.expectOne('/api/substances').flush([{ id: 4, name: 'Birra', unit: 'bottiglia', refillQuantity: null }]);
+      await fixture.whenStable();
+
+      element().querySelector<HTMLElement>('mat-select.substance')!.click();
+      await fixture.whenStable();
+      document.querySelector<HTMLElement>('mat-option')!.click();
+      await fixture.whenStable();
+      for (const [field, value] of [['quantity', '6'], ['totalPrice', '7.20']]) {
+        const control = element().querySelector<HTMLInputElement>(`input[formControlName="${field}"]`)!;
+        control.value = value!;
+        control.dispatchEvent(new Event('input'));
+      }
+      element().querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
+      const record = { id: 60, substanceId: 4 };
+      backend.expectOne('/api/substances/4/batches').flush(record, { status: 201, statusText: 'Created' });
+      await fixture.whenStable();
+
+      expect(closedWith).toEqual([{ kind: 'batch', record }]);
+    });
+  });
 });

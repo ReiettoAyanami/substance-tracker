@@ -1,0 +1,131 @@
+@if (showTitle()) {
+  <h2 class="title">{{ batch() ? 'Edit batch' : 'New batch' }}</h2>
+}
+
+<form [formGroup]="form" (ngSubmit)="save()">
+  @if (batch()) {
+    @if (substance(); as shown) {
+      <!-- The substance of a batch never changes. -->
+      <p class="fixed">
+        <span class="dot" [style.background-color]="shown.id | identityColor: 'substance'"></span>
+        <span>{{ shown.name }}</span>
+      </p>
+    }
+  } @else if (substanceId() === null) {
+    <mat-form-field appearance="outline">
+      <mat-label>Substance</mat-label>
+      <mat-select class="substance" formControlName="substanceId">
+        @for (option of substances.value() ?? []; track option.id) {
+          <mat-option [value]="option.id">{{ option.name }}</mat-option>
+        }
+      </mat-select>
+      <mat-error>{{ errorOf('substanceId') }}</mat-error>
+    </mat-form-field>
+  }
+
+  <mat-form-field appearance="outline">
+    <mat-label>Name</mat-label>
+    <input matInput formControlName="name" autocomplete="off" maxlength="100" />
+    <mat-hint>Optional, e.g. the brand</mat-hint>
+    <mat-error>{{ errorOf('name') }}</mat-error>
+  </mat-form-field>
+
+  @if (canRefill()) {
+    <div class="way">
+      <span>Bought as</span>
+      <mat-button-toggle-group
+        hideSingleSelectionIndicator
+        aria-label="Bought as"
+        [value]="amountIn()"
+        (change)="chooseAmount($event.value)"
+      >
+        <mat-button-toggle value="quantity">quantity</mat-button-toggle>
+        <mat-button-toggle value="refills">refills</mat-button-toggle>
+      </mat-button-toggle-group>
+    </div>
+  }
+  @if (amountIn() === 'refills') {
+    <mat-form-field appearance="outline">
+      <mat-label>Refills</mat-label>
+      <input matInput formControlName="refills" inputmode="decimal" autocomplete="off" />
+      <mat-hint>{{ refillsPreview() }}</mat-hint>
+      <mat-error>{{ errorOf('refills') }}</mat-error>
+    </mat-form-field>
+  } @else {
+    <mat-form-field appearance="outline">
+      <mat-label>Quantity</mat-label>
+      <input matInput formControlName="quantity" inputmode="decimal" autocomplete="off" />
+      <span matTextSuffix>{{ unit() }}</span>
+      <mat-error>{{ errorOf('quantity') }}</mat-error>
+    </mat-form-field>
+  }
+
+  @if (!batch()) {
+    <div class="way">
+      <span>Price</span>
+      <mat-button-toggle-group
+        hideSingleSelectionIndicator
+        aria-label="Price"
+        [value]="priceIn()"
+        (change)="choosePrice($event.value)"
+      >
+        <mat-button-toggle value="total">total</mat-button-toggle>
+        <mat-button-toggle value="unit">per unit</mat-button-toggle>
+      </mat-button-toggle-group>
+    </div>
+  }
+  @if (priceIn() === 'unit') {
+    <mat-form-field appearance="outline">
+      <mat-label>Price per unit</mat-label>
+      <span matTextPrefix>{{ currencySign() }}&nbsp;</span>
+      <input matInput formControlName="unitPrice" inputmode="decimal" autocomplete="off" />
+      @if (pricePreview(); as preview) {
+        <mat-hint>{{ preview }}</mat-hint>
+      }
+      <mat-error>{{ errorOf('unitPrice') }}</mat-error>
+    </mat-form-field>
+  } @else {
+    <mat-form-field appearance="outline">
+      <mat-label>Total price</mat-label>
+      <span matTextPrefix>{{ currencySign() }}&nbsp;</span>
+      <input matInput formControlName="totalPrice" inputmode="decimal" autocomplete="off" />
+      @if (pricePreview(); as preview) {
+        <mat-hint>{{ preview }}</mat-hint>
+      }
+      <mat-error>{{ errorOf('totalPrice') }}</mat-error>
+    </mat-form-field>
+  }
+
+  <div class="when">
+    <mat-form-field appearance="outline">
+      <mat-label>Day</mat-label>
+      <input matInput [matDatepicker]="dayPicker" formControlName="day" readonly (click)="dayPicker.open()" />
+      <mat-datepicker-toggle matIconSuffix [for]="dayPicker" />
+      <mat-datepicker #dayPicker />
+      <mat-error>{{ errorOf('day') }}</mat-error>
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Time</mat-label>
+      <input matInput [matTimepicker]="timePicker" formControlName="time" autocomplete="off" />
+      <mat-timepicker-toggle matIconSuffix [for]="timePicker" />
+      <mat-timepicker #timePicker />
+      <mat-error>{{ errorOf('time') }}</mat-error>
+    </mat-form-field>
+  </div>
+
+  <mat-form-field appearance="outline">
+    <mat-label>Note</mat-label>
+    <textarea matInput formControlName="note" rows="2" maxlength="255"></textarea>
+    <mat-hint>Optional</mat-hint>
+    <mat-error>{{ errorOf('note') }}</mat-error>
+  </mat-form-field>
+
+  @if (formError(); as message) {
+    <p class="form-error" role="alert">{{ message }}</p>
+  }
+
+  <div class="actions">
+    <button mat-button type="button" (click)="cancelled.emit()">Cancel</button>
+    <button mat-flat-button type="submit" [disabled]="saving()">Save</button>
+  </div>
+</form>

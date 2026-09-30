@@ -2,7 +2,7 @@
   @if (chooser) {
     <mat-form-field appearance="outline" class="kind">
       <mat-label>New</mat-label>
-      <mat-select [value]="kind()" (selectionChange)="kind.set($event.value)">
+      <mat-select class="kind-select" [value]="kind()" (selectionChange)="kind.set($event.value)">
         @for (option of data.kinds; track option) {
           <mat-option [value]="option">{{ labels[option] }}</mat-option>
         }
@@ -18,6 +18,9 @@
         (saved)="savedSubstance($event)"
         (cancelled)="cancel()"
       />
+    }
+    @case ('batch') {
+      <app-batch-form [showTitle]="!chooser" (saved)="savedBatch($event)" (cancelled)="cancel()" />
     }
     @case ('consumption') {
       <app-consumption-form
