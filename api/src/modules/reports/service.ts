@@ -1,6 +1,5 @@
 import type { Pool } from '../../db/pool.js';
 import {
-  dec,
   fmtMoney,
   fmtOrNull,
   fmtQty,
@@ -221,10 +220,15 @@ export interface ConsumptionItem {
   unitPrice: string;
   cost: string;
   note: string | null;
-  /** (this − previous) ÷ previous, previous = the one before of the same substance; null for the first. */
+  /**
+   * (this − previous) ÷ previous; previous = the one before it of the same substance, or of the
+   * same batch when the list is one batch's. Null for the first.
+   */
   deltaQuantity: string | null;
   /** Same on the unit price; also null after a unit price of 0. */
   deltaUnitPrice: string | null;
+  /** Same on the cost, the price of the consumption; also null after a cost of 0. */
+  deltaCost: string | null;
 }
 
 /** One item of GET /api/batches (the batch filter of the consumptions page). */
@@ -237,10 +241,10 @@ export interface BatchListItem {
   deactivatedAt: string | null;
 }
 
-/** GET /api/consumptions/bounds: the ends of the unit price and quantity sliders. */
+/** GET /api/consumptions/bounds: the ends of the price (cost of a consumption) and quantity sliders. */
 export interface ConsumptionBounds {
-  minUnitPrice: string | null;
-  maxUnitPrice: string | null;
+  minCost: string | null;
+  maxCost: string | null;
   minQuantity: string | null;
   maxQuantity: string | null;
 }
@@ -312,10 +316,10 @@ export interface ConsumptionScope {
   to?: string | undefined;
 }
 
-/** The scope, plus inclusive ranges on the unit price and on the quantity (decimal strings). */
+/** The scope, plus inclusive ranges on the cost of the consumption and on its quantity (decimal strings). */
 export interface ConsumptionFilter extends ConsumptionScope {
-  minUnitPrice?: string | undefined;
-  maxUnitPrice?: string | undefined;
+  minCost?: string | undefined;
+  maxCost?: string | undefined;
   minQuantity?: string | undefined;
   maxQuantity?: string | undefined;
 }
@@ -361,11 +365,7 @@ interface ConsumptionEntry {
   note: string | null;
   deltaQuantity: Dec | null;
   deltaUnitPrice: Dec | null;
-}
-
-/** The unit price as the API sends it (6 decimals): what the price filter and the bounds compare. */
-function sentUnitPrice(e: ConsumptionEntry): Dec {
-  return dec(fmtUnitPrice(e.unitPrice));
+  deltaCost: Dec | null;
 }
 
 const KIND_RANK = { consumption: 0, one_time: 1 } as const;
@@ -378,6 +378,24 @@ function chronological(a: ConsumptionEntry, b: ConsumptionEntry): number {
     KIND_RANK[a.type] - KIND_RANK[b.type] ||
     a.id - b.id
   );
+}
+
+/**
+ * Gives every entry its deltas from the previous one of its series, (this − previous) ÷ previous:
+ * on the quantity, on the unit price and on the cost. `entries` are oldest first; the first of a
+ * series has none. Quantities are always > 0; a price can be 0 (a gift), and there is no ratio of 0.
+ */
+function compareWithPrevious(entries: ConsumptionEntry[], seriesOf: (e: ConsumptionEntry) => number): void {
+  const previousOf = new Map<number, ConsumptionEntry>();
+  for (const e of entries) {
+    const previous = previousOf.get(seriesOf(e));
+    if (previous) {
+      e.deltaQuantity = e.quantity.minus(previous.quantity).div(previous.quantity);
+      e.deltaUnitPrice = previous.unitPrice.isZero() ? null : e.unitPrice.minus(previous.unitPrice).div(previous.unitPrice);
+      e.deltaCost = previous.cost.isZero() ? null : e.cost.minus(previous.cost).div(previous.cost);
+    }
+    previousOf.set(seriesOf(e), e);
+  }
 }
 
 /**
@@ -774,7 +792,7 @@ export class ReportsService {
 
   /** Batch and one-time consumptions, newest first, filtered, paginated like the histories. */
   async consumptionList(filter: ConsumptionFilter, page: Page): Promise<ConsumptionItem[]> {
-    const unitPrice = decimalRange(filter.minUnitPrice, filter.maxUnitPrice, 'minUnitPrice', 'maxUnitPrice');
+    const cost = decimalRange(filter.minCost, filter.maxCost, 'minCost', 'maxCost');
     const quantity = decimalRange(filter.minQuantity, filter.maxQuantity, 'minQuantity', 'maxQuantity');
     const before = pageBefore(page);
     const [entries, substances] = await Promise.all([
@@ -785,7 +803,7 @@ export class ReportsService {
     const newestFirst = entries
       .filter(
         (e) =>
-          within(sentUnitPrice(e), unitPrice) &&
+          within(e.cost, cost) &&
           within(e.quantity, quantity) &&
           (before === null || e.occurred_at.getTime() < before.getTime()),
       )
@@ -808,6 +826,7 @@ export class ReportsService {
         note: e.note,
         deltaQuantity: fmtOrNull(e.deltaQuantity, SCALE.ratio),
         deltaUnitPrice: fmtOrNull(e.deltaUnitPrice, SCALE.ratio),
+        deltaCost: fmtOrNull(e.deltaCost, SCALE.ratio),
       };
     });
   }
@@ -815,21 +834,22 @@ export class ReportsService {
   /** The ends of the price and quantity sliders over the consumptions in scope; nulls with none. */
   async consumptionBounds(scope: ConsumptionScope): Promise<ConsumptionBounds> {
     const entries = await this.scopedConsumptions(scope);
-    if (entries.length === 0) return { minUnitPrice: null, maxUnitPrice: null, minQuantity: null, maxQuantity: null };
-    const unitPrices = entries.map(sentUnitPrice);
+    if (entries.length === 0) return { minCost: null, maxCost: null, minQuantity: null, maxQuantity: null };
+    const costs = entries.map((e) => e.cost);
     const quantities = entries.map((e) => e.quantity);
     return {
-      minUnitPrice: fmtUnitPrice(lowest(unitPrices)),
-      maxUnitPrice: fmtUnitPrice(highest(unitPrices)),
+      minCost: fmtMoney(lowest(costs)),
+      maxCost: fmtMoney(highest(costs)),
       minQuantity: fmtQty(lowest(quantities)),
       maxQuantity: fmtQty(highest(quantities)),
     };
   }
 
   /**
-   * The consumptions in `scope`, oldest first. The whole history of the substances in scope is
-   * loaded before the batch and the logical days narrow it, so every delta compares with the
-   * real previous consumption, whatever the filters hide.
+   * The consumptions in `scope`, oldest first, each with its deltas from the previous one of its
+   * series: the consumptions of its batch when the list is one batch's (what that list shows),
+   * else those of its substance, of either kind. The whole series is loaded before the logical
+   * days narrow it, so every delta compares with the real previous one, whatever the days hide.
    */
   private async scopedConsumptions(scope: ConsumptionScope): Promise<ConsumptionEntry[]> {
     const days = await this.logicalDays(scope.from, scope.to);
@@ -841,10 +861,11 @@ export class ReportsService {
       if (substanceId !== undefined && batch.substance_id !== substanceId) return [];
       substanceId = batch.substance_id;
     }
-    const entries = await this.consumptionEntries(substanceId);
+    const all = await this.consumptionEntries(substanceId);
+    const entries = scope.batchId === undefined ? all : all.filter((e) => e.batch_id === scope.batchId);
+    compareWithPrevious(entries, scope.batchId === undefined ? (e) => e.substance_id : () => scope.batchId!);
     return entries.filter(
       (e) =>
-        (scope.batchId === undefined || e.batch_id === scope.batchId) &&
         (days.start === null || e.occurred_at.getTime() >= days.start.getTime()) &&
         (days.end === null || e.occurred_at.getTime() < days.end.getTime()),
     );
@@ -868,7 +889,7 @@ export class ReportsService {
 
   /**
    * Every non-deleted consumption of either kind (of one substance, or of all), oldest first,
-   * with its delta from the previous consumption of the same substance.
+   * with its unit price and its cost; the deltas are set by whoever knows the series.
    */
   private async consumptionEntries(substanceId: number | undefined): Promise<ConsumptionEntry[]> {
     const scope = substanceId === undefined ? {} : { substanceIds: [substanceId] };
@@ -897,6 +918,7 @@ export class ReportsService {
           note: c.note,
           deltaQuantity: null,
           deltaUnitPrice: null,
+          deltaCost: null,
         };
       }),
       ...oneTimes.map((o) => {
@@ -917,23 +939,11 @@ export class ReportsService {
           note: o.note,
           deltaQuantity: null,
           deltaUnitPrice: null,
+          deltaCost: null,
         };
       }),
     ];
-    entries.sort(chronological);
-    const previousBySubstance = new Map<number, ConsumptionEntry>();
-    for (const e of entries) {
-      const previous = previousBySubstance.get(e.substance_id);
-      if (previous) {
-        // Quantities are always > 0; a unit price can be 0 (a gift), and there is no ratio of 0.
-        e.deltaQuantity = e.quantity.minus(previous.quantity).div(previous.quantity);
-        e.deltaUnitPrice = previous.unitPrice.isZero()
-          ? null
-          : e.unitPrice.minus(previous.unitPrice).div(previous.unitPrice);
-      }
-      previousBySubstance.set(e.substance_id, e);
-    }
-    return entries;
+    return entries.sort(chronological);
   }
 
   // -------------------------------------------------------------------------------------------

@@ -92,8 +92,8 @@ export const consumptionsSchema = {
     additionalProperties: false,
     properties: {
       ...consumptionScopeProperties,
-      minUnitPrice: decimalQuery,
-      maxUnitPrice: decimalQuery,
+      minCost: decimalQuery,
+      maxCost: decimalQuery,
       minQuantity: decimalQuery,
       maxQuantity: decimalQuery,
       ...paginationProperties,
@@ -102,9 +102,9 @@ export const consumptionsSchema = {
 } as const;
 
 export interface ConsumptionsQuery extends ConsumptionScopeQuery, PaginationQuery {
-  /** Inclusive ranges on the unit price of the consumption and on its quantity. */
-  minUnitPrice?: string;
-  maxUnitPrice?: string;
+  /** Inclusive ranges on what the consumption cost (its price, not its unit price) and on its quantity. */
+  minCost?: string;
+  maxCost?: string;
   minQuantity?: string;
   maxQuantity?: string;
 }
