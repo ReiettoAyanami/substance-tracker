@@ -350,7 +350,7 @@ const lowest = (values: Dec[]): Dec => values.reduce((a, b) => (b.lt(a) ? b : a)
 const highest = (values: Dec[]): Dec => values.reduce((a, b) => (b.gt(a) ? b : a));
 
 /** A consumption of either kind, with the numbers the consumptions list shows. */
-interface ConsumptionEntry {
+export interface ConsumptionEntry {
   type: 'consumption' | 'one_time';
   id: number;
   substance_id: number;
@@ -385,14 +385,14 @@ function chronological(a: ConsumptionEntry, b: ConsumptionEntry): number {
  * the consumptions of its substance, from whatever batch or one-time. Never those of another
  * substance. A one-time consumption has no batch, so this is always its series.
  */
-const ofItsSubstance = (e: ConsumptionEntry): number => e.substance_id;
+export const ofItsSubstance = (e: ConsumptionEntry): number => e.substance_id;
 
 /**
  * Gives every entry its deltas from the previous one of its series, (this − previous) ÷ previous:
  * on the quantity, on the unit price and on the cost. `entries` are oldest first; the first of a
  * series has none. Quantities are always > 0; a price can be 0 (a gift), and there is no ratio of 0.
  */
-function compareWithPrevious(entries: ConsumptionEntry[], seriesOf: (e: ConsumptionEntry) => number): void {
+export function compareWithPrevious(entries: ConsumptionEntry[], seriesOf: (e: ConsumptionEntry) => number): void {
   const previousOf = new Map<number, ConsumptionEntry>();
   for (const e of entries) {
     const previous = previousOf.get(seriesOf(e));
@@ -403,6 +403,64 @@ function compareWithPrevious(entries: ConsumptionEntry[], seriesOf: (e: Consumpt
     }
     previousOf.set(seriesOf(e), e);
   }
+}
+
+/**
+ * Every consumption of either kind, oldest first, with its unit price and its cost; the deltas are
+ * set by whoever knows the series (`compareWithPrevious`). `consumptions` must hold every
+ * non-deleted consumption of `batches` (the costs of a finished batch need them all).
+ */
+export function consumptionEntriesOf(
+  batches: repo.BatchStatRow[],
+  consumptions: repo.ConsumptionStatRow[],
+  oneTimes: repo.OneTimeStatRow[],
+): ConsumptionEntry[] {
+  const costs = consumptionCosts(batches, consumptions);
+  const batchById = new Map(batches.map((b) => [b.id, b]));
+  const entries: ConsumptionEntry[] = [
+    ...consumptions.map((c) => {
+      const batch = batchById.get(c.batch_id)!;
+      return {
+        type: 'consumption' as const,
+        id: c.id,
+        substance_id: c.substance_id,
+        batch_id: c.batch_id,
+        batch_name: batch.name,
+        name: null,
+        occurred_at: c.occurred_at,
+        created_at: c.created_at,
+        quantity: fromDb(c.quantity),
+        unitPrice: unitPriceOf(batch),
+        cost: costs.get(c.id) ?? ZERO,
+        note: c.note,
+        deltaQuantity: null,
+        deltaUnitPrice: null,
+        deltaCost: null,
+      };
+    }),
+    ...oneTimes.map((o) => {
+      const quantity = fromDb(o.quantity);
+      const price = fromDb(o.total_price);
+      return {
+        type: 'one_time' as const,
+        id: o.id,
+        substance_id: o.substance_id,
+        batch_id: null,
+        batch_name: null,
+        name: o.name,
+        occurred_at: o.occurred_at,
+        created_at: o.created_at,
+        quantity,
+        unitPrice: safeDiv(price, quantity),
+        cost: price,
+        note: o.note,
+        deltaQuantity: null,
+        deltaUnitPrice: null,
+        deltaCost: null,
+      };
+    }),
+  ];
+  return entries.sort(chronological);
 }
 
 /**
@@ -922,52 +980,7 @@ export class ReportsService {
       repo.loadConsumptions(this.pool, scope),
       repo.loadOneTimes(this.pool, scope),
     ]);
-    const costs = consumptionCosts(batches, consumptions);
-    const batchById = new Map(batches.map((b) => [b.id, b]));
-    const entries: ConsumptionEntry[] = [
-      ...consumptions.map((c) => {
-        const batch = batchById.get(c.batch_id)!;
-        return {
-          type: 'consumption' as const,
-          id: c.id,
-          substance_id: c.substance_id,
-          batch_id: c.batch_id,
-          batch_name: batch.name,
-          name: null,
-          occurred_at: c.occurred_at,
-          created_at: c.created_at,
-          quantity: fromDb(c.quantity),
-          unitPrice: unitPriceOf(batch),
-          cost: costs.get(c.id) ?? ZERO,
-          note: c.note,
-          deltaQuantity: null,
-          deltaUnitPrice: null,
-          deltaCost: null,
-        };
-      }),
-      ...oneTimes.map((o) => {
-        const quantity = fromDb(o.quantity);
-        const price = fromDb(o.total_price);
-        return {
-          type: 'one_time' as const,
-          id: o.id,
-          substance_id: o.substance_id,
-          batch_id: null,
-          batch_name: null,
-          name: o.name,
-          occurred_at: o.occurred_at,
-          created_at: o.created_at,
-          quantity,
-          unitPrice: safeDiv(price, quantity),
-          cost: price,
-          note: o.note,
-          deltaQuantity: null,
-          deltaUnitPrice: null,
-          deltaCost: null,
-        };
-      }),
-    ];
-    return entries.sort(chronological);
+    return consumptionEntriesOf(batches, consumptions, oneTimes);
   }
 
   // -------------------------------------------------------------------------------------------

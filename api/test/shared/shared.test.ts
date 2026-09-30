@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { Dec, fmt, parseDecimal } from '../../src/shared/decimal.js';
 import { ProblemError } from '../../src/shared/errors.js';
 import {
+  durationIn,
   logicalDate,
   logicalDayStart,
   normalizeTimeOfDay,
@@ -53,6 +54,30 @@ describe('time', () => {
     expect(normalizeTimeOfDay('04:00')).toBe('04:00:00');
     expect(normalizeTimeOfDay('23:59:59')).toBe('23:59:59');
     expect(normalizeTimeOfDay('24:00')).toBeNull();
+  });
+});
+
+describe('durationIn (the interval the user chooses)', () => {
+  const at = (iso: string) => new Date(iso);
+
+  it('a calendar day of the DST change is one day, and 23 real hours', () => {
+    // 2026-03-28 12:00 CET -> 2026-03-29 12:00 CEST
+    const start = at('2026-03-28T11:00:00Z');
+    const end = at('2026-03-29T10:00:00Z');
+    expect(durationIn(start, end, 'day', 'Europe/Rome').toString()).toBe('1');
+    expect(durationIn(start, end, 'hour', 'Europe/Rome').toString()).toBe('23');
+  });
+
+  it('weeks are 7 calendar days; the rest of a month is a fraction of that month', () => {
+    const start = at('2026-09-01T10:00:00Z');
+    expect(durationIn(start, at('2026-09-29T10:00:00Z'), 'week', 'Europe/Rome').toString()).toBe('4');
+    expect(fmt(durationIn(start, at('2026-09-16T10:00:00Z'), 'month', 'Europe/Rome'), 4)).toBe('0.5000'); // 15 of 30
+    expect(fmt(durationIn(at('2026-02-01T11:00:00Z'), at('2026-02-15T11:00:00Z'), 'month', 'Europe/Rome'), 4)).toBe('0.5000'); // 14 of 28
+    expect(durationIn(start, at('2027-09-01T10:00:00Z'), 'year', 'Europe/Rome').toString()).toBe('1');
+  });
+
+  it('is negative when the end comes first', () => {
+    expect(durationIn(at('2026-09-02T00:00:00Z'), at('2026-09-01T00:00:00Z'), 'day', 'UTC').toString()).toBe('-1');
   });
 });
 

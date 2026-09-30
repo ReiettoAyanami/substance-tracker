@@ -6,6 +6,7 @@ import { catalogRoutes } from './modules/catalog/routes.js';
 import { CatalogService } from './modules/catalog/service.js';
 import { ledgerRoutes } from './modules/ledger/routes.js';
 import { metricsRoutes } from './modules/metrics/routes.js';
+import { MetricsService } from './modules/metrics/service.js';
 import { LedgerService } from './modules/ledger/service.js';
 import { reportsRoutes } from './modules/reports/routes.js';
 import { ReportsService } from './modules/reports/service.js';
@@ -101,6 +102,7 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
   const catalog = new CatalogService(pool, clock);
   const reports = new ReportsService(pool, catalog, settings, clock);
   const ledger = new LedgerService(pool, clock);
+  const metrics = new MetricsService(pool, catalog, settings, clock);
 
   app.get('/api/health', async (request, reply) => {
     try {
@@ -118,7 +120,7 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
   catalogRoutes(app, { catalog, reports });
   ledgerRoutes(app, { ledger });
   reportsRoutes(app, { reports });
-  metricsRoutes(app);
+  metricsRoutes(app, { metrics });
   settingsRoutes(app, { settings });
 
   if (opts.webDist) {

@@ -1,4 +1,5 @@
 import { DateTime, IANAZone } from 'luxon';
+import { Dec } from './decimal.js';
 import { badRequest } from './errors.js';
 
 /**
@@ -149,4 +150,26 @@ export function periodsBetween(from: string, to: string, groupBy: GroupBy, maxPe
     else cursor = cursor.startOf('month').plus({ months: 1 });
   }
   return periods;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Time scales (design-statistics.md: the user chooses the interval of every rate and duration)
+// ---------------------------------------------------------------------------------------------
+
+export const TIME_SCALES = ['hour', 'day', 'week', 'month', 'year'] as const;
+export type TimeScale = (typeof TIME_SCALES)[number];
+
+const CALENDAR_UNIT = { day: 'days', week: 'weeks', month: 'months', year: 'years' } as const;
+
+/**
+ * end − start, in `scale`. Hours are real hours (3 600 000 ms). Days, weeks, months and years are
+ * calendar ones in `zone`: a day of the DST change is one day, and the part of a month left over
+ * is a fraction of that month's own length (luxon's diff). Negative when end is before start.
+ */
+export function durationIn(start: Date, end: Date, scale: TimeScale, zone: string): Dec {
+  if (scale === 'hour') return new Dec(end.getTime() - start.getTime()).div(3_600_000);
+  const unit = CALENDAR_UNIT[scale];
+  const from = DateTime.fromJSDate(start, { zone });
+  const to = DateTime.fromJSDate(end, { zone });
+  return new Dec(to.diff(from, unit).get(unit));
 }

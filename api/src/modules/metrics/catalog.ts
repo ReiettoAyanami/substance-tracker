@@ -4,9 +4,10 @@
  * options live here, next to the code that computes them.
  */
 
-/** The intervals a rate or a duration can be read in: the user chooses (lenzi, 2026-09-30). */
-export const TIME_SCALES = ['hour', 'day', 'week', 'month', 'year'] as const;
-export type TimeScale = (typeof TIME_SCALES)[number];
+import { TIME_SCALES, type TimeScale } from '../../shared/time.js';
+
+/** The intervals a rate or a duration can be read in (TIME_SCALES): the user chooses (lenzi, 2026-09-30). */
+export { TIME_SCALES, type TimeScale };
 
 export const METRIC_SCOPES = ['substance', 'batch', 'consumption'] as const;
 export type MetricScope = (typeof METRIC_SCOPES)[number];
