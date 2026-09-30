@@ -23,6 +23,10 @@ mat-panel-title {
   margin-left: auto;
 }
 
+.message a {
+  color: var(--mat-sys-primary);
+}
+
 /* One number per line: the value is what is read first, what it is under it (the value comes
    after the label in the markup, for screen readers; the order puts it on top). */
 .metrics {

@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
+import { provideRouter } from '@angular/router';
 import { Observable, of, throwError } from 'rxjs';
 
 import { MetricDefinition, MetricsQuery, MetricsResult } from '../../data/metric';
@@ -88,6 +89,7 @@ describe('MetricsPanel', () => {
     await TestBed.configureTestingModule({
       imports: [MetricsPanel],
       providers: [
+        provideRouter([]),
         {
           provide: MetricsApi,
           useValue: {
@@ -146,7 +148,8 @@ describe('MetricsPanel', () => {
     shownKeys = [];
     await render({ open: true });
 
-    expect(text(element().querySelector('.message'))).toBe('No metric is chosen for this page.');
+    expect(text(element().querySelector('.message'))).toBe('No metric is chosen for this page: choose them.');
+    expect(element().querySelector('.message a')?.getAttribute('href')).toBe('/statistics/edit?section=substance');
     expect(element().querySelector('.per')).toBeNull();
     expect(element().querySelector('.period')).toBeNull();
     expect(text(element().querySelector('.summary'))).toBe('');

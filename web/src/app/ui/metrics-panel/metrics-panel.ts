@@ -3,6 +3,7 @@ import { rxResource } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
+import { RouterLink } from '@angular/router';
 
 import { ApiError } from '../../data/api-error';
 import { MetricDefinition, MetricScope, TIME_SCALES, TimeScale } from '../../data/metric';
@@ -39,14 +40,16 @@ const readDays = () => read<number>(DAYS_KEY, (v) => (PERIODS.some((p) => String
 /**
  * The metrics of one entity (design-statistics.md, "entity metrics panel"): the numbers the API
  * computes for it, one per line (the value, what it is, and on demand its description), in an
- * expansion panel like the batch and one-time lists of the substance page. One scale for the whole panel (hour … year: the user
- * chooses the interval of every rate and duration), and a period when some metric follows one.
- * Both are remembered by this browser. It asks the API when it is first opened, and again when the
- * scale, the period or `refresh` changes.
+ * expansion panel like the batch and one-time lists of the substance page. It shows the metrics its
+ * place lists (the view items of its surface, edited from /statistics/edit, where its "tune" button
+ * leads), in their order. One scale for the whole panel (hour … year: the user chooses the interval
+ * of every rate and duration), and a period when some metric follows one; both are remembered by
+ * this browser. It asks the API when it is first opened, and again when the scale, the period or
+ * `refresh` changes.
  */
 @Component({
   selector: 'app-metrics-panel',
-  imports: [MatButtonModule, MatExpansionModule, MatIconModule, MetricValuePipe, PeriodScale],
+  imports: [MatButtonModule, MatExpansionModule, MatIconModule, MetricValuePipe, PeriodScale, RouterLink],
   templateUrl: './metrics-panel.html',
   styleUrl: './metrics-panel.css',
 })

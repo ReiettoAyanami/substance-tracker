@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
 import { MAT_DIALOG_DATA } from '@angular/material/dialog';
+import { provideRouter } from '@angular/router';
 import { Observable, of } from 'rxjs';
 
 import { MetricDefinition, MetricsQuery, MetricsResult } from '../data/metric';
@@ -42,6 +43,7 @@ describe('ConsumptionDetails', () => {
     await TestBed.configureTestingModule({
       imports: [ConsumptionDetails],
       providers: [
+        provideRouter([]),
         { provide: MAT_DIALOG_DATA, useValue: { consumption, settings } satisfies ConsumptionDetailsData },
         {
           provide: MetricsApi,

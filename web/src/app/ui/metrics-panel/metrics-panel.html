@@ -21,12 +21,21 @@
     >
       <mat-icon>{{ explain() ? 'info' : 'info_outline' }}</mat-icon>
     </button>
+    <a
+      mat-icon-button
+      class="choose"
+      routerLink="/statistics/edit"
+      [queryParams]="{ section: scope() }"
+      aria-label="Choose what this panel shows"
+    >
+      <mat-icon>tune</mat-icon>
+    </a>
   </div>
 
   @if (failure(); as failure) {
     <p class="message">{{ failure }}</p>
   } @else if (empty()) {
-    <p class="message">No metric is chosen for this page.</p>
+    <p class="message">No metric is chosen for this page: <a routerLink="/statistics/edit" [queryParams]="{ section: scope() }">choose them</a>.</p>
   } @else if (values(); as values) {
     <!-- A definition list, not a Material list: a description can take the lines it needs. -->
     <dl class="metrics">

@@ -1,0 +1,60 @@
+<ol class="items">
+  @for (row of rows(); track row.item.id) {
+    <li class="item">
+      <div class="text">
+        <span class="label">{{ row.metric?.label ?? row.item.metric }}</span>
+        <span class="description">{{ row.metric?.description ?? 'Not in the catalog any more: remove it.' }}</span>
+      </div>
+      <div class="buttons">
+        <button
+          mat-icon-button
+          type="button"
+          class="up"
+          [disabled]="busy() || row.first"
+          [attr.aria-label]="'Move ' + (row.metric?.label ?? row.item.metric) + ' up'"
+          (click)="move.emit({ item: row.item, by: -1 })"
+        >
+          <mat-icon>arrow_upward</mat-icon>
+        </button>
+        <button
+          mat-icon-button
+          type="button"
+          class="down"
+          [disabled]="busy() || row.last"
+          [attr.aria-label]="'Move ' + (row.metric?.label ?? row.item.metric) + ' down'"
+          (click)="move.emit({ item: row.item, by: 1 })"
+        >
+          <mat-icon>arrow_downward</mat-icon>
+        </button>
+        <button
+          mat-icon-button
+          type="button"
+          class="remove"
+          [disabled]="busy()"
+          [attr.aria-label]="'Remove ' + (row.metric?.label ?? row.item.metric)"
+          (click)="remove.emit(row.item)"
+        >
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+    </li>
+  } @empty {
+    <li class="none">Nothing is shown here.</li>
+  }
+</ol>
+
+@if (addable().length > 0) {
+  <mat-form-field class="add" appearance="outline" subscriptSizing="dynamic">
+    <mat-label>Add a metric</mat-label>
+    <!-- The select never keeps a value: choosing one adds it. -->
+    <mat-select [value]="null" [disabled]="busy()" panelClass="view-item-options" (selectionChange)="add.emit($event.value)">
+      @for (metric of addable(); track metric.key) {
+        <mat-option [value]="metric.key">
+          <span class="option-label">{{ metric.label }}</span>
+          <!-- The space keeps name and description two words for a screen reader. -->
+          <span class="option-description"> {{ metric.description }}</span>
+        </mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+}

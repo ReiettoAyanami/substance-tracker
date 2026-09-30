@@ -1,0 +1,56 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* One metric: what it is on the left, its buttons on the right. */
+.item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+}
+
+.item:last-child {
+  border-bottom: none;
+}
+
+.text {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.label {
+  font: var(--mat-sys-body-large);
+  color: var(--mat-sys-on-surface);
+}
+
+.description {
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.buttons {
+  flex: none;
+  display: flex;
+}
+
+.none {
+  padding: 8px 0;
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.add {
+  width: 100%;
+}

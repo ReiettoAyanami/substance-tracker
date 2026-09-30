@@ -38,6 +38,15 @@
           </mat-select>
         </mat-form-field>
       }
+      <a
+        mat-icon-button
+        class="choose"
+        routerLink="/statistics/edit"
+        [queryParams]="{ section: 'metrics-' + query().table }"
+        aria-label="Choose the columns of this table"
+      >
+        <mat-icon>tune</mat-icon>
+      </a>
       @if (query().table === 'consumption' && query().substanceId !== null) {
         <mat-form-field class="batch-filter" appearance="outline" subscriptSizing="dynamic">
           <mat-label>Batch</mat-label>

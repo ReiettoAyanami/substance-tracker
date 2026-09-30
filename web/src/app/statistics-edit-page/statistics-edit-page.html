@@ -1,0 +1,32 @@
+<main class="edit-page">
+  <p class="intro">What each page shows, in which order. Every change is saved at once.</p>
+
+  @if (failure(); as failure) {
+    <p class="message error">{{ failure }}</p>
+  } @else if (view(); as view) {
+    @for (entry of view; track entry.place.id) {
+      <mat-card appearance="outlined" class="place" [id]="entry.place.id">
+        <mat-card-header>
+          <mat-card-title>{{ entry.place.title }}</mat-card-title>
+          <mat-card-subtitle>{{ entry.place.hint }}</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          @if (entry.items; as items) {
+            <app-view-item-list
+              [items]="items"
+              [metrics]="entry.metrics"
+              [busy]="busy()"
+              (add)="add(entry.place, $event)"
+              (remove)="remove(entry.place, $event)"
+              (move)="move(entry.place, $event.item, $event.by)"
+            />
+          } @else {
+            <p class="message">…</p>
+          }
+        </mat-card-content>
+      </mat-card>
+    }
+  } @else {
+    <p class="message">…</p>
+  }
+</main>
