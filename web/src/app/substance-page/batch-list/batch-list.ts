@@ -15,6 +15,7 @@ import { IdentityColorPipe } from '../../ui/identity-color-pipe';
 import { StockBar } from '../../ui/stock-bar/stock-bar';
 import { UnitPricePipe } from '../../ui/unit-price-pipe';
 import { BatchActions } from './batch-actions';
+import { RecentConsumptions } from './recent-consumptions/recent-consumptions';
 
 /** What a batch's share is of: the stock by quantity, or its value. */
 type ShareMode = 'quantity' | 'value';
@@ -42,8 +43,9 @@ function writeShareMode(mode: ShareMode): void {
  * The active batches of a substance, in its page (design.md, "stock bar": one sub-card per batch,
  * oldest first). Closed, it is the total: how many batches and the stock they make up. Open, one
  * sub-card per batch, with its own bar (maximum = what was bought, filled = what is left), its
- * prices and its share of the stock, by quantity or by value, and a ⋮ menu to edit or delete it;
- * at the top right of the open panel, "Add batch" (so the panel opens also with no batch). Loads
+ * prices and its share of the stock, by quantity or by value, a ⋮ menu to edit or delete it, and
+ * its recent consumptions, shown on demand (design-frontend.md, "recent consumptions"); at the top
+ * right of the open panel, "Add batch" (so the panel opens also with no batch). Loads
  * its data from the API, asks for it again after each of those writes, and tells its page
  * (`changed`), which has the substance's card to refresh.
  */
@@ -56,6 +58,7 @@ function writeShareMode(mode: ShareMode): void {
     MatExpansionModule,
     MatIconModule,
     MatMenuModule,
+    RecentConsumptions,
     StockBar,
     UnitPricePipe,
   ],
@@ -78,6 +81,8 @@ export class BatchList {
   });
 
   protected readonly shareMode = signal<ShareMode>(readShareMode());
+  /** The batches whose recent consumptions are open. */
+  private readonly recentOpen = signal<ReadonlySet<number>>(new Set());
 
   private readonly formats = computed(() => ({
     quantity: new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 3 }),
@@ -132,8 +137,18 @@ export class BatchList {
       share: `${this.exact(formats.share, byValue ? batch.shareByValue : batch.shareByQuantity)} ${
         byValue ? 'of the value' : 'of the stock'
       }`,
+      recentOpen: this.recentOpen().has(batch.id),
     }));
   });
+
+  /** Opens the recent consumptions of a batch (they are asked for then), or closes them. */
+  protected toggleRecent(batchId: number): void {
+    this.recentOpen.update((open) => {
+      const next = new Set(open);
+      if (!next.delete(batchId)) next.add(batchId);
+      return next;
+    });
+  }
 
   protected chooseShare(mode: ShareMode): void {
     this.shareMode.set(mode);

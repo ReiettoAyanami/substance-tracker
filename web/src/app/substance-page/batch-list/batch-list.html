@@ -68,6 +68,20 @@
             {{ row.batch.unitPrice | unitPrice: settings().currency : unit() }} · total {{ row.totalPrice }}
           </span>
         </div>
+        <!-- Its last consumptions, asked for when opened; they end with the way to all of them. -->
+        <button
+          mat-button
+          type="button"
+          class="recent-toggle"
+          [attr.aria-expanded]="row.recentOpen"
+          (click)="toggleRecent(row.batch.id)"
+        >
+          <mat-icon>{{ row.recentOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
+          Recent consumptions
+        </button>
+        @if (row.recentOpen) {
+          <app-recent-consumptions [batch]="row.batch" [substanceId]="substanceId()" [settings]="settings()" />
+        }
       </li>
     }
   </ul>

@@ -101,6 +101,12 @@ mat-panel-title {
   color: var(--mat-sys-on-surface-variant);
 }
 
+/* "Recent consumptions", at the left under the facts; its text lines up with them. */
+.recent-toggle {
+  align-self: flex-start;
+  margin: 0 0 -4px -12px;
+}
+
 .prices {
   flex-basis: 100%;
   color: var(--mat-sys-on-surface-variant);

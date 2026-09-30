@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
+import { provideRouter } from '@angular/router';
 import { Observable, of, throwError } from 'rxjs';
 
 import { ApiError } from '../../data/api-error';
@@ -55,6 +56,8 @@ describe('BatchList', () => {
   let asked: unknown[];
   let written: boolean;
   let told: number;
+  /** The batches whose recent consumptions were asked for. */
+  let recentAsks: number[];
 
   const element = () => fixture.nativeElement as HTMLElement;
   const text = (e: Element | null | undefined) => (e?.textContent ?? '').replace(/\s+/g, ' ').trim();
@@ -91,6 +94,7 @@ describe('BatchList', () => {
     asks = 0;
     asked = [];
     written = true;
+    recentAsks = [];
     await TestBed.configureTestingModule({
       imports: [BatchList],
       providers: [
@@ -101,8 +105,13 @@ describe('BatchList', () => {
               asks++;
               return answer();
             },
+            listConsumptions: (filter: { batchId: number }) => {
+              recentAsks.push(filter.batchId);
+              return of([]);
+            },
           },
         },
+        provideRouter([]),
         {
           provide: BatchActions,
           useValue: {
@@ -206,6 +215,50 @@ describe('BatchList', () => {
     expect(asked.length).toBe(2);
     expect(asks).toBe(1);
     expect(told).toBe(0);
+  });
+
+  it('shows the recent consumptions of a batch under its sub-card, asked for only once it is opened', async () => {
+    await render();
+    await expand();
+    const toggles = () => Array.from(element().querySelectorAll<HTMLButtonElement>('.batch button.recent-toggle'));
+    expect(toggles().map((t) => [text(t), t.getAttribute('aria-expanded')])).toEqual([
+      ['expand_more Recent consumptions', 'false'],
+      ['expand_more Recent consumptions', 'false'],
+    ]);
+    expect(element().querySelector('app-recent-consumptions')).toBeNull();
+    expect(recentAsks).toEqual([]);
+
+    toggles()[1]!.click(); // the unnamed batch, id 6
+    await fixture.whenStable();
+    const subCards = element().querySelectorAll('.batch');
+    expect(subCards[0]!.querySelector('app-recent-consumptions')).toBeNull();
+    expect(subCards[1]!.querySelector('app-recent-consumptions')).not.toBeNull();
+    expect(toggles()[1]!.getAttribute('aria-expanded')).toBe('true');
+    expect(recentAsks).toEqual([6]);
+
+    toggles()[1]!.click();
+    await fixture.whenStable();
+    expect(element().querySelector('app-recent-consumptions')).toBeNull();
+    expect(toggles()[1]!.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('asks the recent consumptions of an open sub-card again when the batches are (a batch was edited)', async () => {
+    await render();
+    await expand();
+    element().querySelectorAll<HTMLButtonElement>('.batch button.recent-toggle')[0]!.click();
+    await fixture.whenStable();
+    expect(recentAsks).toEqual([1]);
+
+    // As the API would after the edit: the batches anew, the first one with another price.
+    const edited = structuredClone(coffee);
+    edited.batches[0]!.totalPrice = '30.00';
+    edited.batches[0]!.unitPrice = '0.300000';
+    answer = () => of(edited);
+    await menu(0, 'Edit');
+
+    expect(texts('.prices')[0]).toBe('€0.30/capsula · total €30.00');
+    expect(recentAsks).toEqual([1, 1]);
+    expect(element().querySelectorAll('app-recent-consumptions').length).toBe(1); // still open
   });
 
   it('says why when the batches cannot be loaded', async () => {
