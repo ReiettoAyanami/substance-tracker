@@ -310,6 +310,9 @@ describe('GET /api/batches', () => {
   });
 });
 
+// What a consumption is compared with (lenzi, 2026-09-30): the one before it of the same substance,
+// from whatever batch or one-time; in the list of one batch, the one before it in that batch. Never
+// a consumption of another substance.
 describe('delta from the previous consumption of the same substance', () => {
   const deltas = (body: any[]) => body.map((c: any) => [c.type, c.id, c.deltaQuantity, c.deltaUnitPrice]);
 
@@ -409,5 +412,37 @@ describe('delta in the list of one batch (lenzi, 2026-09-30)', () => {
       [four.id, '3.0000', null, null], // 4 vs the gift of 1; nothing on a price of 0
       [gift.id, '-0.9000', '-1.0000', '-1.0000'], // 1 vs the 10 of the other batch
     ]);
+  });
+});
+
+describe('delta in the one-time list of a substance (lenzi, 2026-09-30)', () => {
+  const deltas = (body: any[]) => body.map((o: any) => [o.id, o.deltaQuantity, o.deltaCost, o.deltaUnitPrice]);
+
+  it('compares a one-time consumption with the one before it of its substance, from a batch or one-time: it has no batch of its own', async () => {
+    const beer = await api.substance({ name: 'beer', unit: 'beer' });
+    const coffee = await api.substance({ name: 'coffee', unit: 'cup' });
+    const corona = await api.batch(beer.id, { quantity: 10, totalPrice: 10, occurredAt: '2026-09-01T10:00:00Z' });
+    const pint = await api.oneTime(beer.id, { quantity: 1, totalPrice: 5, occurredAt: '2026-09-02T10:00:00Z' });
+    await api.oneTime(coffee.id, { quantity: 9, totalPrice: 9, occurredAt: '2026-09-02T12:00:00Z' });
+    await api.consume(corona.id, { quantity: 4, occurredAt: '2026-09-03T10:00:00Z' }); // 4.00
+    const pints = await api.oneTime(beer.id, { quantity: 2, totalPrice: 9, occurredAt: '2026-09-04T10:00:00Z' });
+    const free = await api.oneTime(beer.id, { quantity: 1, totalPrice: 0, occurredAt: '2026-09-05T10:00:00Z' });
+    const after = await api.oneTime(beer.id, { quantity: 3, totalPrice: 6, occurredAt: '2026-09-06T10:00:00Z' });
+
+    const list = await api.get(`/api/substances/${beer.id}/one-time/consumptions`);
+    expect(deltas(list.body)).toEqual([
+      [after.id, '2.0000', null, null], // 3 vs the free 1: no percentage of a price of 0
+      [free.id, '-0.5000', '-1.0000', '-1.0000'], // 1 vs 2, 0.00 vs 9.00
+      [pints.id, '-0.5000', '1.2500', '3.5000'], // 2 vs the 4 Coronas, 9.00 vs 4.00, 4.50 a beer vs 1.00: the coffee never counts
+      [pint.id, null, null, null], // the first beer
+    ]);
+
+    // the same numbers as in the consumptions list of the substance
+    const all = await api.get(`/api/consumptions?substanceId=${beer.id}`);
+    expect(deltas(all.body.filter((c: any) => c.type === 'one_time'))).toEqual(deltas(list.body));
+
+    // a page keeps them: what is compared is the whole history, not the page
+    const page = await api.get(`/api/substances/${beer.id}/one-time/consumptions?limit=1&before=2026-09-05T10:00:00Z`);
+    expect(deltas(page.body)).toEqual([[pints.id, '-0.5000', '1.2500', '3.5000']]);
   });
 });

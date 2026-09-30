@@ -221,8 +221,8 @@ export interface ConsumptionItem {
   cost: string;
   note: string | null;
   /**
-   * (this − previous) ÷ previous; previous = the one before it of the same substance, or of the
-   * same batch when the list is one batch's. Null for the first.
+   * (this − previous) ÷ previous; previous = the one before it of the same substance (never of
+   * another one), or of the same batch when the list is one batch's. Null for the first.
    */
   deltaQuantity: string | null;
   /** Same on the unit price; also null after a unit price of 0. */
@@ -379,6 +379,13 @@ function chronological(a: ConsumptionEntry, b: ConsumptionEntry): number {
     a.id - b.id
   );
 }
+
+/**
+ * The series a consumption is compared within, unless the list is one batch's (lenzi, 2026-09-30):
+ * the consumptions of its substance, from whatever batch or one-time. Never those of another
+ * substance. A one-time consumption has no batch, so this is always its series.
+ */
+const ofItsSubstance = (e: ConsumptionEntry): number => e.substance_id;
 
 /**
  * Gives every entry its deltas from the previous one of its series, (this − previous) ÷ previous:
@@ -678,26 +685,42 @@ export class ReportsService {
     };
   }
 
+  /**
+   * The one-time consumptions of a substance, newest first, a page. Each has its deltas from the
+   * consumption before it of the substance, from a batch or one-time (it has no batch to be
+   * compared within): the numbers the consumptions list gives it, whatever the page leaves out.
+   */
   async oneTimeConsumptions(substanceId: number, page: Page) {
     await this.catalog.get(substanceId);
     const before = pageBefore(page);
-    const rows = await repo.pageOneTimes(this.pool, substanceId, {
-      limit: pageLimit(page),
-      before: before ? toDbDateTime(before) : null,
+    const [rows, history] = await Promise.all([
+      repo.pageOneTimes(this.pool, substanceId, {
+        limit: pageLimit(page),
+        before: before ? toDbDateTime(before) : null,
+      }),
+      this.consumptionEntries(substanceId),
+    ]);
+    compareWithPrevious(history, ofItsSubstance);
+    const compared = new Map(history.filter((e) => e.type === 'one_time').map((e) => [e.id, e]));
+    return rows.map((o) => {
+      const entry = compared.get(o.id);
+      return {
+        type: 'one_time' as const,
+        id: o.id,
+        substanceId: o.substance_id,
+        name: o.name,
+        occurredAt: toIso(o.occurred_at),
+        quantity: fmtQty(fromDb(o.quantity)),
+        totalPrice: fmtMoney(fromDb(o.total_price)),
+        cost: fmtMoney(fromDb(o.total_price)),
+        note: o.note,
+        clientRef: o.client_ref,
+        createdAt: toIso(o.created_at),
+        deltaQuantity: fmtOrNull(entry?.deltaQuantity ?? null, SCALE.ratio),
+        deltaUnitPrice: fmtOrNull(entry?.deltaUnitPrice ?? null, SCALE.ratio),
+        deltaCost: fmtOrNull(entry?.deltaCost ?? null, SCALE.ratio),
+      };
     });
-    return rows.map((o) => ({
-      type: 'one_time' as const,
-      id: o.id,
-      substanceId: o.substance_id,
-      name: o.name,
-      occurredAt: toIso(o.occurred_at),
-      quantity: fmtQty(fromDb(o.quantity)),
-      totalPrice: fmtMoney(fromDb(o.total_price)),
-      cost: fmtMoney(fromDb(o.total_price)),
-      note: o.note,
-      clientRef: o.client_ref,
-      createdAt: toIso(o.created_at),
-    }));
   }
 
   // -------------------------------------------------------------------------------------------
@@ -848,8 +871,9 @@ export class ReportsService {
   /**
    * The consumptions in `scope`, oldest first, each with its deltas from the previous one of its
    * series: the consumptions of its batch when the list is one batch's (what that list shows),
-   * else those of its substance, of either kind. The whole series is loaded before the logical
-   * days narrow it, so every delta compares with the real previous one, whatever the days hide.
+   * else those of its substance, of either kind; never those of another substance. The whole
+   * series is loaded before the logical days narrow it, so every delta compares with the real
+   * previous one, whatever the days hide.
    */
   private async scopedConsumptions(scope: ConsumptionScope): Promise<ConsumptionEntry[]> {
     const days = await this.logicalDays(scope.from, scope.to);
@@ -863,7 +887,7 @@ export class ReportsService {
     }
     const all = await this.consumptionEntries(substanceId);
     const entries = scope.batchId === undefined ? all : all.filter((e) => e.batch_id === scope.batchId);
-    compareWithPrevious(entries, scope.batchId === undefined ? (e) => e.substance_id : () => scope.batchId!);
+    compareWithPrevious(entries, scope.batchId === undefined ? ofItsSubstance : () => scope.batchId!);
     return entries.filter(
       (e) =>
         (days.start === null || e.occurred_at.getTime() >= days.start.getTime()) &&
