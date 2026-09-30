@@ -13,9 +13,17 @@
   @switch (kind()) {
     @case ('substance') {
       <app-substance-form
-        [substance]="data.edit?.substance ?? null"
+        [substance]="editedSubstance"
         [showTitle]="!chooser"
         (saved)="savedSubstance($event)"
+        (cancelled)="cancel()"
+      />
+    }
+    @case ('consumption') {
+      <app-consumption-form
+        [consumption]="editedConsumption"
+        [showTitle]="!chooser"
+        (saved)="savedConsumption($event)"
         (cancelled)="cancel()"
       />
     }

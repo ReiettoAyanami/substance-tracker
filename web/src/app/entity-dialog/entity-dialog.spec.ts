@@ -4,6 +4,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 
+import { Consumption } from '../data/consumption';
 import { Substance } from '../data/substance';
 import { EntityDialog, EntityDialogData } from './entity-dialog';
 
@@ -68,5 +69,45 @@ describe('EntityDialog', () => {
 
     expect(element().querySelector('h2')?.textContent?.trim()).toBe('Edit substance');
     expect(element().querySelector<HTMLInputElement>('input[formControlName="name"]')!.value).toBe('Caffè');
+  });
+
+  it('hosts the consumption form too, and closes with the record it saved', async () => {
+    const consumption = {
+      type: 'consumption',
+      id: 31,
+      substanceId: 2,
+      substanceName: 'Sigarette',
+      unit: 'sigaretta',
+      batchId: 8,
+      batchName: 'Pack A',
+      occurredAt: '2026-09-01T06:30:45Z',
+      quantity: '4.000',
+      note: null,
+    } as Consumption;
+    closedWith = [];
+    TestBed.configureTestingModule({
+      imports: [EntityDialog],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
+        { provide: MatDialogRef, useValue: { close: (value?: unknown) => closedWith.push(value) } },
+        { provide: MAT_DIALOG_DATA, useValue: { kinds: ['consumption'], edit: { kind: 'consumption', consumption } } },
+      ],
+    });
+    fixture = TestBed.createComponent(EntityDialog);
+    const backend = TestBed.inject(HttpTestingController);
+    TestBed.tick(); // the form asks for the settings and the substances once drawn
+    backend.expectOne('/api/settings').flush({ timezone: 'Europe/Rome', dayStartsAt: '00:00:00', currency: 'EUR' });
+    backend.expectOne('/api/substances').flush([]);
+    await fixture.whenStable();
+
+    expect(element().querySelector('app-substance-form')).toBeNull();
+    expect(element().querySelector('h2')?.textContent?.trim()).toBe('Edit consumption');
+
+    element().querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
+    backend.expectOne('/api/consumptions/31').flush({ id: 31 });
+    await fixture.whenStable();
+    expect(closedWith).toEqual([{ kind: 'consumption', record: { id: 31 } }]);
   });
 });

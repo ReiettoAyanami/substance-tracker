@@ -3,13 +3,16 @@ import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/materia
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 
+import { ConsumptionForm } from '../consumption-form/consumption-form';
+import { Consumption, ConsumptionRecord } from '../data/consumption';
+import { OneTimeRecord } from '../data/one-time';
 import { Substance } from '../data/substance';
 import { SubstanceForm } from '../substance-form/substance-form';
 
 /** What the entity dialog creates or edits: one form per entity (design-frontend.md, "entity form"). */
-export type EntityKind = 'substance';
+export type EntityKind = 'substance' | 'consumption';
 
-const KIND_LABELS: Record<EntityKind, string> = { substance: 'Substance' };
+const KIND_LABELS: Record<EntityKind, string> = { substance: 'Substance', consumption: 'Consumption' };
 
 /** What the dialog opens with. */
 export interface EntityDialogData {
@@ -18,21 +21,23 @@ export interface EntityDialogData {
   /** The kind shown first; the first of `kinds` when missing. */
   kind?: EntityKind;
   /** A record to edit: only its form, filled in, no selector. */
-  edit?: { kind: 'substance'; substance: Substance };
+  edit?: { kind: 'substance'; substance: Substance } | { kind: 'consumption'; consumption: Consumption };
 }
 
 /** What it closes with: the saved record and its kind. Nothing when cancelled or closed by back. */
-export type EntityDialogResult = { kind: 'substance'; substance: Substance };
+export type EntityDialogResult =
+  | { kind: 'substance'; substance: Substance }
+  | { kind: 'consumption'; record: ConsumptionRecord | OneTimeRecord };
 
 /**
  * The one dialog that hosts the entity forms (design-frontend.md, "new dialog"). The forms do not
  * know who opened them; this dialog only chooses which one to show and closes with what it saved.
  * The URL never changes: the history entry that lets back close it belongs to whoever opens it
- * (SubstanceActions). Adding a kind to a "+" is adding it to `kinds`.
+ * (SubstanceActions, ConsumptionActions). Adding a kind to a "+" is adding it to `kinds`.
  */
 @Component({
   selector: 'app-entity-dialog',
-  imports: [MatDialogModule, MatFormFieldModule, MatSelectModule, SubstanceForm],
+  imports: [ConsumptionForm, MatDialogModule, MatFormFieldModule, MatSelectModule, SubstanceForm],
   templateUrl: './entity-dialog.html',
   styleUrl: './entity-dialog.css',
 })
@@ -45,8 +50,16 @@ export class EntityDialog {
   protected readonly chooser = !this.data.edit && this.data.kinds.length > 1;
   protected readonly labels = KIND_LABELS;
 
+  /** The record to edit, by its kind. */
+  protected readonly editedSubstance = this.data.edit?.kind === 'substance' ? this.data.edit.substance : null;
+  protected readonly editedConsumption = this.data.edit?.kind === 'consumption' ? this.data.edit.consumption : null;
+
   protected savedSubstance(substance: Substance): void {
     this.dialog.close({ kind: 'substance', substance });
+  }
+
+  protected savedConsumption(record: ConsumptionRecord | OneTimeRecord): void {
+    this.dialog.close({ kind: 'consumption', record });
   }
 
   protected cancel(): void {

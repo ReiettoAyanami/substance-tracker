@@ -10,6 +10,7 @@ import { Consumption, ConsumptionFilter, ConsumptionScope } from '../data/consum
 import { ReportsApi } from '../data/reports-api';
 import { SettingsApi } from '../data/settings-api';
 import { ConsumptionCard } from '../ui/consumption-card/consumption-card';
+import { ConsumptionActions } from './consumption-actions';
 import { ConsumptionFilters } from './consumption-filters/consumption-filters';
 
 /** How many consumptions one page shows. */
@@ -64,8 +65,10 @@ function reason(failure: Error): string {
  * The consumptions page (design-frontend.md, "consumptions page"): where the app opens. The
  * filters, kept in the URL's query (a link opens the page filtered; back and refresh keep them),
  * the consumptions of both kinds as full cards, newest first, a page at a time ("Show more" loads
- * the page before the oldest one shown), and the "+" at the top right that will open the
- * consumption form. Every number on the cards and every slider bound is the API's.
+ * the page before the oldest one shown), and the "+" at the top right that opens the consumption
+ * form; a card's ⋮ menu edits or deletes its consumption. Every number on the cards and every
+ * slider bound is the API's: after each write the list starts again from its first page, and the
+ * bounds and the batches of the filter are asked again.
  */
 @Component({
   selector: 'app-consumptions-page',
@@ -79,6 +82,7 @@ export class ConsumptionsPage {
   private readonly reports = inject(ReportsApi);
   private readonly settingsApi = inject(SettingsApi);
   private readonly catalog = inject(CatalogApi);
+  private readonly actions = inject(ConsumptionActions);
 
   private readonly query = toSignal(this.route.queryParams, { requireSync: true });
   /** What the list shows: the filter of the URL. */
@@ -129,6 +133,27 @@ export class ConsumptionsPage {
   /** A new filter goes into the URL, which replaces the page's entry: back does not walk through every tweak. */
   protected apply(filter: ConsumptionFilter): void {
     void this.router.navigate([], { relativeTo: this.route, queryParams: filter, replaceUrl: true });
+  }
+
+  protected async add(): Promise<void> {
+    if (await this.actions.add()) this.reload();
+  }
+
+  protected async edit(consumption: Consumption): Promise<void> {
+    if (await this.actions.edit(consumption)) this.reload();
+  }
+
+  protected async remove(consumption: Consumption): Promise<void> {
+    if (await this.actions.delete(consumption)) this.reload();
+  }
+
+  /** Something was written: the first page again (the older ones are dropped), the bounds, the batches. */
+  private reload(): void {
+    this.olderPages.set([]);
+    this.moreFailed.set(false);
+    this.firstPage.reload();
+    this.bounds.reload();
+    this.batches.reload();
   }
 
   /** The next page: the consumptions before the oldest one shown. */

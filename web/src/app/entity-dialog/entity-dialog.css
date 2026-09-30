@@ -1,5 +1,7 @@
-mat-dialog-content {
+/* Taller than Material's 65vh: a whole form, its buttons included, shows without scrolling when the screen allows. */
+mat-dialog-content.mat-mdc-dialog-content {
   padding-top: 24px;
+  max-height: calc(100dvh - 48px);
 }
 
 .kind {

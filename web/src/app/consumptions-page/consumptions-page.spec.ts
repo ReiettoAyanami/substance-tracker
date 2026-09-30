@@ -12,6 +12,8 @@ import { HistoryPage } from '../data/one-time';
 import { ReportsApi } from '../data/reports-api';
 import { Settings } from '../data/settings';
 import { SettingsApi } from '../data/settings-api';
+import { ConsumptionCard } from '../ui/consumption-card/consumption-card';
+import { ConsumptionActions } from './consumption-actions';
 import { ConsumptionFilters } from './consumption-filters/consumption-filters';
 import { ConsumptionsPage } from './consumptions-page';
 
@@ -44,6 +46,10 @@ describe('ConsumptionsPage', () => {
   let harness: RouterTestingHarness;
   let calls: { filter: ConsumptionFilter; page: HistoryPage }[];
   let scopes: ConsumptionScope[];
+  let batchLists: number;
+  /** What was asked of the actions, and whether they answer that something was written. */
+  let asked: unknown[];
+  let written: boolean;
   let pageAnswer: (page: HistoryPage) => Observable<Consumption[]>;
 
   const element = () => harness.routeNativeElement!;
@@ -57,6 +63,9 @@ describe('ConsumptionsPage', () => {
   beforeEach(() => {
     calls = [];
     scopes = [];
+    batchLists = 0;
+    asked = [];
+    written = true;
     pageAnswer = () => of([consumption(0), consumption(1, 'one_time')]);
     TestBed.configureTestingModule({
       providers: [
@@ -70,11 +79,22 @@ describe('ConsumptionsPage', () => {
               calls.push({ filter, page });
               return pageAnswer(page);
             },
-            listBatches: () => of([]),
+            listBatches: () => {
+              batchLists++;
+              return of([]);
+            },
             getConsumptionBounds: (scope: ConsumptionScope) => {
               scopes.push(scope);
               return of({ minUnitPrice: '0.300000', maxUnitPrice: '0.325000', minQuantity: '1.000', maxQuantity: '13.000' });
             },
+          },
+        },
+        {
+          provide: ConsumptionActions,
+          useValue: {
+            add: async () => (asked.push('add'), written),
+            edit: async (item: Consumption) => (asked.push(['edit', item.id]), written),
+            delete: async (item: Consumption) => (asked.push(['delete', item.id]), written),
           },
         },
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
@@ -82,7 +102,7 @@ describe('ConsumptionsPage', () => {
     });
   });
 
-  it('shows one full card per consumption, in the order the API gives, the filters and a "+" to come', async () => {
+  it('shows one full card per consumption, in the order the API gives, the filters and the "+"', async () => {
     await render();
 
     const cards = element().querySelectorAll('app-consumption-card');
@@ -91,8 +111,7 @@ describe('ConsumptionsPage', () => {
     expect(text(cards[1].querySelector('.source'))).toBe('One-time');
     expect(calls).toEqual([{ filter: {}, page: { limit: 20 } }]);
     expect(element().querySelector('app-consumption-filters')).not.toBeNull();
-    const add = element().querySelector<HTMLButtonElement>('button[aria-label="Add consumption"]')!;
-    expect(add.disabled).toBe(true); // until the consumption form exists (step 8)
+    expect(element().querySelector<HTMLButtonElement>('button[aria-label="Add consumption"]')!.disabled).toBe(false);
     expect(element().querySelector('.show-more')).toBeNull(); // a page that is not full is the last one
   });
 
@@ -162,5 +181,57 @@ describe('ConsumptionsPage', () => {
     expect(text(element().querySelector('.more-error'))).toBe('Could not load more consumptions');
     expect(element().querySelectorAll('app-consumption-card').length).toBe(20);
     expect(element().querySelector('.show-more')).toBeNull();
+  });
+
+  /** The cards' outputs, as the ⋮ menu would fire them. */
+  const card = (index: number) =>
+    harness.routeDebugElement!.queryAll(By.directive(ConsumptionCard))[index]!.componentInstance as ConsumptionCard;
+
+  it('after a write starts again from the first page, and asks the bounds and the batches again', async () => {
+    pageAnswer = (page) =>
+      of(page.before ? Array.from({ length: 5 }, (_, i) => consumption(20 + i)) : Array.from({ length: 20 }, (_, i) => consumption(i)));
+    await render('/consumptions?substanceId=2');
+    element().querySelector<HTMLButtonElement>('.show-more')!.click();
+    await harness.fixture.whenStable();
+    expect(element().querySelectorAll('app-consumption-card').length).toBe(25);
+
+    element().querySelector<HTMLButtonElement>('button[aria-label="Add consumption"]')!.click();
+    await harness.fixture.whenStable();
+
+    expect(asked).toEqual(['add']);
+    expect(calls.at(-1)).toEqual({ filter: { substanceId: 2 }, page: { limit: 20 } });
+    expect(calls.length).toBe(3);
+    expect(scopes.length).toBe(2);
+    expect(batchLists).toBe(2);
+    expect(element().querySelectorAll('app-consumption-card').length).toBe(20);
+    expect(element().querySelector('.show-more')).not.toBeNull();
+  });
+
+  it('edits and deletes the consumption of the card whose menu asked', async () => {
+    await render();
+
+    card(0).edit.emit();
+    await harness.fixture.whenStable();
+    card(1).remove.emit();
+    await harness.fixture.whenStable();
+
+    expect(asked).toEqual([
+      ['edit', consumption(0).id],
+      ['delete', consumption(1, 'one_time').id],
+    ]);
+    expect(calls.length).toBe(3);
+  });
+
+  it('loads nothing again when nothing was written (a dialog cancelled)', async () => {
+    written = false;
+    await render();
+
+    element().querySelector<HTMLButtonElement>('button[aria-label="Add consumption"]')!.click();
+    card(0).remove.emit();
+    await harness.fixture.whenStable();
+
+    expect(asked.length).toBe(2);
+    expect(calls.length).toBe(1);
+    expect(scopes.length).toBe(1);
   });
 });
