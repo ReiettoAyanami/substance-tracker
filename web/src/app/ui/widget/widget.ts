@@ -2,6 +2,7 @@ import { Component, computed, inject, input, linkedSignal, viewChild } from '@an
 import { rxResource } from '@angular/core/rxjs-interop';
 import { MatButtonToggleGroup, MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatCardModule } from '@angular/material/card';
+import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { firstValueFrom } from 'rxjs';
 
@@ -24,7 +25,7 @@ import { keptValue } from '../kept-value';
  */
 @Component({
   selector: 'app-widget',
-  imports: [Chart, MatButtonToggleModule, MatCardModule],
+  imports: [Chart, MatButtonToggleModule, MatCardModule, MatIconModule],
   templateUrl: './widget.html',
   styleUrl: './widget.css',
 })
@@ -80,6 +81,16 @@ export class Widget {
   protected readonly shownSeries = keptValue(this.series, () =>
     JSON.stringify([this.item().id, this.item().metric, this.substanceIds(), this.by()]),
   );
+
+  /**
+   * The icon by the title (the reference photo: an icon at the head of every card), from what the
+   * series measures: quantities, counts, money, prices, or the hours of the day.
+   */
+  protected readonly icon = computed(() => {
+    const definition = this.definition();
+    if (definition.scales.length === 0) return 'schedule';
+    return { quantity: 'inventory_2', count: 'numbers', money: 'payments', unitPrice: 'sell' }[definition.unit];
+  });
 
   /** What a donut says under its name: the share of the whole period (the others have their toggle). */
   protected readonly subtitle = computed(() => (this.item().chart === 'donut' ? 'share of the period' : ''));

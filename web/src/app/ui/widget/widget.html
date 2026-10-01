@@ -1,5 +1,6 @@
 <mat-card appearance="outlined" class="widget">
   <mat-card-header>
+    <mat-icon mat-card-avatar class="icon" aria-hidden="true">{{ icon() }}</mat-icon>
     <mat-card-title>{{ definition().label }}</mat-card-title>
     @if (subtitle(); as subtitle) {
       <mat-card-subtitle>{{ subtitle }}</mat-card-subtitle>

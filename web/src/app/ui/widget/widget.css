@@ -3,8 +3,34 @@
   min-width: 0;
 }
 
+/* The card of the reference photo (diary 2026-10-03): almost black on the anthracite page, no
+   outline, very round corners; an icon in a round well at its head, a large title. */
 .widget {
   height: 100%;
+  --mat-card-outlined-container-color: var(--mat-sys-surface-container-lowest);
+  --mat-card-outlined-outline-color: transparent;
+  --mat-card-outlined-container-shape: 24px;
+  --mat-card-title-text-font: var(--mat-sys-title-large-font);
+  --mat-card-title-text-size: 22px;
+  --mat-card-title-text-weight: 500;
+  --mat-card-title-text-line-height: 40px;
+}
+
+mat-card-header {
+  align-items: center;
+  padding-top: 20px;
+}
+
+.icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  font-size: 22px;
+  border-radius: 50%;
+  color: var(--mat-sys-primary);
+  background-color: var(--mat-sys-surface-container-high);
 }
 
 mat-card-content {

@@ -98,6 +98,8 @@ describe('Widget', () => {
 
     expect(asked).toEqual([{ metric: 'series.cost', per: 'month', days: 90 }]);
     expect(text(element().querySelector('mat-card-title'))).toBe('Cost');
+    // an icon at its head, from what the series measures (money)
+    expect(text(element().querySelector('mat-icon'))).toBe('payments');
     expect(element().querySelector('mat-card-subtitle')).toBeNull();
     expect(scales()).toEqual(['day', 'week', 'month', 'year']);
     expect(chosen()).toBe('month');
