@@ -31,15 +31,17 @@
           [settings]="view.settings"
           (changed)="reload(view.substance.id)"
         />
-        <!-- The substance as reloaded after a write: its metrics and its charts are asked again with it. -->
+        <!-- The substance as reloaded after a write: its metrics and its charts are asked again with it.
+             Both start open (lenzi, 2026-10-01). -->
         <app-metrics-panel
           scope="substance"
+          [open]="true"
           [entityId]="view.substance.id"
           [unit]="view.substance.unit"
           [settings]="view.settings"
           [refresh]="view.substance"
         />
-        <app-charts-panel [substanceId]="view.substance.id" [settings]="view.settings" [refresh]="view.substance" />
+        <app-charts-panel [open]="true" [substanceId]="view.substance.id" [settings]="view.settings" [refresh]="view.substance" />
       </div>
       <nav class="pager">
         <button

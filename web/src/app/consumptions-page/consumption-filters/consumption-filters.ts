@@ -1,5 +1,4 @@
-import { BreakpointObserver } from '@angular/cdk/layout';
-import { Component, computed, effect, inject, input, linkedSignal, output } from '@angular/core';
+import { Component, computed, effect, input, linkedSignal, output } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { MAT_DATE_LOCALE, provideNativeDateAdapter } from '@angular/material/core';
 import { MatButtonModule } from '@angular/material/button';
@@ -15,7 +14,6 @@ import { BatchListItem } from '../../data/batch';
 import { ConsumptionBounds, ConsumptionFilter } from '../../data/consumption';
 import { Settings } from '../../data/settings';
 import { Substance } from '../../data/substance';
-import { WIDE_SCREEN } from '../../layout';
 import { LOCALE } from '../../locale';
 
 /** A range slider over the bounds of the API, widened outwards to its step (cents, or units). */
@@ -117,9 +115,6 @@ export class ConsumptionFilters {
   readonly settings = input.required<Settings>();
   /** The whole new filter, after any change. */
   readonly changed = output<ConsumptionFilter>();
-
-  /** Open on a wide screen; on a phone the panel starts closed and says how many filters are set. */
-  protected readonly startOpen = inject(BreakpointObserver).isMatched(WIDE_SCREEN);
 
   protected readonly dates = new FormGroup({
     start: new FormControl<Date | null>(null),

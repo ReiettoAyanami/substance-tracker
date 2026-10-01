@@ -1,6 +1,8 @@
+import { BreakpointObserver } from '@angular/cdk/layout';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormGroup } from '@angular/forms';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
+import { of } from 'rxjs';
 
 import { BatchListItem } from '../../data/batch';
 import { ConsumptionBounds, ConsumptionFilter } from '../../data/consumption';
@@ -61,11 +63,22 @@ describe('ConsumptionFilters', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [ConsumptionFilters],
-      providers: [{ provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } }],
+      providers: [
+        { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
+        // A wide screen: the filters start closed all the same.
+        { provide: BreakpointObserver, useValue: { isMatched: () => true, observe: () => of({ matches: true, breakpoints: {} }) } },
+      ],
     }).compileComponents();
   });
 
   afterEach(() => document.querySelectorAll('.cdk-overlay-container').forEach((overlay) => (overlay.innerHTML = '')));
+
+  it('starts closed on any screen, saying how many filters are set (lenzi, 2026-10-01)', async () => {
+    await render({ substanceId: 2 });
+
+    expect(element().querySelector('mat-expansion-panel')!.classList.contains('mat-expanded')).toBe(false);
+    expect(text(element().querySelector('.count'))).toBe('1 active');
+  });
 
   it('says how many filters are set, and Clear empties them', async () => {
     await render({ substanceId: 2, from: '2026-09-01', to: '2026-09-30', minCost: '0.30', maxCost: '0.40' });

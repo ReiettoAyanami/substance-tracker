@@ -18,6 +18,7 @@ nav {
 
 .app-name {
   margin: 12px 16px 16px;
-  font: var(--mat-sys-title-medium);
+  /* A little bigger than the pages' entries (lenzi, 2026-10-01). */
+  font: var(--mat-sys-title-large);
   color: var(--mat-sys-on-surface);
 }

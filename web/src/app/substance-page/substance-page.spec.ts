@@ -9,9 +9,12 @@ import { RouterTestingHarness } from '@angular/router/testing';
 import { of } from 'rxjs';
 
 import { routes } from '../app.routes';
+import { MetricsApi } from '../data/metrics-api';
 import { ReportsApi } from '../data/reports-api';
 import { Substance } from '../data/substance';
 import { SubstanceBatches } from '../data/substance-batches';
+import { Surface } from '../data/view-item';
+import { ViewsApi } from '../data/views-api';
 import { BatchList } from './batch-list/batch-list';
 import { OneTimeList } from './one-time-list/one-time-list';
 
@@ -68,6 +71,8 @@ const listOrder = [substance(4, 'Birra'), substance(1, 'Caffè'), substance(3, '
 
 describe('SubstancePage', () => {
   let harness: RouterTestingHarness;
+  /** What the metrics and charts panels asked for. */
+  let asked: string[];
 
   /** Opens a URL the way a direct link or a refresh does, with the list's data. */
   async function open(url: string): Promise<HTMLElement> {
@@ -83,12 +88,21 @@ describe('SubstancePage', () => {
   const text = (element: Element | null | undefined) => element?.textContent?.replace(/\s+/g, ' ').trim();
 
   beforeEach(() => {
+    asked = [];
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter(routes, withComponentInputBinding()),
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
+        {
+          provide: MetricsApi,
+          useValue: {
+            getCatalog: () => (asked.push('catalog'), of([])),
+            getSubstanceMetrics: (id: number) => (asked.push(`metrics of ${id}`), of({ per: 'day', from: null, to: null, values: {} })),
+          },
+        },
+        { provide: ViewsApi, useValue: { list: (surface: Surface) => (asked.push(`view items of ${surface}`), of([])) } },
         {
           provide: ReportsApi,
           useValue: {
@@ -116,7 +130,7 @@ describe('SubstancePage', () => {
     expect(text(page()?.querySelector('app-one-time-list .total'))).toBe('No consumptions');
   });
 
-  it('ends with its metrics and its charts, closed: they ask for nothing until opened', async () => {
+  it('ends with its metrics and its charts, open: they ask for them at once (lenzi, 2026-10-01)', async () => {
     await open('/substances/1');
 
     expect(Array.from(page()!.querySelectorAll('.content > *')).map((e) => e.tagName.toLowerCase())).toEqual([
@@ -127,7 +141,9 @@ describe('SubstancePage', () => {
       'app-charts-panel',
     ]);
     expect(text(page()?.querySelector('app-charts-panel mat-panel-title'))).toBe('Charts');
-    TestBed.inject(HttpTestingController).expectNone((req) => req.url.startsWith('/api/view-items') || req.url === '/api/metrics');
+    expect(page()!.querySelectorAll('app-metrics-panel mat-expansion-panel.mat-expanded, app-charts-panel mat-expansion-panel.mat-expanded').length).toBe(2);
+    expect(asked).toContain('metrics of 1');
+    expect(asked.filter((a) => a === 'view items of substance').length).toBe(2); // the metrics panel's, the charts panel's
   });
 
   it('closes onto the list when its substance is deleted from its card', async () => {
