@@ -5,7 +5,7 @@
  * Where an item is shown: an entity's metrics panel (substance, batch, consumption), the metrics
  * page (one table per scope of the metric), or the statistics page (a chart).
  */
-export type Surface = 'statistics' | 'metrics' | 'substance' | 'batch' | 'consumption';
+export type Surface = 'statistics' | 'metrics' | 'substance' | 'batch' | 'consumption' | 'substances';
 
 export type Chart = 'bar' | 'line' | 'donut';
 

@@ -11,8 +11,10 @@ import { of } from 'rxjs';
 import { App } from './app';
 import { routes } from './app.routes';
 import { CatalogApi } from './data/catalog-api';
+import { MetricsApi } from './data/metrics-api';
 import { ReportsApi } from './data/reports-api';
 import { SettingsApi } from './data/settings-api';
+import { ViewsApi } from './data/views-api';
 
 /** The pages' data: the shell is tested here, not what the pages show. */
 const pageData = [
@@ -25,6 +27,15 @@ const pageData = [
     },
   },
   { provide: CatalogApi, useValue: { listSubstances: () => of([]) } },
+  // the statistics of the substances page, open on a wide screen
+  {
+    provide: MetricsApi,
+    useValue: {
+      getCatalog: () => of([]),
+      getTable: () => of({ scope: 'substance', per: 'day', from: null, to: null, keys: [], rows: [] }),
+    },
+  },
+  { provide: ViewsApi, useValue: { list: () => of([]) } },
   {
     provide: SettingsApi,
     useValue: { getSettings: () => of({ timezone: 'Europe/Rome', dayStartsAt: '00:00:00', currency: 'EUR' }) },

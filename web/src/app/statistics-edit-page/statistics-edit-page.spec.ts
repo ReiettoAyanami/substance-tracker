@@ -103,6 +103,7 @@ describe('StatisticsEditPage', () => {
         [12, 'substance.pace'],
         [13, 'batch.pace'],
       ],
+      substances: [[30, 'series.spend', 'bar', 'month', null]],
     };
     writes = [];
     failWrites = false;
@@ -144,6 +145,7 @@ describe('StatisticsEditPage', () => {
 
     expect(Array.from(document.querySelectorAll('mat-card-title')).map(text)).toEqual([
       'Statistics page',
+      'Substances page: charts',
       'Substance page: metrics',
       'Substance page: charts',
       'Batch page',
@@ -155,6 +157,7 @@ describe('StatisticsEditPage', () => {
     expect(labels('statistics')).toEqual(['Cost', 'Spend']);
     expect(labels('substance')).toEqual(['Pace']); // the charts of the substance page have their own card
     expect(labels('substance-charts')).toEqual(['Cost', 'Spend']);
+    expect(labels('substances-charts')).toEqual(['Spend']);
     expect(labels('consumption')).toEqual([]);
     expect(labels('metrics-substance')).toEqual(['Consumed', 'Pace']);
     expect(labels('metrics-batch')).toEqual(['Used', 'Batch pace']);

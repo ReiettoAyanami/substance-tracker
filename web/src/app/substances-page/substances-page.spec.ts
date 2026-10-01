@@ -1,11 +1,16 @@
+import { BreakpointObserver } from '@angular/cdk/layout';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
 import { Router, provideRouter } from '@angular/router';
+import { of } from 'rxjs';
 
 import { errorInterceptor } from '../data/error-interceptor';
+import { MetricsApi } from '../data/metrics-api';
 import { Substance } from '../data/substance';
+import { Surface } from '../data/view-item';
+import { ViewsApi } from '../data/views-api';
 import { SubstancesPage } from './substances-page';
 
 const settings = { timezone: 'Europe/Rome', dayStartsAt: '00:00:00', currency: 'EUR' };
@@ -88,6 +93,18 @@ describe('SubstancesPage', () => {
     await fixture.whenStable();
 
     expect(names()).toEqual(['Birra', 'Caffè', 'Erba']);
+  });
+
+  it('on a narrow screen, the metrics and the charts of the substances are closed panels above the cards (lenzi, 2026-10-01)', async () => {
+    backend.expectOne('/api/settings').flush(settings);
+    backend.expectOne('/api/substances').flush([substance(4, 'Birra')]);
+    await fixture.whenStable();
+
+    const page = fixture.nativeElement as HTMLElement;
+    expect(Array.from(page.querySelector('main')!.children).map((e) => ['search', 'overview', 'cards'].find((c) => e.classList.contains(c)))).toEqual(['search', 'overview', 'cards']);
+    expect(Array.from(page.querySelectorAll('.overview mat-panel-title')).map((t) => t.textContent?.trim())).toEqual(['Metrics', 'Charts']);
+    expect(page.querySelectorAll('.overview mat-expansion-panel.mat-expanded').length).toBe(0);
+    // closed, they asked for nothing: afterEach verifies it
   });
 
   it('says "No substances" when there are none, and not while loading', async () => {
@@ -322,5 +339,54 @@ describe('SubstancesPage', () => {
 
       expect(navigate).toHaveBeenCalledWith(['/substances', 3], { state: { fromList: true }, queryParamsHandling: 'preserve' });
     });
+  });
+});
+
+describe('SubstancesPage on a wide screen (lenzi, 2026-10-01)', () => {
+  let fixture: ComponentFixture<SubstancesPage>;
+  let asked: string[];
+
+  beforeEach(async () => {
+    asked = [];
+    await TestBed.configureTestingModule({
+      imports: [SubstancesPage],
+      providers: [
+        provideHttpClient(withInterceptors([errorInterceptor])),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
+        { provide: BreakpointObserver, useValue: { isMatched: () => true, observe: () => of({ matches: true, breakpoints: {} }) } },
+        {
+          provide: MetricsApi,
+          useValue: {
+            getCatalog: () => (asked.push('catalog'), of([])),
+            getTable: () => (asked.push('table'), of({ scope: 'substance', per: 'day', from: null, to: null, keys: [], rows: [] })),
+          },
+        },
+        { provide: ViewsApi, useValue: { list: (surface: Surface) => (asked.push(surface), of([])) } },
+      ],
+    }).compileComponents();
+    fixture = TestBed.createComponent(SubstancesPage);
+    await fixture.whenStable();
+    const backend = TestBed.inject(HttpTestingController);
+    backend.expectOne('/api/settings').flush(settings);
+    backend.expectOne('/api/substances').flush([substance(4, 'Birra')]);
+    await fixture.whenStable();
+  });
+
+  it('the cards at the left, the metrics and the charts of the substances open at the right', () => {
+    const page = fixture.nativeElement as HTMLElement;
+    expect(page.querySelector('main')!.classList).toContain('wide');
+    expect(page.querySelectorAll('.overview mat-expansion-panel.mat-expanded').length).toBe(2);
+    expect(asked).toContain('metrics'); // the table's columns
+    expect(asked).toContain('substances'); // the charts of this page
+  });
+
+  it('a row of the table opens its substance over the list', async () => {
+    const router = TestBed.inject(Router);
+    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    fixture.debugElement.query((d) => d.name === 'app-substances-metrics-panel').componentInstance.opened.emit(4);
+
+    expect(navigate).toHaveBeenCalledWith(['/substances', 4], expect.objectContaining({ state: { fromList: true } }));
   });
 });

@@ -4,8 +4,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
-import { MatSortModule, Sort } from '@angular/material/sort';
-import { MatTableModule } from '@angular/material/table';
+import { Sort } from '@angular/material/sort';
 import { MatTabsModule } from '@angular/material/tabs';
 import { ActivatedRoute, ParamMap, Router, RouterLink } from '@angular/router';
 import { map, of } from 'rxjs';
@@ -13,24 +12,14 @@ import { map, of } from 'rxjs';
 import { ConsumptionActions } from '../consumptions-page/consumption-actions';
 import { ApiError } from '../data/api-error';
 import { CatalogApi } from '../data/catalog-api';
-import {
-  BatchMetricsRow,
-  ConsumptionMetricsRow,
-  MetricDefinition,
-  MetricsRow,
-  MetricsTable,
-  TIME_SCALES,
-  TableScope,
-  TimeScale,
-} from '../data/metric';
+import { MetricDefinition, MetricsRow, MetricsTable as TableData, TIME_SCALES, TableScope, TimeScale } from '../data/metric';
 import { MetricsApi } from '../data/metrics-api';
 import { ReportsApi } from '../data/reports-api';
 import { SettingsApi } from '../data/settings-api';
 import { ViewsApi } from '../data/views-api';
 import { LOCALE } from '../locale';
 import { PageHistoryState } from '../substance-page/substance-page';
-import { IdentityColorPipe } from '../ui/identity-color-pipe';
-import { MetricValuePipe } from '../ui/metric-value-pipe';
+import { MetricsTable, isBatch, isConsumption } from '../ui/metrics-table/metrics-table';
 import { PERIODS, PeriodScale } from '../ui/period-scale/period-scale';
 
 /** The tables of the page, one per kind of entity, in the order of their tabs. */
@@ -93,23 +82,6 @@ function pageQueryOf(params: ParamMap): PageQuery {
   };
 }
 
-const collator = new Intl.Collator(LOCALE);
-
-/**
- * Two cells of a column, in the direction asked. A cell with no value goes last either way; the
- * numbers are the API's decimal strings, read as numbers only to put them in order.
- */
-function compareCells(a: string | number | null, b: string | number | null, dir: 'asc' | 'desc'): number {
-  if (a === b) return 0;
-  if (a === null) return 1;
-  if (b === null) return -1;
-  const order = typeof a === 'string' ? collator.compare(a, b as string) : a - (b as number);
-  return dir === 'asc' ? order : -order;
-}
-
-const isConsumption = (row: MetricsRow): row is ConsumptionMetricsRow => 'type' in row;
-const isBatch = (row: MetricsRow): row is BatchMetricsRow => 'substanceName' in row && !isConsumption(row);
-
 /**
  * The metrics page (design-statistics.md, "metrics page"): tables that compare the entities, one
  * per kind in its tab (substances, batches, consumptions), one row per entity, one column per metric
@@ -122,19 +94,7 @@ const isBatch = (row: MetricsRow): row is BatchMetricsRow => 'substanceName' in 
  */
 @Component({
   selector: 'app-metrics-page',
-  imports: [
-    IdentityColorPipe,
-    MatButtonModule,
-    MatFormFieldModule,
-    MatIconModule,
-    MatSelectModule,
-    MatSortModule,
-    MatTableModule,
-    MatTabsModule,
-    MetricValuePipe,
-    PeriodScale,
-    RouterLink,
-  ],
+  imports: [MatButtonModule, MatFormFieldModule, MatIconModule, MatSelectModule, MatTabsModule, MetricsTable, PeriodScale, RouterLink],
   templateUrl: './metrics-page.html',
   styleUrl: './metrics-page.css',
 })
@@ -184,7 +144,7 @@ export class MetricsPage {
     },
     stream: ({ params: { scope, keys, days, per, substanceId, batchId } }) =>
       keys.length === 0
-        ? of<MetricsTable>({ scope, per, from: null, to: null, keys: [], rows: [] })
+        ? of<TableData>({ scope, per, from: null, to: null, keys: [], rows: [] })
         : this.metricsApi.getTable({
             scope,
             keys,
@@ -201,39 +161,7 @@ export class MetricsPage {
   );
   protected readonly hasScales = computed(() => (this.columns() ?? []).some((m) => m.scales.length > 0));
 
-  protected readonly columnIds = computed(() => ['name', ...(this.columns() ?? []).map((c) => c.key)]);
-
-  /** The rows, in the order of the column chosen. */
-  protected readonly rows = computed<MetricsRow[]>(() => {
-    if (!this.table.hasValue()) return [];
-    const rows = [...this.table.value().rows];
-    const { sort, dir } = this.query();
-    if (!sort || !dir) return rows;
-    const cell = (row: MetricsRow) => {
-      // A consumption's first column is when it happened: ISO instants order as strings do.
-      if (sort === 'name') return isConsumption(row) ? row.occurredAt : (row.name ?? '');
-      const value = row.values[sort];
-      return value == null ? null : Number(value);
-    };
-    return rows.sort((a, b) => compareCells(cell(a), cell(b), dir));
-  });
-
-  protected readonly currency = computed(() => (this.settings.hasValue() ? this.settings.value().currency : 'EUR'));
-
-  /** "25 Sept 2026, 22:00", when a consumption happened, in the zone of the settings. */
-  protected readonly momentFormat = computed(
-    () =>
-      new Intl.DateTimeFormat(LOCALE, {
-        timeZone: this.settings.hasValue() ? this.settings.value().timezone : undefined,
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      }),
-  );
-
-  /** "5 Sept 2026", the day a batch was bought, in the zone of the settings. */
+  /** "5 Sept 2026", a day in the zone of the settings (the batches the consumptions table can be narrowed to). */
   protected readonly dayFormat = computed(
     () =>
       new Intl.DateTimeFormat(LOCALE, {
@@ -260,30 +188,10 @@ export class MetricsPage {
     return { status: 'loaded' as const };
   });
 
-  protected isBatch = isBatch;
-  protected isConsumption = isConsumption;
-
   /** The newest 100 are shown: there may be older ones in the period. */
   protected readonly capped = computed(
     () => this.query().table === 'consumption' && this.table.hasValue() && this.table.value().rows.length >= CONSUMPTION_ROWS,
   );
-
-  /** When a consumption happened: "25 Sept 2026, 22:00". */
-  protected moment(row: ConsumptionMetricsRow): string {
-    return this.momentFormat().format(new Date(row.occurredAt));
-  }
-
-  /** Where a consumption came from, and how much: "Corona · 1 bottiglia", "One-time · bar · 1 bottiglia". */
-  protected consumptionSource(row: ConsumptionMetricsRow): string {
-    const source = row.type === 'one_time' ? `One-time${row.name ? ` · ${row.name}` : ''}` : (row.batchName ?? 'Unnamed batch');
-    const quantity = new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 3 }).format(row.quantity as unknown as number);
-    return `${source} · ${quantity} ${row.unit}`;
-  }
-
-  /** The day a batch was bought. */
-  protected bought(row: BatchMetricsRow): string {
-    return this.day(row.occurredAt);
-  }
 
   /** A day, in the zone of the settings: "5 Sept 2026". */
   protected day(instant: string): string {

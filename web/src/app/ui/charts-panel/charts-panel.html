@@ -6,7 +6,7 @@
 
   <div class="choices">
     <app-period-scale [days]="days()" (daysChange)="chooseDays($event)" />
-    <a mat-icon-button class="choose" routerLink="/statistics/edit" [queryParams]="{ section: 'substance-charts' }" aria-label="Choose the charts of this panel">
+    <a mat-icon-button class="choose" routerLink="/statistics/edit" [queryParams]="{ section: editSection() }" aria-label="Choose the charts of this panel">
       <mat-icon>tune</mat-icon>
     </a>
   </div>
@@ -16,7 +16,7 @@
   } @else if (charts(); as charts) {
     @if (charts.length === 0) {
       <p class="message">
-        No chart is chosen for this page: <a routerLink="/statistics/edit" [queryParams]="{ section: 'substance-charts' }">choose them</a>.
+        No chart is chosen for this page: <a routerLink="/statistics/edit" [queryParams]="{ section: editSection() }">choose them</a>.
       </p>
     } @else {
       <!-- The charts' library is loaded only now, when there is a chart to draw. -->
@@ -28,8 +28,8 @@
               [definition]="chart.definition"
               [days]="days()"
               [settings]="settings()"
-              [substanceIds]="[substanceId()]"
-              by="batch"
+              [substanceIds]="substanceIds()"
+              [by]="by()"
               [refresh]="refresh()"
             />
           }

@@ -127,6 +127,16 @@ describe('ChartsPanel', () => {
     ]);
   });
 
+  it('without a substance, draws the charts the substances page lists, a line per substance (lenzi, 2026-10-01)', async () => {
+    items = [{ ...item(7, 'series.consumed', 'bar'), surface: 'substances' }];
+    await render({ substanceId: null, open: true });
+    await draw();
+
+    expect(asked).toEqual(['catalog', 'substances']);
+    expect(widgets().map((w) => [w.item()?.id, w.substanceIds(), w.by()])).toEqual([[7, undefined, 'substance']]);
+    expect(element().querySelector('a.choose')?.getAttribute('href')).toBe('/statistics/edit?section=substances-charts');
+  });
+
   it('the period is the panel’s, remembered by this browser', async () => {
     await render({ open: true });
     await draw();

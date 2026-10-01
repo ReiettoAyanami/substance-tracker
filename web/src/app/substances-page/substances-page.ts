@@ -1,3 +1,4 @@
+import { BreakpointObserver } from '@angular/cdk/layout';
 import { Component, effect, inject, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
@@ -9,12 +10,17 @@ import { Subject, debounceTime, map } from 'rxjs';
 
 import { PageHistoryState } from '../substance-page/substance-page';
 import { AddButton } from '../ui/add-button/add-button';
+import { ChartsPanel } from '../ui/charts-panel/charts-panel';
 import { SubstanceCard } from '../ui/substance-card/substance-card';
 import { SubstanceActions } from './substance-actions';
 import { SubstanceList, searchOf } from './substance-list';
+import { SubstancesMetricsPanel } from './substances-metrics-panel/substances-metrics-panel';
 
 /** How long the typing must pause before the search starts (ms). */
 const SEARCH_PAUSE = 300;
+
+/** From this width the metrics and the charts of the substances sit at the right of the cards, open. */
+export const OVERVIEW_AT_THE_SIDE = '(min-width: 1200px)';
 
 /**
  * The substances page (design-frontend.md, "substances page", the former home): the substance
@@ -24,10 +30,24 @@ const SEARCH_PAUSE = 300;
  * SubstanceActions, provided here). At the top, the search bar: what is typed goes into the URL
  * (`?q=`) once the typing pauses, in place of the current entry, and the list shows what the API
  * finds by the name of a substance or of one of its batches; a link, a refresh and back keep it.
+ * Next to the cards, statistics of the substances in general (lenzi, 2026-10-01): the metrics
+ * page's substances table and the charts of this page (surface `substances`, a line per
+ * substance), each in its panel. From 1200 px they are a column at the right, open; narrower, they
+ * sit between the search and the cards, closed. They do not follow the search.
  */
 @Component({
   selector: 'app-substances-page',
-  imports: [AddButton, MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule, RouterOutlet, SubstanceCard],
+  imports: [
+    AddButton,
+    ChartsPanel,
+    MatButtonModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatInputModule,
+    RouterOutlet,
+    SubstanceCard,
+    SubstancesMetricsPanel,
+  ],
   providers: [SubstanceList, SubstanceActions],
   templateUrl: './substances-page.html',
   styleUrl: './substances-page.css',
@@ -45,6 +65,11 @@ export class SubstancesPage {
   /** What the search field shows: what is typed, or the search of the URL when it comes from elsewhere (a link, back). */
   protected readonly typed = signal('');
   private readonly typing = new Subject<string>();
+
+  /** A wide window: the statistics of the substances at the right, open. */
+  protected readonly wide = toSignal(inject(BreakpointObserver).observe(OVERVIEW_AT_THE_SIDE).pipe(map((state) => state.matches)), {
+    initialValue: false,
+  });
 
   constructor() {
     effect(() => {

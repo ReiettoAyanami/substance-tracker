@@ -1,5 +1,5 @@
 @let current = list.state();
-<main class="substances">
+<main class="substances" [class.wide]="wide()">
   @switch (current.status) {
     @case ('loaded') {
       <!-- A search bar (styles.css): what it looks for is said inside it, as in a browser's. -->
@@ -22,17 +22,25 @@
         }
       </mat-form-field>
 
-      @for (substance of current.substances; track substance.id) {
-        <app-substance-card
-          [substance]="substance"
-          [settings]="current.settings"
-          (tapped)="open($event)"
-          (edit)="actions.edit(substance)"
-          (remove)="actions.delete(substance)"
-        />
-      } @empty {
-        <p class="empty">{{ query() ? 'No substance or batch with “' + query() + '” in its name' : 'No substances' }}</p>
-      }
+      <!-- Statistics of the substances in general: at the right from 1200 px, open; above the cards, closed. -->
+      <aside class="overview" aria-label="All substances">
+        <app-substances-metrics-panel [settings]="current.settings" [open]="wide()" [refresh]="current.substances" (opened)="open($event)" />
+        <app-charts-panel [settings]="current.settings" [open]="wide()" [refresh]="current.substances" />
+      </aside>
+
+      <div class="cards">
+        @for (substance of current.substances; track substance.id) {
+          <app-substance-card
+            [substance]="substance"
+            [settings]="current.settings"
+            (tapped)="open($event)"
+            (edit)="actions.edit(substance)"
+            (remove)="actions.delete(substance)"
+          />
+        } @empty {
+          <p class="empty">{{ query() ? 'No substance or batch with “' + query() + '” in its name' : 'No substances' }}</p>
+        }
+      </div>
     }
     @case ('failed') {
       <p class="error">

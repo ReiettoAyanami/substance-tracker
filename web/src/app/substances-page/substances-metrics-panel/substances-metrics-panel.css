@@ -1,0 +1,39 @@
+:host {
+  display: block;
+}
+
+/* The title stays on one line; the period wraps if it must. */
+mat-panel-title {
+  flex: none;
+}
+
+.summary {
+  justify-content: flex-end;
+}
+
+/* The period and the scale, and the way to choose the columns, above the table. */
+.choices {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.choose {
+  margin-left: auto;
+}
+
+.table {
+  display: block;
+  margin-top: 12px;
+}
+
+.message {
+  margin: 16px 0 0;
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.error {
+  color: var(--mat-sys-error);
+}

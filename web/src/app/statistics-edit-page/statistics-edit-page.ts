@@ -25,11 +25,14 @@ export interface MetricsPlace {
   hint: string;
 }
 
-/** One place that draws charts: the statistics page (in sections), the substance page (for its substance). */
+/**
+ * One place that draws charts: the statistics page (in sections), the substance page (for its
+ * substance), the substances page (a line per substance).
+ */
 export interface ChartsPlace {
   kind: 'charts';
   id: string;
-  surface: 'statistics' | 'substance';
+  surface: 'statistics' | 'substance' | 'substances';
   sections: boolean;
   title: string;
   hint: string;
@@ -39,6 +42,14 @@ export type Place = MetricsPlace | ChartsPlace;
 
 export const PLACES: readonly Place[] = [
   { kind: 'charts', id: 'statistics', surface: 'statistics', sections: true, title: 'Statistics page', hint: 'Its charts, by section.' },
+  {
+    kind: 'charts',
+    id: 'substances-charts',
+    surface: 'substances',
+    sections: false,
+    title: 'Substances page: charts',
+    hint: 'The charts next to the list of substances: a line per substance.',
+  },
   {
     kind: 'metrics',
     id: 'substance',
@@ -70,7 +81,7 @@ export const PLACES: readonly Place[] = [
     surface: 'metrics',
     scope: 'substance',
     title: 'Metrics page: substances',
-    hint: 'The columns of the table.',
+    hint: 'The columns of the table, also on the substances page.',
   },
   { kind: 'metrics', id: 'metrics-batch', surface: 'metrics', scope: 'batch', title: 'Metrics page: batches', hint: 'The columns of the table.' },
   {
@@ -117,6 +128,7 @@ export class StatisticsEditPage {
     batch: this.surfaceResource('batch'),
     consumption: this.surfaceResource('consumption'),
     metrics: this.surfaceResource('metrics'),
+    substances: this.surfaceResource('substances'),
   };
 
   /** A write is running: the lists ask nothing more until it ends. */

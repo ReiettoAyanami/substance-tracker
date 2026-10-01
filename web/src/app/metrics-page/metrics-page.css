@@ -38,65 +38,6 @@
   flex-wrap: wrap;
 }
 
-/* The table scrolls inside its box, never the page. */
-.table-scroll {
-  overflow-x: auto;
-  border: 1px solid var(--mat-sys-outline-variant);
-  border-radius: 12px;
-}
-
-table {
-  width: 100%;
-}
-
-th,
-td {
-  white-space: nowrap;
-}
-
-/* Numbers line up at the right, under their header (whose sort arrow sits before the label). */
-.number {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
-/* The sticky name column has the table's background, so the numbers slide under it. */
-.mat-mdc-table-sticky {
-  background-color: var(--mat-table-background-color, var(--mat-sys-surface));
-}
-
-.name {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-/* A long name is cut; the whole name is on its page. */
-.name-text {
-  max-width: 160px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* A batch: its name, and under it its substance and the day it was bought; both cut when long. */
-.name-lines {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  max-width: 200px;
-  padding: 6px 0;
-}
-
-.name-lines > span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.name-detail {
-  font: var(--mat-sys-body-small);
-  color: var(--mat-sys-on-surface-variant);
-}
-
 .substance-filter,
 .batch-filter {
   flex: 1 1 200px;
@@ -106,23 +47,6 @@ td {
   margin: 0;
   font: var(--mat-sys-body-small);
   color: var(--mat-sys-on-surface-variant);
-}
-
-.dot {
-  flex: none;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-}
-
-.row {
-  cursor: pointer;
-}
-
-.row:hover,
-.row:focus-visible {
-  background-color: color-mix(in srgb, var(--mat-sys-on-surface) 8%, transparent);
-  outline: none;
 }
 
 .message {

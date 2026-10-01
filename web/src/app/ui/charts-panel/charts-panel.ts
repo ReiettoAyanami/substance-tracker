@@ -23,7 +23,8 @@ const readDays = () => readPreference<number>(DAYS_KEY, (v) => (PERIODS.some((p)
  * The charts of a substance (design-statistics.md, "widget"): the widgets the substance page lists
  * (its view items with a chart, edited from /statistics/edit, where the "tune" button leads), each
  * drawn for this substance with one line per batch and one for its one-time consumptions, in an
- * expansion panel under its metrics. One period for the panel, remembered by this browser; each
+ * expansion panel under its metrics. Without a substance, the charts of the substances page (the
+ * surface `substances`), one line per substance (lenzi, 2026-10-01). One period for the panel, remembered by this browser; each
  * chart its own interval. It asks nothing until it is first opened, and the charts' library comes
  * only then (a deferred block): the substance page does not carry it.
  */
@@ -34,7 +35,8 @@ const readDays = () => readPreference<number>(DAYS_KEY, (v) => (PERIODS.some((p)
   styleUrl: './charts-panel.css',
 })
 export class ChartsPanel {
-  readonly substanceId = input.required<number>();
+  /** The substance drawn, a line per batch; null: the substances page's charts, a line per substance. */
+  readonly substanceId = input<number | null>(null);
   readonly settings = input.required<Settings>();
   /** Starts open; closed, it asks for nothing until opened. */
   readonly open = input(false);
@@ -54,7 +56,7 @@ export class ChartsPanel {
   });
 
   protected readonly items = rxResource({
-    params: () => (this.wasOpened() ? ('substance' as const) : undefined),
+    params: () => (this.wasOpened() ? this.surface() : undefined),
     stream: ({ params }) => this.views.list(params),
   });
 
@@ -72,6 +74,17 @@ export class ChartsPanel {
       .filter((item) => item.chart !== null && series.has(item.metric))
       .map((item) => ({ item, definition: series.get(item.metric)! }));
   });
+
+  /** Whose charts: the substance page's, or the substances page's. */
+  protected readonly surface = computed(() => (this.substanceId() === null ? ('substances' as const) : ('substance' as const)));
+  /** The card of /statistics/edit its "tune" button opens. */
+  protected readonly editSection = computed(() => (this.substanceId() === null ? 'substances-charts' : 'substance-charts'));
+  /** The substances drawn (none: every one) and their lines. */
+  protected readonly substanceIds = computed(() => {
+    const id = this.substanceId();
+    return id === null ? undefined : [id];
+  });
+  protected readonly by = computed(() => (this.substanceId() === null ? ('substance' as const) : ('batch' as const)));
 
   /** What the closed panel says: the period of the charts. */
   protected readonly summary = computed(() => periodLabel(this.days()));

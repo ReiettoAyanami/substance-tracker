@@ -1,12 +1,44 @@
 /* One column of cards: full width on a phone (16 px gutters), at most 720 px on desktop. */
 .substances {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
   gap: 12px;
   max-width: 720px;
   margin: 0 auto;
   /* the bottom room keeps the last card clear of the "+" */
   padding: 16px 16px calc(96px + env(safe-area-inset-bottom, 0px));
+}
+
+/* The cards, one under the other; the statistics of the substances, one panel under the other. */
+.cards,
+.overview {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* A wide window (OVERVIEW_AT_THE_SIDE): the search and the cards at the left, the statistics at the
+   right, as tall as they need. */
+.substances.wide {
+  max-width: 1400px;
+  grid-template-columns: minmax(360px, 480px) minmax(0, 1fr);
+  /* The statistics span both rows: their height goes to the cards' row, not to the search's. */
+  grid-template-rows: auto 1fr;
+  column-gap: 24px;
+}
+
+.substances.wide .search {
+  grid-area: 1 / 1;
+}
+
+.substances.wide .cards {
+  grid-area: 2 / 1;
+}
+
+.substances.wide .overview {
+  grid-area: 1 / 2 / span 2;
 }
 
 /* The search bar, as wide as the cards (its shape is in styles.css, for every search bar). The

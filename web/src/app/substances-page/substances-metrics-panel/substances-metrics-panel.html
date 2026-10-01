@@ -1,0 +1,49 @@
+@let current = state();
+<mat-expansion-panel class="panel" [expanded]="open()" (opened)="wasOpened.set(true)">
+  <mat-expansion-panel-header>
+    <mat-panel-title>Metrics</mat-panel-title>
+    <mat-panel-description class="summary">{{ summary() }}</mat-panel-description>
+  </mat-expansion-panel-header>
+
+  <div class="choices">
+    <app-period-scale
+      [days]="hasPeriod() ? days() : null"
+      [per]="hasScales() ? per() : null"
+      (daysChange)="chooseDays($event)"
+      (perChange)="choosePer($event)"
+    />
+    <a
+      mat-icon-button
+      class="choose"
+      routerLink="/statistics/edit"
+      [queryParams]="{ section: 'metrics-substance' }"
+      aria-label="Choose the columns of this table"
+    >
+      <mat-icon>tune</mat-icon>
+    </a>
+  </div>
+
+  @switch (current.status) {
+    @case ('loaded') {
+      <app-metrics-table
+        class="table"
+        first="Substance"
+        label="Substances"
+        [columns]="columns() ?? []"
+        [rows]="table.value()!.rows"
+        [settings]="settings()"
+        [per]="per()"
+        [sort]="sort().active"
+        [direction]="sort().direction"
+        (sortChange)="sort.set($event)"
+        (opened)="openRow($event)"
+      />
+    }
+    @case ('loading') {
+      <p class="message">…</p>
+    }
+    @default {
+      <p class="message" [class.error]="current.status === 'failed'">{{ current.message }}</p>
+    }
+  }
+</mat-expansion-panel>
