@@ -23,5 +23,6 @@ export class Sidebar {
     { path: '/consumptions', label: 'Consumptions', icon: 'history' },
     { path: '/substances', label: 'Substances', icon: 'inventory_2' },
     { path: '/metrics', label: 'Metrics', icon: 'table_chart' },
+    { path: '/statistics', label: 'Statistics', icon: 'insights' },
   ] as const;
 }

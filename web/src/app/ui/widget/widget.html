@@ -1,0 +1,17 @@
+<mat-card appearance="outlined" class="widget">
+  <mat-card-header>
+    <mat-card-title>{{ definition().label }}</mat-card-title>
+    @if (subtitle(); as subtitle) {
+      <mat-card-subtitle>{{ subtitle }}</mat-card-subtitle>
+    }
+  </mat-card-header>
+  <mat-card-content>
+    @if (failure(); as failure) {
+      <p class="message">{{ failure }}</p>
+    } @else if (series.value(); as data) {
+      <app-chart [data]="data" [type]="item().chart ?? 'bar'" [unit]="definition().unit" [currency]="currency()" />
+    } @else {
+      <p class="message">…</p>
+    }
+  </mat-card-content>
+</mat-card>

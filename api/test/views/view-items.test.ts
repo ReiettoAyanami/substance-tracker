@@ -104,3 +104,41 @@ describe('view items (what each page shows)', () => {
     expectProblem(await order('substance', [ids[0], ids[1], 999999]), 400, 'validation');
   });
 });
+
+describe('view items of the statistics page (its charts)', () => {
+  it('a chart is a series of the catalog, drawn as one of its charts, in one of its scales, in a section', async () => {
+    const res = await add({ surface: 'statistics', metric: 'series.cost', chart: 'donut', scale: 'month', section: 'Money' });
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    expect(res.body).toMatchObject({ surface: 'statistics', metric: 'series.cost', chart: 'donut', scale: 'month', section: 'Money', position: 1 });
+    // the same series can be drawn twice
+    expect((await add({ surface: 'statistics', metric: 'series.cost', chart: 'bar', scale: 'week', section: 'Money' })).status).toBe(201);
+    // the hour of the day has no scale; no section is fine
+    const hours = await add({ surface: 'statistics', metric: 'series.hourOfDay', chart: 'bar' });
+    expect(hours.body).toMatchObject({ scale: null, section: null });
+    expect(metricsOf(await list('statistics'))).toEqual(['series.cost', 'series.cost', 'series.hourOfDay']);
+  });
+
+  it('refuses what cannot be drawn', async () => {
+    expectProblem(await add({ surface: 'statistics', metric: 'substance.pace', chart: 'bar', scale: 'week' }), 400, 'validation');
+    expectProblem(await add({ surface: 'statistics', metric: 'series.cost', scale: 'week' }), 400, 'validation'); // no chart
+    expectProblem(await add({ surface: 'statistics', metric: 'series.consumed', chart: 'donut', scale: 'week' }), 400, 'validation');
+    expectProblem(await add({ surface: 'statistics', metric: 'series.cost', chart: 'bar' }), 400, 'validation'); // no scale
+    expectProblem(await add({ surface: 'statistics', metric: 'series.cost', chart: 'bar', scale: 'hour' }), 400, 'validation');
+    expectProblem(await add({ surface: 'statistics', metric: 'series.hourOfDay', chart: 'bar', scale: 'week' }), 400, 'validation');
+    expectProblem(await add({ surface: 'metrics', metric: 'series.cost' }), 400, 'validation');
+  });
+
+  it('a chart can be changed: its chart, its scale, its section', async () => {
+    const chart = (await add({ surface: 'statistics', metric: 'series.cost', chart: 'bar', scale: 'week', section: 'Money' })).body;
+    const res = await api.patch(`/api/view-items/${chart.id}`, { chart: 'line', scale: 'month', section: 'Spending' });
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    expect(res.body).toMatchObject({ id: chart.id, chart: 'line', scale: 'month', section: 'Spending', position: 1 });
+    expect((await api.patch(`/api/view-items/${chart.id}`, { section: null })).body.section).toBeNull();
+    expectProblem(await api.patch(`/api/view-items/${chart.id}`, { chart: 'pie' }), 400, 'validation');
+    expectProblem(await api.patch(`/api/view-items/${chart.id}`, { scale: 'hour' }), 400, 'validation');
+    expectProblem(await api.patch(`/api/view-items/${chart.id}`, {}), 400, 'validation');
+    const panel = (await add({ surface: 'substance', metric: 'substance.pace' })).body;
+    expectProblem(await api.patch(`/api/view-items/${panel.id}`, { section: 'X' }), 400, 'validation');
+    expectProblem(await api.patch('/api/view-items/999999', { section: 'X' }), 404, 'not-found');
+  });
+});

@@ -80,6 +80,26 @@ export async function insertViewItem(db: Queryable, item: NewViewItem): Promise<
   return result.insertId;
 }
 
+/** A chart's section, how it is drawn and its interval (the statistics page). */
+export interface ChartChange {
+  section?: string | null;
+  chart?: Chart;
+  scale?: string | null;
+}
+
+export async function updateChart(db: Queryable, id: number, change: ChartChange): Promise<void> {
+  const sets: string[] = [];
+  const values: unknown[] = [];
+  for (const column of ['section', 'chart', 'scale'] as const) {
+    if (change[column] !== undefined) {
+      sets.push(`${column} = ?`);
+      values.push(change[column]);
+    }
+  }
+  if (sets.length === 0) return;
+  await db.query(`UPDATE view_items SET ${sets.join(', ')} WHERE id = ?`, [...values, id]);
+}
+
 export async function setPosition(db: Queryable, id: number, position: number): Promise<void> {
   await db.query('UPDATE view_items SET position = ? WHERE id = ?', [position, id]);
 }

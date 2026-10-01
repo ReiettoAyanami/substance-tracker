@@ -33,6 +33,11 @@ export const routes: Routes = [
     title: 'Metrics',
   },
   {
+    path: 'statistics',
+    loadComponent: () => import('./statistics-page/statistics-page').then((m) => m.StatisticsPage),
+    title: 'Statistics',
+  },
+  {
     path: 'statistics/edit',
     loadComponent: () => import('./statistics-edit-page/statistics-edit-page').then((m) => m.StatisticsEditPage),
     title: 'What the pages show',

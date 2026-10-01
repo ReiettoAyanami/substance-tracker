@@ -21,6 +21,10 @@
   padding-top: 16px;
 }
 
+.intro a {
+  color: var(--mat-sys-primary);
+}
+
 .intro {
   margin: 0;
   font: var(--mat-sys-body-medium);

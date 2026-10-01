@@ -26,8 +26,18 @@ export interface ViewItem {
   createdAt: string;
 }
 
-/** Body of POST /api/view-items: added at the end of its surface. */
+/** Body of POST /api/view-items: added at the end of its surface. A chart also has its chart, scale and section. */
 export interface NewViewItem {
   surface: Surface;
   metric: string;
+  section?: string | null;
+  chart?: Chart;
+  scale?: string | null;
+}
+
+/** Body of PATCH /api/view-items/:id: what changes of a chart of the statistics page. */
+export interface ChartChange {
+  section?: string | null;
+  chart?: Chart;
+  scale?: string | null;
 }

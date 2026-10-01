@@ -42,6 +42,26 @@ export interface CreateViewItemBody {
 
 export const deleteViewItemSchema = { params: idParams } as const;
 
+export const patchViewItemSchema = {
+  params: idParams,
+  body: {
+    type: 'object',
+    additionalProperties: false,
+    minProperties: 1,
+    properties: {
+      section: { type: ['string', 'null'], maxLength: 100 },
+      chart: { type: 'string', enum: CHARTS },
+      scale: { type: ['string', 'null'], enum: [...TIME_SCALES, null] },
+    },
+  },
+} as const;
+
+export interface PatchViewItemBody {
+  section?: string | null;
+  chart?: Chart;
+  scale?: string | null;
+}
+
 export const orderViewItemsSchema = {
   body: {
     type: 'object',

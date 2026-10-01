@@ -53,6 +53,13 @@ describe('ViewsApi', () => {
     del.flush(null, { status: 204, statusText: 'No Content' });
     await removed;
 
+    const changed = firstValueFrom(api.change(5, { chart: 'line', section: null }));
+    const patch = backend.expectOne('/api/view-items/5');
+    expect(patch.request.method).toBe('PATCH');
+    expect(patch.request.body).toEqual({ chart: 'line', section: null });
+    patch.flush(item(5, 'series.cost'));
+    expect((await changed).id).toBe(5);
+
     const reordered = firstValueFrom(api.reorder('substance', [3, 1]));
     const put = backend.expectOne('/api/view-items/order');
     expect(put.request.method).toBe('PUT');

@@ -1,0 +1,31 @@
+<main class="statistics-page">
+  <p class="intro">Charts over time. To compare the entities today, see <a routerLink="/metrics">Metrics</a>.</p>
+
+  <div class="choices">
+    <app-period-scale [days]="days()" (daysChange)="chooseDays($event)" />
+    <a mat-icon-button class="choose" routerLink="/statistics/edit" [queryParams]="{ section: 'statistics' }" aria-label="Choose the charts">
+      <mat-icon>tune</mat-icon>
+    </a>
+  </div>
+
+  @if (failure(); as failure) {
+    <p class="message error">{{ failure }}</p>
+  } @else if (sections(); as sections) {
+    @for (section of sections; track section.name) {
+      <section class="section" [attr.aria-label]="section.name ?? 'Charts'">
+        @if (section.name) {
+          <h2 class="section-name">{{ section.name }}</h2>
+        }
+        <div class="charts">
+          @for (chart of section.charts; track chart.item.id) {
+            <app-widget [item]="chart.item" [definition]="chart.definition" [days]="days()" [currency]="currency()" />
+          }
+        </div>
+      </section>
+    } @empty {
+      <p class="message">No chart is chosen: <a routerLink="/statistics/edit" [queryParams]="{ section: 'statistics' }">choose them</a>.</p>
+    }
+  } @else {
+    <p class="message">…</p>
+  }
+</main>

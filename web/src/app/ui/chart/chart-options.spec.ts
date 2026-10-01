@@ -47,6 +47,7 @@ describe('chartOptions', () => {
     expect(o.yAxis.axisLabel.formatter(3)).toBe('€3.00');
     expect(o.tooltip.valueFormatter(0.3)).toBe('€0.30');
     expect(o.tooltip.valueFormatter(null)).toBe('—');
+    expect(o.tooltip.confine).toBe(true);
     expect(o.yAxis.splitLine.lineStyle.color).toBe('rgba(4, 4, 4, 1)');
   });
 
@@ -68,6 +69,7 @@ describe('chartOptions', () => {
   it("a donut of the lines' totals, none for a line with nothing", () => {
     const o = options({ type: 'donut', data: { ...data, series: [...data.series, line('substance:3', 'substance', 3, 'Erba', ['0.00', '0.00'], '0.00')] } });
     expect(o.series[0].type).toBe('pie');
+    expect(o.series[0].label.formatter).toBe('{d}%');
     expect(o.series[0].data).toEqual([
       { name: 'Birra', value: 7, itemStyle: { color: 'rgba(10, 0, 0, 1)' } },
       { name: 'Caffè', value: 0.3, itemStyle: { color: 'rgba(0, 10, 0, 1)' } },

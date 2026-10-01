@@ -5,9 +5,11 @@ import {
   deleteViewItemSchema,
   listViewItemsSchema,
   orderViewItemsSchema,
+  patchViewItemSchema,
   type CreateViewItemBody,
   type ListViewItemsQuery,
   type OrderViewItemsBody,
+  type PatchViewItemBody,
 } from './schemas.js';
 import type { ViewsService } from './service.js';
 
@@ -24,6 +26,12 @@ export function viewsRoutes(app: FastifyInstance, deps: { views: ViewsService })
 
   app.put<{ Body: OrderViewItemsBody }>('/api/view-items/order', { schema: orderViewItemsSchema }, async (req) =>
     views.reorder(req.body.surface, req.body.ids),
+  );
+
+  app.patch<{ Params: IdParams; Body: PatchViewItemBody }>(
+    '/api/view-items/:id',
+    { schema: patchViewItemSchema },
+    async (req) => views.changeChart(req.params.id, req.body),
   );
 
   app.delete<{ Params: IdParams }>('/api/view-items/:id', { schema: deleteViewItemSchema }, async (req, reply) => {

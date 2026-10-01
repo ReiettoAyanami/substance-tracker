@@ -1,0 +1,19 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.widget {
+  height: 100%;
+}
+
+mat-card-content {
+  padding-top: 8px;
+}
+
+.message {
+  margin: 48px 0;
+  text-align: center;
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+}

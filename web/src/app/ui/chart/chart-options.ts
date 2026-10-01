@@ -79,6 +79,9 @@ export function chartOptions({ data, type, unit, currency, hidden, colors }: Cha
   const lines = data.series.filter((line) => !hidden.has(line.key));
   const name = (line: SeriesLine) => (unit === 'quantity' ? `${lineLabel(line)} (${line.unit})` : lineLabel(line));
   const tooltip = {
+    // inside the chart, never cut by its card; a long name goes to the next line
+    confine: true,
+    extraCssText: 'max-width: 280px; white-space: normal;',
     backgroundColor: colors.surface,
     borderColor: colors.outlineVariant,
     textStyle: { color: colors.onSurface },
@@ -96,7 +99,9 @@ export function chartOptions({ data, type, unit, currency, hidden, colors }: Cha
           radius: ['48%', '72%'],
           avoidLabelOverlap: true,
           itemStyle: { borderColor: colors.surface, borderWidth: 2 },
-          label: { color: colors.onSurface, formatter: '{b}\n{d}%' },
+          // the share only: the chips above name the slices, and long names do not fit a phone
+          percentPrecision: 0,
+          label: { color: colors.onSurface, formatter: '{d}%' },
           data: lines
             .filter((line) => line.total !== null && Number(line.total) > 0)
             .map((line) => ({ name: name(line), value: Number(line.total), itemStyle: { color: colors.lines[line.key] } })),
@@ -110,7 +115,8 @@ export function chartOptions({ data, type, unit, currency, hidden, colors }: Cha
   return {
     ...base,
     tooltip: { ...tooltip, trigger: 'axis' },
-    grid: { left: 8, right: 16, top: 16, bottom: 8, containLabel: true },
+    // The axis labels stay inside the chart (ECharts 6's name for the old containLabel).
+    grid: { left: 8, right: 16, top: 16, bottom: 8, outerBoundsMode: 'same', outerBoundsContain: 'axisLabel' },
     xAxis: {
       type: 'category',
       data: data.periods.map(periodLabel),

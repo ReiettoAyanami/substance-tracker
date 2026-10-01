@@ -9,7 +9,7 @@ import {
   resolveMigrationsDir,
   runMigrations,
 } from '../../src/db/migrate.js';
-import { METRICS } from '../../src/modules/metrics/catalog.js';
+import { METRICS, SERIES } from '../../src/modules/metrics/catalog.js';
 import { rawRows, testDbConfig } from '../support/db.js';
 
 /** Runs one migration file again on the test database, as the runner would. */
@@ -161,6 +161,30 @@ describe('migrations', () => {
     await rawRows('UPDATE view_items SET deleted_at = UTC_TIMESTAMP() WHERE surface = ?', ['substance']);
     await rerun('003_view_items.sql');
     expect(await rawRows('SELECT id FROM view_items')).toHaveLength(rows.length);
+  });
+
+  it('004 puts charts on the statistics page, only while it has none, each a series it can draw', async () => {
+    await rerun('004_statistics_widgets.sql');
+    const rows = await rawRows(
+      "SELECT section, position, metric, chart, scale FROM view_items WHERE surface = 'statistics' ORDER BY position",
+    );
+    expect(rows.map((r) => [r.section, r.metric, r.chart, r.scale])).toEqual([
+      ['Consumption', 'series.consumed', 'line', 'week'],
+      ['Consumption', 'series.consumptions', 'bar', 'week'],
+      ['Money', 'series.cost', 'bar', 'month'],
+      ['Money', 'series.cost', 'donut', 'month'],
+      ['Money', 'series.spend', 'bar', 'month'],
+      ['Prices', 'series.unitPrice', 'line', 'month'],
+      ['Habits', 'series.hourOfDay', 'bar', null],
+    ]);
+    for (const r of rows) {
+      const series = SERIES.find((s) => s.key === r.metric)!;
+      expect(series.charts).toContain(r.chart);
+      expect(r.scale === null ? series.scales.length === 0 : series.scales.includes(r.scale)).toBe(true);
+    }
+    await rawRows("UPDATE view_items SET deleted_at = UTC_TIMESTAMP() WHERE surface = 'statistics'");
+    await rerun('004_statistics_widgets.sql');
+    expect(await rawRows("SELECT id FROM view_items WHERE surface = 'statistics'")).toHaveLength(rows.length);
   });
 
   it('the session and the stored instants are UTC', async () => {

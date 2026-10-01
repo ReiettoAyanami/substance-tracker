@@ -1,0 +1,64 @@
+/* Full width on a phone (16 px gutters); on desktop two charts side by side, at most 1200 px. */
+.statistics-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px 16px 32px;
+}
+
+.intro {
+  margin: 0;
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.intro a,
+.message a {
+  color: var(--mat-sys-primary);
+}
+
+.choices {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.choose {
+  margin-left: auto;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.section-name {
+  margin: 8px 0 0;
+  font: var(--mat-sys-title-medium);
+  color: var(--mat-sys-on-surface);
+}
+
+.charts {
+  display: grid;
+  gap: 16px;
+}
+
+@media (min-width: 1000px) {
+  .charts {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.message {
+  margin: 48px 0;
+  text-align: center;
+  font: var(--mat-sys-body-large);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.error {
+  color: var(--mat-sys-error);
+}

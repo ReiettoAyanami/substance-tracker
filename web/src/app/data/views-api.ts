@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
-import { NewViewItem, Surface, ViewItem } from './view-item';
+import { ChartChange, NewViewItem, Surface, ViewItem } from './view-item';
 
 /** Gateway of the Views module: one method per API operation, no state, no logic. */
 @Injectable({
@@ -19,6 +19,11 @@ export class ViewsApi {
   /** POST /api/view-items: one more thing at the end of its surface. */
   add(item: NewViewItem): Observable<ViewItem> {
     return this.http.post<ViewItem>('/api/view-items', item);
+  }
+
+  /** PATCH /api/view-items/:id: a chart of the statistics page, drawn another way, in another scale or section. */
+  change(id: number, change: ChartChange): Observable<ViewItem> {
+    return this.http.patch<ViewItem>(`/api/view-items/${id}`, change);
   }
 
   /** DELETE /api/view-items/:id (a soft delete). */
