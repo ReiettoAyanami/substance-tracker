@@ -89,7 +89,7 @@ export class Chart {
 }
 
 /**
- * Resolves CSS colours (tokens, identity colours made of var()) into rgba() ECharts can use: the
+ * Resolves CSS colours (tokens, identity colours in oklch()) into rgba() ECharts can use: the
  * browser computes each on a hidden element, then a 1×1 canvas turns it into sRGB. Without a
  * canvas (tests), the computed colour as it is. The element is removed once `read` is done.
  */

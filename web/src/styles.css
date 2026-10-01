@@ -1,10 +1,3 @@
-/* Identity colours (design-frontend.md): the hue comes from the id (IdentityColorPipe), the chroma
-   is the same for everyone, the lightness is the dark theme's. */
-:root {
-  --identity-chroma: 0.14;
-  --identity-lightness: 74%;
-}
-
 /* The batch bar's tooltip (BatchBar): the name on the first line, the unit price on the second. The
    tooltip lives in the overlay, outside the component's styles. */
 .batch-bar-tooltip .mat-mdc-tooltip-surface {
