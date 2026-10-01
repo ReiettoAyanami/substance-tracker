@@ -1,5 +1,5 @@
 import { SeriesData, SeriesLine } from '../../data/series';
-import { ChartColors, chartOptions, lineLabel, periodLabel, valueFormat } from './chart-options';
+import { ChartColors, chartOptions, currentPeriod, hatch, lastStretch, lineLabel, periodLabel, valueFormat } from './chart-options';
 
 const line = (key: string, kind: SeriesLine['kind'], id: number, name: string | null, values: (string | null)[], total: string | null, unit = 'beer'): SeriesLine => ({
   key,
@@ -24,6 +24,7 @@ const data: SeriesData = {
 };
 
 const colors: ChartColors = {
+  primary: 'rgba(9, 9, 9, 1)',
   onSurface: 'rgba(1, 1, 1, 1)',
   onSurfaceVariant: 'rgba(2, 2, 2, 1)',
   outline: 'rgba(3, 3, 3, 1)',
@@ -40,7 +41,7 @@ describe('chartOptions', () => {
     const o = options({});
     expect(o.backgroundColor).toBe('transparent');
     expect(o.xAxis.data).toEqual(['W36', 'W37']);
-    expect(o.series.map((s: any) => [s.type, s.name, s.data, s.stack, s.itemStyle.color])).toEqual([
+    expect(o.series.map((s: any) => [s.type, s.name, s.data.map((d: any) => d.value), s.stack, s.itemStyle.color])).toEqual([
       ['bar', 'Birra', [4, 3], 'total', 'rgba(10, 0, 0, 1)'],
       ['bar', 'Caffè', [0, 0.3], 'total', 'rgba(0, 10, 0, 1)'],
     ]);
@@ -60,6 +61,9 @@ describe('chartOptions', () => {
     ]);
     const lines = options({ type: 'line', unit: 'unitPrice', data: { ...data, series: [line('substance:4', 'substance', 4, 'Birra', ['1.000000', null], '1.000000')] } });
     expect(lines.series[0]).toMatchObject({ type: 'line', data: [1, null], connectNulls: true });
+    // nothing in the period in progress (a price with no purchase): no dashed stretch
+    expect(lines.series).toHaveLength(1);
+    expect(lines.series[0].smoothMonotone).toBe('x');
   });
 
   it('quantities of one unit add up: their bars stand one on the other (a substance by batch)', () => {
@@ -69,6 +73,47 @@ describe('chartOptions', () => {
     expect(options({ unit: 'quantity', data: { ...batches, series: [...batches.series, line('substance:4', 'substance', 4, 'Birra', ['1', '1'], '2')] }, hidden: new Set(['substance:4']) }).series.map((s: any) => s.stack)).toEqual([undefined, undefined]);
     // prices never add up
     expect(options({ unit: 'unitPrice', data: batches }).series.map((s: any) => s.stack)).toEqual([undefined, undefined]);
+  });
+
+  it('bars: rounded ends, square where pieces of a stack meet; the period in progress striped in violet', () => {
+    const o = options({});
+    // W36: Birra alone (Caffè is 0); W37: Caffè on Birra
+    expect(o.series[0].data.map((d: any) => d.itemStyle.borderRadius)).toEqual([
+      [6, 6, 6, 6],
+      [0, 0, 6, 6],
+    ]);
+    expect(o.series[1].data.map((d: any) => d.itemStyle.borderRadius)).toEqual([
+      [0, 0, 0, 0],
+      [6, 6, 0, 0],
+    ]);
+    expect(o.series[0].data[0].itemStyle.decal).toBeUndefined();
+    expect(o.series[0].data[1].itemStyle.decal).toEqual(hatch('rgba(9, 9, 9, 1)'));
+    expect(o.xAxis.axisLabel.color('W37', 1)).toBe('rgba(9, 9, 9, 1)');
+    expect(o.xAxis.axisLabel.color('W36', 0)).toBe('rgba(2, 2, 2, 1)');
+    expect(o.xAxis.axisLine.show).toBe(false);
+    // side by side, every bar rounded at both ends
+    const prices = options({ unit: 'unitPrice' });
+    expect(prices.series[0].data[0].itemStyle.borderRadius).toBe(6);
+  });
+
+  it('the period in progress is the last one; the hours of the day have none', () => {
+    expect(currentPeriod(data)).toBe(1);
+    expect(currentPeriod({ ...data, per: null, periods: ['00', '01'] })).toBeNull();
+    expect(lastStretch([1, null, 2, null, 5], 4)).toEqual([null, null, 2, null, 5]);
+    expect(lastStretch([null, null, 5], 2)).toEqual([null, null, 5]);
+  });
+
+  it("lines: each name once in the tooltip, with its value, the user's names as text", () => {
+    const o = options({ type: 'line', data: { ...data, series: [line('substance:4', 'substance', 4, '<b>Birra</b>', ['4.00', '3.00'], '7.00')] } });
+    expect(o.series.map((s: any) => [s.data, s.lineStyle.type])).toEqual([
+      [[4, null], undefined],
+      [[4, 3], 'dashed'],
+    ]);
+    const tip = o.tooltip.formatter([
+      { axisValueLabel: 'W37', seriesName: '<b>Birra</b>', marker: '•', value: null },
+      { axisValueLabel: 'W37', seriesName: '<b>Birra</b>', marker: '•', value: 3 },
+    ]);
+    expect(tip).toBe('W37<br/>•&lt;b&gt;Birra&lt;/b&gt; <b>€3.00</b>');
   });
 
   it('leaves out the lines hidden by hand', () => {

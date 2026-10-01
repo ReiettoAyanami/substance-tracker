@@ -60,6 +60,7 @@ export class Chart {
   private readonly colors = computed<ChartColors>(() => {
     const lines = this.data().series;
     return resolveColors(this.host.nativeElement, (resolve) => ({
+      primary: resolve('var(--mat-sys-primary)'),
       onSurface: resolve('var(--mat-sys-on-surface)'),
       onSurfaceVariant: resolve('var(--mat-sys-on-surface-variant)'),
       outline: resolve('var(--mat-sys-outline)'),
