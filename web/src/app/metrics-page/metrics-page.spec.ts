@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
 import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { Observable, of, throwError } from 'rxjs';
+import { Observable, Subject, of, throwError } from 'rxjs';
 
 import { ConsumptionActions } from '../consumptions-page/consumption-actions';
 import { CatalogApi } from '../data/catalog-api';
@@ -189,6 +189,25 @@ describe('MetricsPage', () => {
 
     expect(TestBed.inject(Router).url).toBe('/metrics?days=7&per=week');
     expect(asked.at(-1)).toEqual({ scope: 'substance', keys: ['substance.cost', 'substance.pace'], per: 'week', days: 7 });
+  });
+
+  it('another scale keeps the table in place while it loads: nothing shrinks or is built again', async () => {
+    await open('/metrics?per=day');
+    const before = element().querySelector('app-metrics-table');
+    const week = new Subject<MetricsTable>();
+    answer = (query) => (query.per === 'week' ? week : of(table(query)));
+
+    // The answer is held back, and a pending resource never lets the page be stable: no whenStable.
+    void TestBed.inject(Router).navigateByUrl('/metrics?per=week');
+    await new Promise((resolve) => setTimeout(resolve));
+    harness!.fixture.detectChanges();
+    expect(element().querySelector('app-metrics-table')).toBe(before);
+    expect(element().querySelector('.message')).toBeNull();
+
+    week.next(table({ scope: 'substance', keys: ['substance.cost', 'substance.pace'], per: 'week' }));
+    week.complete();
+    await harness!.fixture.whenStable();
+    expect(element().querySelector('app-metrics-table')).toBe(before);
   });
 
   it('a header orders the rows by its column, the ones with no value last, and the URL keeps it', async () => {

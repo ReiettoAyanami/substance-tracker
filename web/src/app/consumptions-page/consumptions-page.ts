@@ -11,6 +11,7 @@ import { ReportsApi } from '../data/reports-api';
 import { Settings } from '../data/settings';
 import { SettingsApi } from '../data/settings-api';
 import { ConsumptionCard } from '../ui/consumption-card/consumption-card';
+import { keptValue } from '../ui/kept-value';
 import { ConsumptionActions } from './consumption-actions';
 import { ConsumptionFilters } from './consumption-filters/consumption-filters';
 
@@ -107,13 +108,15 @@ export class ConsumptionsPage {
     params: () => this.filter(),
     stream: ({ params }) => this.reports.listConsumptions(params, { limit: PAGE }),
   });
+  /** The first page on screen: the cards stay while another filter loads, instead of emptying the page. */
+  private readonly shownFirstPage = keptValue(this.firstPage);
   /** The pages loaded with "Show more", after the first; none for another filter. */
   private readonly olderPages = linkedSignal<ConsumptionFilter, Consumption[]>({
     source: this.filter,
     computation: () => [],
   });
   /** The last page loaded was full: there may be older consumptions. */
-  private readonly lastPageFull = linkedSignal(() => this.firstPage.hasValue() && this.firstPage.value().length >= PAGE);
+  private readonly lastPageFull = linkedSignal(() => (this.shownFirstPage()?.length ?? 0) >= PAGE);
   protected readonly loadingMore = signal(false);
   protected readonly moreFailed = linkedSignal<ConsumptionFilter, boolean>({ source: this.filter, computation: () => false });
 
@@ -128,8 +131,9 @@ export class ConsumptionsPage {
   /** The consumptions shown, newest first, and the settings that format them; null while loading. */
   protected readonly list = computed(() => {
     const settings = this.loadedSettings();
-    if (!settings || !this.firstPage.hasValue()) return null;
-    return { settings, items: [...this.firstPage.value(), ...this.olderPages()] };
+    const first = this.shownFirstPage();
+    if (!settings || !first) return null;
+    return { settings, items: [...first, ...this.olderPages()] };
   });
 
   protected readonly hasMore = computed(() => this.lastPageFull() && !this.moreFailed());

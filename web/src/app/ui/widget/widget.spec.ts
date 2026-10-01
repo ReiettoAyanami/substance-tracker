@@ -2,7 +2,7 @@ import { Component, input } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { Observable, of, throwError } from 'rxjs';
+import { Observable, Subject, of, throwError } from 'rxjs';
 
 import { MetricsApi } from '../../data/metrics-api';
 import { SeriesData, SeriesDefinition, SeriesQuery } from '../../data/series';
@@ -143,6 +143,27 @@ describe('Widget', () => {
       { metric: 'series.cost', per: 'week', days: 90 },
     ]);
     expect(snacks).toEqual([]);
+  });
+
+  it('another interval redraws the same chart: it is not built again while the series loads', async () => {
+    await render({ days: 90 });
+    const before = chart();
+    const week = new Subject<SeriesData>();
+    answer = () => week;
+
+    // Not choose(): the series is held back, and a pending resource never lets the page be stable.
+    (toggles().find((t) => text(t) === 'week')?.querySelector('button') as HTMLButtonElement).click();
+    await new Promise((resolve) => setTimeout(resolve));
+    fixture.detectChanges();
+    expect(chart()).toBe(before);
+    expect(chart()?.data()).toEqual(data);
+
+    const weekly = { ...data, per: 'week' as const };
+    week.next(weekly);
+    week.complete();
+    await fixture.whenStable();
+    expect(chart()).toBe(before);
+    expect(chart()?.data()).toEqual(weekly);
   });
 
   it('offers only the intervals of its series, and choosing the same one saves nothing', async () => {

@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
 import { provideRouter } from '@angular/router';
-import { of } from 'rxjs';
+import { Observable, Subject, of } from 'rxjs';
 
 import { MetricDefinition, MetricsTable, MetricsTableQuery } from '../../data/metric';
 import { MetricsApi } from '../../data/metrics-api';
@@ -44,6 +44,7 @@ describe('SubstancesMetricsPanel', () => {
   let fixture: ComponentFixture<SubstancesMetricsPanel>;
   let asked: unknown[];
   let opened: number[];
+  let answer: (query: MetricsTableQuery) => Observable<MetricsTable>;
 
   const element = () => fixture.nativeElement as HTMLElement;
   const text = (e: Element | null | undefined) => (e?.textContent ?? '').replace(/\s+/g, ' ').trim();
@@ -61,6 +62,7 @@ describe('SubstancesMetricsPanel', () => {
   beforeEach(async () => {
     localStorage.clear();
     asked = [];
+    answer = () => of(table);
     await TestBed.configureTestingModule({
       imports: [SubstancesMetricsPanel],
       providers: [
@@ -69,7 +71,7 @@ describe('SubstancesMetricsPanel', () => {
           provide: MetricsApi,
           useValue: {
             getCatalog: () => (asked.push('catalog'), of(catalog)),
-            getTable: (query: MetricsTableQuery) => (asked.push(query), of(table)),
+            getTable: (query: MetricsTableQuery) => (asked.push(query), answer(query)),
           },
         },
         {
@@ -114,5 +116,28 @@ describe('SubstancesMetricsPanel', () => {
 
     (element().querySelectorAll('tr.row')[1] as HTMLElement).click();
     expect(opened).toEqual([4]);
+  });
+
+  it('another scale keeps the table in place while it loads: nothing shrinks or is built again', async () => {
+    await render({ open: true });
+    const before = element().querySelector('app-metrics-table');
+    const week = new Subject<MetricsTable>();
+    answer = (query) => (query.per === 'week' ? week : of(table));
+
+    // Not whenStable(): the answer is held back, and a pending resource never lets the page be stable.
+    element().querySelector<HTMLElement>('.per mat-select')!.click();
+    fixture.detectChanges();
+    Array.from(document.querySelectorAll<HTMLElement>('mat-option'))
+      .find((o) => text(o) === 'week')!
+      .click();
+    await new Promise((resolve) => setTimeout(resolve));
+    fixture.detectChanges();
+    expect(element().querySelector('app-metrics-table')).toBe(before);
+    expect(names()).toEqual(['Birra', 'Erba']);
+
+    week.next({ ...table, per: 'week' });
+    week.complete();
+    await fixture.whenStable();
+    expect(element().querySelector('app-metrics-table')).toBe(before);
   });
 });

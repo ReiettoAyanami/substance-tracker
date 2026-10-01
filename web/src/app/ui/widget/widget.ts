@@ -12,6 +12,7 @@ import { Settings } from '../../data/settings';
 import { ViewItem } from '../../data/view-item';
 import { ViewsApi } from '../../data/views-api';
 import { Chart } from '../chart/chart';
+import { keptValue } from '../kept-value';
 
 /**
  * A widget (design-statistics.md, "widget"): a chart with its settings, a view item of the
@@ -70,6 +71,15 @@ export class Widget {
         ...(by === 'batch' ? { by } : {}),
       }),
   });
+
+  /**
+   * The series on screen: the last one stays while another interval or period loads, so the chart
+   * redraws in place instead of being built again (and replaying its opening). Another chart, other
+   * substances or lines by batch are another thing: then it waits empty.
+   */
+  protected readonly shownSeries = keptValue(this.series, () =>
+    JSON.stringify([this.item().id, this.item().metric, this.substanceIds(), this.by()]),
+  );
 
   /** What a donut says under its name: the share of the whole period (the others have their toggle). */
   protected readonly subtitle = computed(() => (this.item().chart === 'donut' ? 'share of the period' : ''));

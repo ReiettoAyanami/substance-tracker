@@ -21,7 +21,7 @@
     }
     @if (failure(); as failure) {
       <p class="message">{{ failure }}</p>
-    } @else if (series.value(); as data) {
+    } @else if (shownSeries(); as data) {
       <app-chart [data]="data" [type]="item().chart ?? 'bar'" [unit]="definition().unit" [settings]="settings()" />
     } @else {
       <p class="message">…</p>

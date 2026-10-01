@@ -10,6 +10,7 @@ import { MetricDefinition, MetricScope, TIME_SCALES, TimeScale } from '../../dat
 import { MetricsApi } from '../../data/metrics-api';
 import { Settings } from '../../data/settings';
 import { ViewsApi } from '../../data/views-api';
+import { keptValue } from '../kept-value';
 import { MetricReading, MetricValuePipe } from '../metric-value-pipe';
 import { PERIODS, PeriodScale, periodLabel } from '../period-scale/period-scale';
 import { readPreference, writePreference } from '../preferences';
@@ -112,13 +113,17 @@ export class MetricsPanel {
   /** Everything is loaded, and this page shows nothing. */
   protected readonly empty = computed(() => this.catalog.hasValue() && this.items.hasValue() && this.shown().length === 0);
 
+  /** The numbers on screen: the last ones stay while another scale or period loads (same entity). */
+  private readonly shownMetrics = keptValue(this.metrics, () => `${this.scope()}/${this.consumptionType()}/${this.entityId()}`);
+
+  /** The scale of the numbers shown (until the new ones come, the one they were asked in). */
   protected readonly reading = computed<MetricReading>(() => ({
     unit: this.unit(),
     currency: this.settings().currency,
-    per: this.per(),
+    per: this.shownMetrics()?.per ?? this.per(),
   }));
 
-  protected readonly values = computed(() => (this.metrics.hasValue() ? (this.metrics.value()?.values ?? null) : null));
+  protected readonly values = computed(() => this.shownMetrics()?.values ?? null);
 
   /** What the closed panel says: the period and the scale the numbers are in. */
   protected readonly summary = computed(() =>

@@ -12,6 +12,7 @@ import { MetricDefinition, MetricsRow, MetricsTable as TableData, TIME_SCALES, T
 import { MetricsApi } from '../../data/metrics-api';
 import { Settings } from '../../data/settings';
 import { ViewsApi } from '../../data/views-api';
+import { keptValue } from '../../ui/kept-value';
 import { MetricsTable } from '../../ui/metrics-table/metrics-table';
 import { PERIODS, PeriodScale, periodLabel } from '../../ui/period-scale/period-scale';
 import { readPreference, writePreference } from '../../ui/preferences';
@@ -86,6 +87,9 @@ export class SubstancesMetricsPanel {
         : this.api.getTable({ scope: 'substance', keys, per, ...(days ? { days } : {}) }),
   });
 
+  /** The table on screen: the last one stays while another scale or period loads (same columns). */
+  protected readonly shownTable = keptValue(this.table, () => (this.columns() ?? []).map((c) => c.key).join());
+
   protected readonly hasPeriod = computed(() => (this.columns() ?? []).some((m) => m.period));
   protected readonly hasScales = computed(() => (this.columns() ?? []).some((m) => m.scales.length > 0));
 
@@ -107,8 +111,9 @@ export class SubstancesMetricsPanel {
       return { status: 'failed' as const, message: `Could not load the metrics${error.status ? ` (${error.status})` : ''}` };
     }
     if (this.columns()?.length === 0) return { status: 'empty' as const, message: 'No metric is chosen for this table.' };
-    if (!this.table.hasValue()) return { status: 'loading' as const };
-    if (this.table.value().rows.length === 0) return { status: 'empty' as const, message: 'No substances' };
+    const table = this.shownTable();
+    if (!table) return { status: 'loading' as const };
+    if (table.rows.length === 0) return { status: 'empty' as const, message: 'No substances' };
     return { status: 'loaded' as const };
   });
 

@@ -19,6 +19,7 @@ import { SettingsApi } from '../data/settings-api';
 import { ViewsApi } from '../data/views-api';
 import { LOCALE } from '../locale';
 import { PageHistoryState } from '../substance-page/substance-page';
+import { keptValue } from '../ui/kept-value';
 import { MetricsTable, isBatch, isConsumption } from '../ui/metrics-table/metrics-table';
 import { PERIODS, PeriodScale } from '../ui/period-scale/period-scale';
 
@@ -155,6 +156,14 @@ export class MetricsPage {
           }),
   });
 
+  /**
+   * The table on screen: the last one stays while another scale, period or filter loads, so it
+   * redraws in place instead of shrinking to "…". Another tab or other columns: it waits empty.
+   */
+  protected readonly shownTable = keptValue(this.table, () =>
+    JSON.stringify([this.query().table, (this.columns() ?? []).map((c) => c.key)]),
+  );
+
   /** The period: the substances' numbers follow it, and it picks the batches (those bought in it). */
   protected readonly hasPeriod = computed(
     () => this.query().table !== 'substance' || (this.columns() ?? []).some((m) => m.period),
@@ -180,8 +189,9 @@ export class MetricsPage {
       return { status: 'failed' as const, message: `Could not load the metrics${error.status ? ` (${error.status})` : ''}` };
     }
     if (this.columns()?.length === 0) return { status: 'empty' as const, message: 'No metric is chosen for this table.' };
-    if (!this.table.hasValue() || !this.settings.hasValue()) return { status: 'loading' as const };
-    if (this.table.value().rows.length === 0) {
+    const table = this.shownTable();
+    if (!table || !this.settings.hasValue()) return { status: 'loading' as const };
+    if (table.rows.length === 0) {
       const empty = { substance: 'No substances', batch: 'No batch bought in the period', consumption: 'No consumption made in the period' };
       return { status: 'empty' as const, message: empty[this.query().table] };
     }
@@ -190,7 +200,7 @@ export class MetricsPage {
 
   /** The newest 100 are shown: there may be older ones in the period. */
   protected readonly capped = computed(
-    () => this.query().table === 'consumption' && this.table.hasValue() && this.table.value().rows.length >= CONSUMPTION_ROWS,
+    () => this.query().table === 'consumption' && (this.shownTable()?.rows.length ?? 0) >= CONSUMPTION_ROWS,
   );
 
   /** A day, in the zone of the settings: "5 Sept 2026". */

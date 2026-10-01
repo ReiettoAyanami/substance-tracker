@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
 import { provideRouter } from '@angular/router';
-import { Observable, of, throwError } from 'rxjs';
+import { Observable, Subject, of, throwError } from 'rxjs';
 
 import { MetricDefinition, MetricsQuery, MetricsResult } from '../../data/metric';
 import { MetricsApi } from '../../data/metrics-api';
@@ -179,6 +179,30 @@ describe('MetricsPanel', () => {
     fixture.destroy();
     await render({ open: true });
     expect(asked.at(-1)).toEqual({ id: 4, query: { per: 'week' } });
+  });
+
+  it('keeps its numbers in place while another scale loads: nothing shrinks or opens again', async () => {
+    await render({ open: true });
+    const list = element().querySelector('dl.metrics');
+    const week = new Subject<MetricsResult>();
+    answer = (query) => (query.per === 'week' ? week : of(result(query)));
+
+    // Not choose(): the answer is held back, and a pending resource never lets the page be stable.
+    element().querySelector<HTMLElement>('.per mat-select')!.click();
+    fixture.detectChanges();
+    Array.from(document.querySelectorAll<HTMLElement>('mat-option'))
+      .find((o) => text(o) === 'week')!
+      .click();
+    await new Promise((resolve) => setTimeout(resolve));
+    fixture.detectChanges();
+    expect(element().querySelector('dl.metrics')).toBe(list);
+    expect(texts('.metric .value')[1]).toBe('0.321 beer / day');
+
+    week.next(result({ per: 'week' }));
+    week.complete();
+    await fixture.whenStable();
+    expect(element().querySelector('dl.metrics')).toBe(list);
+    expect(texts('.metric .value')[1]).toBe('2.25 beer / week');
   });
 
   it('starts open when asked to, and asks again when refresh changes', async () => {

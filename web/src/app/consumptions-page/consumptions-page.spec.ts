@@ -3,7 +3,7 @@ import { MATERIAL_ANIMATIONS } from '@angular/material/core';
 import { By } from '@angular/platform-browser';
 import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { Observable, of, throwError } from 'rxjs';
+import { Observable, Subject, of, throwError } from 'rxjs';
 
 import { ApiError } from '../data/api-error';
 import { CatalogApi } from '../data/catalog-api';
@@ -154,6 +154,26 @@ describe('ConsumptionsPage', () => {
     expect(calls.at(-1)).toEqual({ filter: { substanceId: 4, from: '2026-09-01', minQuantity: '2' }, page: { limit: 20 } });
     expect(scopes.at(-1)).toEqual({ substanceId: 4, from: '2026-09-01' });
     expect(history.length).toBe(entries);
+  });
+
+  it('a new filter keeps the cards in place while it loads, then shows what it asked for', async () => {
+    await render();
+    const first = element().querySelector('app-consumption-card');
+    const filtered = new Subject<Consumption[]>();
+    pageAnswer = () => filtered;
+    const filters = harness.routeDebugElement!.query(By.directive(ConsumptionFilters)).componentInstance as ConsumptionFilters;
+
+    // The answer is held back, and a pending resource never lets the page be stable: no whenStable.
+    filters.changed.emit({ oneTime: true });
+    await new Promise((resolve) => setTimeout(resolve));
+    harness.fixture.detectChanges();
+    expect(element().querySelectorAll('app-consumption-card').length).toBe(2);
+    expect(element().querySelector('app-consumption-card')).toBe(first);
+
+    filtered.next([consumption(1, 'one_time')]);
+    filtered.complete();
+    await harness.fixture.whenStable();
+    expect(element().querySelectorAll('app-consumption-card').length).toBe(1);
   });
 
   it('loads older consumptions a page at a time, from before the oldest one shown, with the same filter', async () => {
