@@ -48,6 +48,8 @@ export class MetricsPanel {
   readonly settings = input.required<Settings>();
   /** Starts open (a page of its own); closed, it asks for nothing until opened. */
   readonly open = input(false);
+  /** Inside a surface of its own (a dialog): no card of its own, in line with the text around it (styles.css). */
+  readonly flat = input(false);
   /** Any new value asks for the numbers again (e.g. the substance, after a write on its page). */
   readonly refresh = input<unknown>(null);
 

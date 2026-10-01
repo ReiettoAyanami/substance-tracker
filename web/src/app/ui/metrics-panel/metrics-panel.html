@@ -1,4 +1,4 @@
-<mat-expansion-panel class="panel" [expanded]="open()" (opened)="wasOpened.set(true)">
+<mat-expansion-panel class="panel" [class.flat]="flat()" [expanded]="open()" (opened)="wasOpened.set(true)">
   <mat-expansion-panel-header>
     <mat-panel-title>Metrics</mat-panel-title>
     <mat-panel-description class="summary">{{ summary() }}</mat-panel-description>

@@ -22,7 +22,7 @@ const exact = (format: Intl.NumberFormat, value: string) => format.format(value 
  * One consumption (design-frontend.md, "consumption card"). Presentational: every number is the
  * API's (the cost, the change from the previous consumption); it only formats them. Full, it says
  * when, what, from which batch (or "One-time"), how much, what it cost, the change from the
- * previous one (a delta pill) and the note, with a ⋮ menu that asks the parent for its details, to
+ * previous one (a delta pill) and the note, with a ⋮ menu that asks the parent for its details (so does a tap on a full card), to
  * edit it or to delete it. Compact, only when, how much, the cost and the delta pill.
  */
 @Component({

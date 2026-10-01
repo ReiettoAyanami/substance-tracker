@@ -55,3 +55,22 @@
   color: var(--mat-sys-on-surface-variant);
   white-space: normal;
 }
+
+/* An expansion panel inside a surface of its own (a dialog: the consumption's details), class
+   "flat": no card of its own, its title and its content in line with the text around it (lenzi,
+   2026-10-01: "Metrics" aligned with what is above it). The header and body paddings are Material's
+   plain CSS, hence the selectors; the rest are its tokens. */
+.mat-expansion-panel.flat {
+  --mat-expansion-container-background-color: transparent;
+  --mat-expansion-container-elevation-shadow: none;
+  --mat-expansion-header-hover-state-layer-color: transparent;
+  --mat-expansion-header-focus-state-layer-color: transparent;
+}
+
+.mat-expansion-panel.flat .mat-expansion-panel-header {
+  padding: 0;
+}
+
+.mat-expansion-panel.flat .mat-expansion-panel-body {
+  padding: 0 0 8px;
+}

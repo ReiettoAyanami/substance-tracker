@@ -1,12 +1,14 @@
 @let item = consumption();
 @let shown = view();
-<mat-card appearance="outlined">
+<!-- A full card opens its details when tapped (lenzi, 2026-10-01); the ⋮ and the pill keep their own taps. -->
+<mat-card appearance="outlined" [class.tappable]="variant() === 'full'" (click)="variant() === 'full' && details.emit()">
   <mat-card-content>
     @switch (variant()) {
       @case ('full') {
         <div class="head">
           <span class="dot" [style.background-color]="item.substanceId | identityColor: 'substance'"></span>
-          <span class="substance">{{ item.substanceName }}</span>
+          <!-- The keyboard way in: Enter on the name is a click that reaches the card. -->
+          <button type="button" class="substance">{{ item.substanceName }}</button>
           <span class="when">{{ shown.when }}</span>
           <button
             mat-icon-button
@@ -14,6 +16,7 @@
             class="more"
             [attr.aria-label]="'Actions for the consumption of ' + shown.when"
             [matMenuTriggerFor]="actions"
+            (click)="$event.stopPropagation()"
           >
             <mat-icon>more_vert</mat-icon>
           </button>
@@ -44,7 +47,7 @@
 
         <div class="figures">
           <span class="amount">{{ shown.amount }}</span>
-          <app-delta-pill [consumption]="item" />
+          <app-delta-pill [consumption]="item" (click)="$event.stopPropagation()" />
         </div>
 
         @if (item.note) {

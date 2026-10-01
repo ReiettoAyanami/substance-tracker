@@ -98,6 +98,7 @@ describe('ConsumptionCard', () => {
   it('shows one change at a time: a tap on the pill switches it to the price, without asking anything of the parent', async () => {
     const card = await render(coffee);
     const asked: string[] = [];
+    fixture.componentInstance.details.subscribe(() => asked.push('details'));
     fixture.componentInstance.edit.subscribe(() => asked.push('edit'));
     fixture.componentInstance.remove.subscribe(() => asked.push('remove'));
 
@@ -140,6 +141,32 @@ describe('ConsumptionCard', () => {
     item('Delete').click();
 
     expect(asked).toEqual(['details', 'edit', 'remove']);
+  });
+
+  it('a tap on the card asks for its details; its ⋮ and its pill do not (lenzi, 2026-10-01)', async () => {
+    const card = await render(coffee);
+    const asked: string[] = [];
+    fixture.componentInstance.details.subscribe(() => asked.push('details'));
+
+    card.querySelector<HTMLElement>('.amount')!.click();
+    card.querySelector<HTMLButtonElement>('button.more')!.click();
+    await fixture.whenStable();
+    pill(card)!.click();
+    // the keyboard way in: the substance's name is a button, its click reaches the card
+    expect(card.querySelector('button.substance')).not.toBeNull();
+    card.querySelector<HTMLButtonElement>('button.substance')!.click();
+
+    expect(asked).toEqual(['details', 'details']);
+  });
+
+  it('compact: a tap asks for nothing', async () => {
+    const card = await render(coffee, 'compact');
+    const asked: string[] = [];
+    fixture.componentInstance.details.subscribe(() => asked.push('details'));
+
+    card.querySelector<HTMLElement>('.amount')!.click();
+
+    expect(asked).toEqual([]);
   });
 
   it('compact: only when, how much, the cost and the delta, with no menu', async () => {

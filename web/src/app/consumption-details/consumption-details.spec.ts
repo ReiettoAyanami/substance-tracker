@@ -82,6 +82,8 @@ describe('ConsumptionDetails', () => {
     expect(text(element().querySelector('.amount'))).toBe('1 bottiglia · €1.50');
     expect(asked).toEqual([['consumption', 40, { per: 'day' }]]);
     expect(Array.from(element().querySelectorAll('app-metrics-panel .value')).map(text)).toEqual(['2nd', '+1 h 20 min']);
+    // in the dialog the panel has no card of its own: in line with the text above (lenzi, 2026-10-01)
+    expect(element().querySelector('app-metrics-panel mat-expansion-panel')!.classList).toContain('flat');
   });
 
   it('a one-time consumption: its name, and its own metrics', async () => {
