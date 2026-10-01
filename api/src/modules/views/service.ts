@@ -16,8 +16,11 @@ export interface ViewItemDto {
   createdAt: string;
 }
 
-/** The surfaces that draw charts: the statistics page (in sections), the substance page (for its substance). */
-const CHART_SURFACES: readonly repo.Surface[] = ['statistics', 'substance'];
+/**
+ * The surfaces that draw charts: the statistics page (in sections), the substance page (for its
+ * substance), the substances page (one line per substance; charts only).
+ */
+const CHART_SURFACES: readonly repo.Surface[] = ['statistics', 'substance', 'substances'];
 
 /** What a chart can change (the section: on the statistics page only). */
 export interface ChartPatch {
@@ -66,7 +69,7 @@ export class ViewsService {
   }
 
   async add(input: NewViewItemInput): Promise<ViewItemDto> {
-    if (input.surface === 'statistics' || findSeries(input.metric)) return this.addChart(input);
+    if (input.surface === 'statistics' || input.surface === 'substances' || findSeries(input.metric)) return this.addChart(input);
     const metric = findMetric(input.metric);
     if (!metric) throw badRequest(`metric "${input.metric}" is not in the catalog (GET /api/metrics)`, 'metric');
     if (input.surface !== 'metrics' && metric.scope !== input.surface) {
@@ -101,7 +104,7 @@ export class ViewsService {
    */
   private async addChart(input: NewViewItemInput): Promise<ViewItemDto> {
     if (!CHART_SURFACES.includes(input.surface)) {
-      throw badRequest(`the ${input.surface} page draws no charts: the statistics and the substance pages do`, 'surface');
+      throw badRequest(`the ${input.surface} page draws no charts: the statistics, the substance and the substances pages do`, 'surface');
     }
     const series = findSeries(input.metric);
     if (!series) throw badRequest(`the ${input.surface} page draws series: "${input.metric}" is not one`, 'metric');

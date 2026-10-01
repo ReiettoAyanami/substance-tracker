@@ -1,7 +1,7 @@
 import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import type { Queryable } from '../../db/pool.js';
 
-export const SURFACES = ['statistics', 'metrics', 'substance', 'batch', 'consumption'] as const;
+export const SURFACES = ['statistics', 'metrics', 'substance', 'batch', 'consumption', 'substances'] as const;
 export type Surface = (typeof SURFACES)[number];
 
 export const CHARTS = ['bar', 'line', 'donut'] as const;

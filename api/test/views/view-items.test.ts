@@ -177,6 +177,32 @@ describe('view items of the substance page that are charts', () => {
   });
 });
 
+describe('the charts of the substances page (lenzi, 2026-10-01)', () => {
+  it('a chart of the substances page is a series with its chart and scale, no section, one line per substance', async () => {
+    const res = await add({ surface: 'substances', metric: 'series.spend', chart: 'bar', scale: 'month' });
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    expect(res.body).toMatchObject({ surface: 'substances', metric: 'series.spend', chart: 'bar', scale: 'month', section: null, position: 1 });
+    expect((await add({ surface: 'substances', metric: 'series.cost', chart: 'donut', scale: 'month' })).status).toBe(201);
+    expect(metricsOf(await list('substances'))).toEqual(['series.spend', 'series.cost']);
+  });
+
+  it('draws charts only: a metric, a section, what its chart cannot draw are refused', async () => {
+    expectProblem(await add({ surface: 'substances', metric: 'substance.pace' }), 400, 'validation');
+    expectProblem(await add({ surface: 'substances', metric: 'series.cost', chart: 'bar', scale: 'week', section: 'Money' }), 400, 'validation');
+    expectProblem(await add({ surface: 'substances', metric: 'series.cost', scale: 'week' }), 400, 'validation'); // no chart
+    expectProblem(await add({ surface: 'substances', metric: 'series.consumed', chart: 'donut', scale: 'week' }), 400, 'validation');
+    expect(await list('substances')).toEqual([]);
+  });
+
+  it('changes its chart and its scale, never a section', async () => {
+    const chart = (await add({ surface: 'substances', metric: 'series.consumed', chart: 'bar', scale: 'week' })).body;
+    const res = await api.patch(`/api/view-items/${chart.id}`, { scale: 'day' });
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    expect(res.body).toMatchObject({ id: chart.id, surface: 'substances', chart: 'bar', scale: 'day', section: null });
+    expectProblem(await api.patch(`/api/view-items/${chart.id}`, { section: 'Money' }), 400, 'validation');
+  });
+});
+
 describe('the sections of the statistics page', () => {
   const chart = async (metric: string, section: string | null) =>
     (await add({ surface: 'statistics', metric, chart: 'bar', scale: 'month', section })).body;
