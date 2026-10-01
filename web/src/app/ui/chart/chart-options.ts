@@ -139,7 +139,8 @@ export function chartOptions({ data, type, unit, currency, timeZone, hidden, col
     textStyle: { color: colors.onSurface },
     valueFormatter,
   };
-  const base = { backgroundColor: 'transparent', animationDuration: 300, textStyle: { color: colors.onSurfaceVariant } };
+  // a little slower than ECharts' 300 ms (lenzi, 2026-10-02: "poco più lente"): drawn in 600, redrawn in 500
+  const base = { backgroundColor: 'transparent', animationDuration: 600, animationDurationUpdate: 500, textStyle: { color: colors.onSurfaceVariant } };
 
   if (type === 'donut') {
     return {

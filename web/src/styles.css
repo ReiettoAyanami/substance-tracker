@@ -149,7 +149,7 @@
 
 /* Dialog: Material fades the box around the surface and grows the surface from 80%. The box stays
    opaque, the surface (the glass) is whole at once and still grows; its content fades in with
-   Material's own timing. Closing, the whole surface fades (75 ms). Material ends the opening with a
+   Material's own timing. Closing, the whole surface fades (150 ms, app.config.ts). Material ends the opening with a
    timer, not with the transition, so nothing waits on these. */
 .cdk-overlay-pane .mat-mdc-dialog-container .mat-mdc-dialog-inner-container {
   opacity: 1;
@@ -169,7 +169,7 @@
 
 .cdk-overlay-pane .mat-mdc-dialog-container.mdc-dialog--closing .mat-mdc-dialog-surface {
   opacity: 0;
-  transition: opacity 75ms linear;
+  transition: opacity 150ms linear;
 }
 
 /* The dialog's scrim: the CDK fades it (opacity, 400 ms). Here it is always opaque and its tint
