@@ -222,3 +222,16 @@
 .mat-mdc-snack-bar-container {
   border-radius: var(--mat-snack-bar-container-shape, var(--mat-sys-corner-extra-small));
 }
+
+/* Tooltips (lenzi, 2026-10-02: the batch bar's tooltip "trasparenza blurrata anche su questo"):
+   glass like the snackbar, at the bar's 82% (a small text over anything). Material fades the
+   tooltip's box and ends it by the animation's name, so the blur goes on that box, with the
+   surface's corners. */
+:root {
+  --mat-tooltip-container-color: color-mix(in srgb, var(--mat-sys-inverse-surface) var(--app-glass-bar), transparent);
+}
+
+.mat-mdc-tooltip {
+  border-radius: var(--mat-tooltip-container-shape, var(--mat-sys-corner-extra-small));
+  backdrop-filter: var(--app-glass-filter);
+}
