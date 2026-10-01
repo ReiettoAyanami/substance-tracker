@@ -5,6 +5,7 @@ import { MatCardModule } from '@angular/material/card';
 import { ApiError } from '../../data/api-error';
 import { MetricsApi } from '../../data/metrics-api';
 import { SeriesDefinition, SeriesScale } from '../../data/series';
+import { Settings } from '../../data/settings';
 import { ViewItem } from '../../data/view-item';
 import { Chart } from '../chart/chart';
 
@@ -25,11 +26,13 @@ export class Widget {
   readonly definition = input.required<SeriesDefinition>();
   /** The period: the last N days; 0 = all time. */
   readonly days = input(0);
-  readonly currency = input('EUR');
+  readonly settings = input.required<Settings>();
   /** Only these substances; none: every one not archived. */
   readonly substanceIds = input<number[] | undefined>(undefined);
   /** One line per substance, or per batch (and the one-time consumptions) of each. */
   readonly by = input<'substance' | 'batch'>('substance');
+  /** Any new value asks for the series again (e.g. the substance, after a write on its page). */
+  readonly refresh = input<unknown>(null);
 
   private readonly api = inject(MetricsApi);
 
@@ -40,6 +43,7 @@ export class Widget {
       days: this.days(),
       substanceIds: this.substanceIds(),
       by: this.by(),
+      refresh: this.refresh(),
     }),
     stream: ({ params: { metric, per, days, substanceIds, by } }) =>
       this.api.getSeries({

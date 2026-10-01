@@ -7,6 +7,7 @@ import { SVGRenderer } from 'echarts/renderers';
 import { NgxEchartsDirective, provideEchartsCore } from 'ngx-echarts';
 
 import { ChartType, SeriesData, SeriesDefinition, SeriesLine } from '../../data/series';
+import { Settings } from '../../data/settings';
 import { IdentityColorPipe } from '../identity-color-pipe';
 import { ChartColors, chartOptions, lineLabel } from './chart-options';
 
@@ -41,7 +42,8 @@ export class Chart {
   readonly data = input.required<SeriesData>();
   readonly type = input.required<ChartType>();
   readonly unit = input.required<SeriesDefinition['unit']>();
-  readonly currency = input('EUR');
+  /** The currency of every amount, and the zone of the days a batch was bought. */
+  readonly settings = input.required<Settings>();
   /** The chips that hide lines by hand. */
   readonly filters = input(true);
 
@@ -62,7 +64,9 @@ export class Chart {
     }
   }
 
-  protected readonly label = lineLabel;
+  protected label(line: SeriesLine): string {
+    return lineLabel(line, this.settings().timezone);
+  }
   protected readonly color = lineColor;
 
   /** The theme's colours and the lines', resolved to what ECharts can draw. */
@@ -84,7 +88,8 @@ export class Chart {
       data: this.data(),
       type: this.type(),
       unit: this.unit(),
-      currency: this.currency(),
+      currency: this.settings().currency,
+      timeZone: this.settings().timezone,
       hidden: this.hidden(),
       colors: this.colors(),
     }),

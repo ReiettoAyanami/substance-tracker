@@ -1,0 +1,142 @@
+@for (group of groups(); track group.name; let g = $index) {
+  <section class="group" [attr.aria-label]="sections() ? (group.name ?? 'No section') : null">
+    @if (sections()) {
+      <div class="section-head">
+        <mat-form-field class="section-name" appearance="outline" subscriptSizing="dynamic" floatLabel="always">
+          <mat-label>Section</mat-label>
+          <!-- Saved when it is left or Enter is pressed (the change event); blank: no section. -->
+          <input
+            matInput
+            maxlength="100"
+            placeholder="No section"
+            [value]="group.name ?? ''"
+            [disabled]="busy()"
+            (change)="rename.emit({ from: group.name, to: $any($event.target).value })"
+          />
+        </mat-form-field>
+        <button
+          mat-icon-button
+          type="button"
+          class="section-up"
+          [disabled]="busy() || group.first"
+          [attr.aria-label]="'Move the section ' + (group.name ?? 'without a name') + ' up'"
+          (click)="moveSection(g, -1)"
+        >
+          <mat-icon>arrow_upward</mat-icon>
+        </button>
+        <button
+          mat-icon-button
+          type="button"
+          class="section-down"
+          [disabled]="busy() || group.last"
+          [attr.aria-label]="'Move the section ' + (group.name ?? 'without a name') + ' down'"
+          (click)="moveSection(g, 1)"
+        >
+          <mat-icon>arrow_downward</mat-icon>
+        </button>
+      </div>
+    }
+    <ol class="items">
+      @for (row of group.rows; track row.item.id; let i = $index) {
+        <li class="item">
+          <div class="head">
+            <div class="text">
+              <span class="label">{{ row.series?.label ?? row.item.metric }}</span>
+              <span class="description">{{ row.series?.description ?? 'Not a series any more: remove it.' }}</span>
+            </div>
+            <div class="buttons">
+              <button
+                mat-icon-button
+                type="button"
+                class="up"
+                [disabled]="busy() || row.first"
+                [attr.aria-label]="'Move ' + (row.series?.label ?? row.item.metric) + ' up'"
+                (click)="move(g, i, -1)"
+              >
+                <mat-icon>arrow_upward</mat-icon>
+              </button>
+              <button
+                mat-icon-button
+                type="button"
+                class="down"
+                [disabled]="busy() || row.last"
+                [attr.aria-label]="'Move ' + (row.series?.label ?? row.item.metric) + ' down'"
+                (click)="move(g, i, 1)"
+              >
+                <mat-icon>arrow_downward</mat-icon>
+              </button>
+              <button
+                mat-icon-button
+                type="button"
+                class="remove"
+                [disabled]="busy()"
+                [attr.aria-label]="'Remove ' + (row.series?.label ?? row.item.metric)"
+                (click)="remove.emit(row.item)"
+              >
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+          </div>
+          @if (row.series; as series) {
+            <div class="choices">
+              <mat-form-field class="type" appearance="outline" subscriptSizing="dynamic">
+                <mat-label>Chart</mat-label>
+                <mat-select
+                  [value]="row.item.chart"
+                  [disabled]="busy()"
+                  (selectionChange)="changeChart.emit({ item: row.item, change: { chart: $event.value } })"
+                >
+                  @for (chart of series.charts; track chart) {
+                    <mat-option [value]="chart">{{ chartLabels[chart] }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+              @if (series.scales.length > 0) {
+                <mat-form-field class="per" appearance="outline" subscriptSizing="dynamic">
+                  <mat-label>Per</mat-label>
+                  <mat-select
+                    [value]="row.item.scale"
+                    [disabled]="busy()"
+                    (selectionChange)="changeChart.emit({ item: row.item, change: { scale: $event.value } })"
+                  >
+                    @for (scale of series.scales; track scale) {
+                      <mat-option [value]="scale">{{ scale }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+              }
+              @if (sections()) {
+                <mat-form-field class="section" appearance="outline" subscriptSizing="dynamic">
+                  <mat-label>Section</mat-label>
+                  <mat-select [value]="row.item.section ?? noSection" [disabled]="busy()" (selectionChange)="chooseSection(row.item, $event.value)">
+                    @for (name of names(); track name) {
+                      <mat-option [value]="name">{{ name }}</mat-option>
+                    }
+                    <mat-option [value]="noSection">No section</mat-option>
+                    <mat-option [value]="newSection">New section…</mat-option>
+                  </mat-select>
+                </mat-form-field>
+              }
+            </div>
+          }
+        </li>
+      }
+    </ol>
+  </section>
+} @empty {
+  <p class="none">No chart is shown here.</p>
+}
+
+<mat-form-field class="add" appearance="outline" subscriptSizing="dynamic">
+  <mat-label>Add a chart</mat-label>
+  <!-- The select never keeps a value: choosing a series adds a chart of it. -->
+  <mat-select [value]="null" [disabled]="busy()" panelClass="view-item-options" (selectionChange)="addChart($event)">
+    @for (option of series(); track option.key) {
+      <mat-option [value]="option.key">
+        <span class="option-label">{{ option.label }}</span>
+        <!-- The space keeps name and description two words for a screen reader. -->
+        <span class="option-description"> {{ option.description }}</span>
+      </mat-option>
+    }
+  </mat-select>
+</mat-form-field>

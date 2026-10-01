@@ -12,30 +12,14 @@ import { Settings } from '../../data/settings';
 import { ViewsApi } from '../../data/views-api';
 import { MetricReading, MetricValuePipe } from '../metric-value-pipe';
 import { PERIODS, PeriodScale, periodLabel } from '../period-scale/period-scale';
+import { readPreference, writePreference } from '../preferences';
 
-/** Display preferences of this browser, for every panel: localStorage, never the database. */
+/** Display preferences of this browser, for every metrics panel. */
 const PER_KEY = 'substance-tracker.metrics.per';
 const DAYS_KEY = 'substance-tracker.metrics.days';
 
-function read<T>(key: string, valid: (value: string) => T | null, fallback: T): T {
-  try {
-    const stored = localStorage.getItem(key);
-    return (stored === null ? null : valid(stored)) ?? fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function write(key: string, value: string): void {
-  try {
-    localStorage.setItem(key, value);
-  } catch {
-    // Not remembered: the panel still changes.
-  }
-}
-
-const readPer = () => read<TimeScale>(PER_KEY, (v) => (TIME_SCALES.includes(v as TimeScale) ? (v as TimeScale) : null), 'day');
-const readDays = () => read<number>(DAYS_KEY, (v) => (PERIODS.some((p) => String(p.days) === v) ? Number(v) : null), 30);
+const readPer = () => readPreference<TimeScale>(PER_KEY, (v) => (TIME_SCALES.includes(v as TimeScale) ? (v as TimeScale) : null), 'day');
+const readDays = () => readPreference<number>(DAYS_KEY, (v) => (PERIODS.some((p) => String(p.days) === v) ? Number(v) : null), 30);
 
 /**
  * The metrics of one entity (design-statistics.md, "entity metrics panel"): the numbers the API
@@ -154,11 +138,11 @@ export class MetricsPanel {
 
   protected choosePer(per: TimeScale): void {
     this.per.set(per);
-    write(PER_KEY, per);
+    writePreference(PER_KEY, per);
   }
 
   protected chooseDays(days: number): void {
     this.days.set(days);
-    write(DAYS_KEY, String(days));
+    writePreference(DAYS_KEY, String(days));
   }
 }

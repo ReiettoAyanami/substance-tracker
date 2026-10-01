@@ -21,9 +21,14 @@ export class ViewsApi {
     return this.http.post<ViewItem>('/api/view-items', item);
   }
 
-  /** PATCH /api/view-items/:id: a chart of the statistics page, drawn another way, in another scale or section. */
+  /** PATCH /api/view-items/:id: a chart drawn another way, in another scale or (statistics page) section. */
   change(id: number, change: ChartChange): Observable<ViewItem> {
     return this.http.patch<ViewItem>(`/api/view-items/${id}`, change);
+  }
+
+  /** PATCH /api/view-items/sections: a section of the statistics page renamed (null: the charts without one; blank: none). */
+  renameSection(from: string | null, to: string | null): Observable<ViewItem[]> {
+    return this.http.patch<ViewItem[]>('/api/view-items/sections', { from, to });
   }
 
   /** DELETE /api/view-items/:id (a soft delete). */

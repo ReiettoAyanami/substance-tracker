@@ -66,5 +66,12 @@ describe('ViewsApi', () => {
     expect(put.request.body).toEqual({ surface: 'substance', ids: [3, 1] });
     put.flush([item(3, 'substance.spend'), item(1, 'substance.pace')]);
     expect((await reordered).map((i) => i.id)).toEqual([3, 1]);
+
+    const renamed = firstValueFrom(api.renameSection('Money', 'Spending'));
+    const sections = backend.expectOne('/api/view-items/sections');
+    expect(sections.request.method).toBe('PATCH');
+    expect(sections.request.body).toEqual({ from: 'Money', to: 'Spending' });
+    sections.flush([item(5, 'series.cost')]);
+    expect((await renamed).map((i) => i.id)).toEqual([5]);
   });
 });

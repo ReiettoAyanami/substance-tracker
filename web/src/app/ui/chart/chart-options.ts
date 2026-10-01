@@ -15,10 +15,22 @@ export interface ChartColors {
   lines: Record<string, string>;
 }
 
-/** What a line is called: its substance, its batch ("Unnamed batch"), or "One-time". */
-export function lineLabel(line: SeriesLine): string {
+/**
+ * What a line is called: its substance; its batch ("Unnamed batch") with the day it was bought, in
+ * the zone of the settings, the year only when it is not this one (a chip on a phone keeps the day:
+ * it is what tells the unnamed batches apart); or "One-time".
+ */
+export function lineLabel(line: SeriesLine, timeZone: string, now: Date = new Date()): string {
   if (line.kind === 'one_time') return 'One-time';
-  if (line.kind === 'batch') return line.name ?? 'Unnamed batch';
+  if (line.kind === 'batch') {
+    const name = line.name ?? 'Unnamed batch';
+    if (line.occurredAt === null) return name;
+    const bought = new Date(line.occurredAt);
+    const year = new Intl.DateTimeFormat(LOCALE, { timeZone, year: 'numeric' });
+    const thisYear = year.format(bought) === year.format(now);
+    const day = new Intl.DateTimeFormat(LOCALE, { timeZone, day: 'numeric', month: 'short', ...(thisYear ? {} : { year: 'numeric' }) });
+    return `${name} · ${day.format(bought)}`;
+  }
   return line.name ?? '';
 }
 
@@ -61,6 +73,8 @@ export interface ChartInput {
   type: ChartType;
   unit: SeriesDefinition['unit'];
   currency: string;
+  /** The zone of the settings: the day a batch was bought. */
+  timeZone: string;
   /** The lines hidden by hand (their keys). */
   hidden: ReadonlySet<string>;
   colors: ChartColors;
@@ -74,10 +88,10 @@ const drawn = (value: string | null): number | null => (value === null ? null : 
  * totals. Transparent background, text and grid in the theme's colours, each line in its identity
  * colour; the quantities of different units are named with their unit.
  */
-export function chartOptions({ data, type, unit, currency, hidden, colors }: ChartInput): Record<string, unknown> {
+export function chartOptions({ data, type, unit, currency, timeZone, hidden, colors }: ChartInput): Record<string, unknown> {
   const format = valueFormat(unit, currency);
   const lines = data.series.filter((line) => !hidden.has(line.key));
-  const name = (line: SeriesLine) => (unit === 'quantity' ? `${lineLabel(line)} (${line.unit})` : lineLabel(line));
+  const name = (line: SeriesLine) => (unit === 'quantity' ? `${lineLabel(line, timeZone)} (${line.unit})` : lineLabel(line, timeZone));
   const tooltip = {
     // inside the chart, never cut by its card; a long name goes to the next line
     confine: true,
@@ -110,8 +124,11 @@ export function chartOptions({ data, type, unit, currency, hidden, colors }: Cha
     };
   }
 
-  // Bars of amounts that add up (money, counts) stand one on the other; quantities and prices side by side.
-  const stacked = type === 'bar' && (unit === 'money' || unit === 'count');
+  // Bars of amounts that add up stand one on the other: money, counts, and quantities when every line
+  // is in one unit (a substance by batch); quantities of different units and prices side by side.
+  // Every line counts, the hidden ones too: hiding one does not change how the others stand.
+  const oneUnit = new Set(data.series.map((line) => line.unit)).size === 1;
+  const stacked = type === 'bar' && (unit === 'money' || unit === 'count' || (unit === 'quantity' && oneUnit));
   return {
     ...base,
     tooltip: { ...tooltip, trigger: 'axis' },

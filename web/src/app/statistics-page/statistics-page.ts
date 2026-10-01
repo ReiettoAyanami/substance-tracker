@@ -13,15 +13,10 @@ import { ViewItem } from '../data/view-item';
 import { ViewsApi } from '../data/views-api';
 import { PERIODS, PeriodScale } from '../ui/period-scale/period-scale';
 import { Widget } from '../ui/widget/widget';
+import { Section, sectionsOf } from './sections';
 
 /** The period the page starts with: charts over time want a longer one than the metrics. */
 const DEFAULT_DAYS = 90;
-
-/** A section of the page: its name (null: the charts without one) and its charts, in order. */
-interface Section {
-  name: string | null;
-  charts: { item: ViewItem; definition: SeriesDefinition }[];
-}
 
 /**
  * The statistics page (design-statistics.md, "statistics page"): charts over time, the widgets the
@@ -58,29 +53,24 @@ export class StatisticsPage {
   protected readonly items = rxResource({ stream: () => this.views.list('statistics') });
   protected readonly settings = rxResource({ stream: () => this.settingsApi.getSettings() });
 
-  protected readonly sections = computed<Section[] | null>(() => {
-    if (!this.catalog.hasValue() || !this.items.hasValue()) return null;
+  /** The charts by section, each with its series; null while loading (the settings too: a chart needs them). */
+  protected readonly sections = computed<Section<{ item: ViewItem; definition: SeriesDefinition }>[] | null>(() => {
+    if (!this.catalog.hasValue() || !this.items.hasValue() || !this.settings.hasValue()) return null;
     const series = new Map(
       this.catalog
         .value()
         .filter((d): d is SeriesDefinition => d.scope === 'series')
         .map((d) => [d.key, d]),
     );
-    const sections: Section[] = [];
-    for (const item of this.items.value()) {
-      const definition = series.get(item.metric);
-      if (!definition) continue; // not a series any more: /statistics/edit offers to remove it
-      let section = sections.find((s) => s.name === item.section);
-      if (!section) sections.push((section = { name: item.section, charts: [] }));
-      section.charts.push({ item, definition });
-    }
-    return sections;
+    const charts = this.items
+      .value()
+      .filter((item) => series.has(item.metric)) // not a series any more: /statistics/edit offers to remove it
+      .map((item) => ({ item, definition: series.get(item.metric)!, section: item.section }));
+    return sectionsOf(charts);
   });
 
-  protected readonly currency = computed(() => (this.settings.hasValue() ? this.settings.value().currency : 'EUR'));
-
   protected readonly failure = computed(() => {
-    const failure = this.catalog.error() ?? this.items.error();
+    const failure = this.catalog.error() ?? this.items.error() ?? this.settings.error();
     if (!failure) return null;
     const error = (failure.cause ?? failure) as Partial<ApiError>;
     return `Could not load the charts${error.status ? ` (${error.status})` : ''}`;

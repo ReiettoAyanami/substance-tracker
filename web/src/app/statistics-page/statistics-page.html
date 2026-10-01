@@ -17,8 +17,8 @@
           <h2 class="section-name">{{ section.name }}</h2>
         }
         <div class="charts">
-          @for (chart of section.charts; track chart.item.id) {
-            <app-widget [item]="chart.item" [definition]="chart.definition" [days]="days()" [currency]="currency()" />
+          @for (chart of section.items; track chart.item.id) {
+            <app-widget [item]="chart.item" [definition]="chart.definition" [days]="days()" [settings]="settings.value()!" />
           }
         </div>
       </section>

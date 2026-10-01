@@ -12,14 +12,28 @@
         </mat-card-header>
         <mat-card-content>
           @if (entry.items; as items) {
-            <app-view-item-list
-              [items]="items"
-              [metrics]="entry.metrics"
-              [busy]="busy()"
-              (add)="add(entry.place, $event)"
-              (remove)="remove(entry.place, $event)"
-              (move)="move(entry.place, $event.item, $event.by)"
-            />
+            @if (entry.kind === 'charts') {
+              <app-chart-list
+                [items]="items"
+                [series]="entry.series"
+                [sections]="entry.place.sections"
+                [busy]="busy()"
+                (add)="addChart(entry.place, $event)"
+                (remove)="remove(entry.place, $event)"
+                (changeChart)="changeChart(entry.place, $event.item, $event.change)"
+                (reorder)="reorderCharts(entry.place, $event)"
+                (rename)="renameSection($event.from, $event.to)"
+              />
+            } @else {
+              <app-view-item-list
+                [items]="items"
+                [metrics]="entry.metrics"
+                [busy]="busy()"
+                (add)="add(entry.place, $event)"
+                (remove)="remove(entry.place, $event)"
+                (move)="move(entry.place, $event.item, $event.by)"
+              />
+            }
           } @else {
             <p class="message">…</p>
           }

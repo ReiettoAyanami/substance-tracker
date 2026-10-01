@@ -6,10 +6,12 @@ import {
   listViewItemsSchema,
   orderViewItemsSchema,
   patchViewItemSchema,
+  renameSectionSchema,
   type CreateViewItemBody,
   type ListViewItemsQuery,
   type OrderViewItemsBody,
   type PatchViewItemBody,
+  type RenameSectionBody,
 } from './schemas.js';
 import type { ViewsService } from './service.js';
 
@@ -26,6 +28,11 @@ export function viewsRoutes(app: FastifyInstance, deps: { views: ViewsService })
 
   app.put<{ Body: OrderViewItemsBody }>('/api/view-items/order', { schema: orderViewItemsSchema }, async (req) =>
     views.reorder(req.body.surface, req.body.ids),
+  );
+
+  // A path of its own: the router tries it before `:id`.
+  app.patch<{ Body: RenameSectionBody }>('/api/view-items/sections', { schema: renameSectionSchema }, async (req) =>
+    views.renameSection(req.body.from, req.body.to),
   );
 
   app.patch<{ Params: IdParams; Body: PatchViewItemBody }>(

@@ -8,6 +8,7 @@ import { ActivatedRoute, Router, RouterOutlet } from '@angular/router';
 import { Substance } from '../data/substance';
 import { SubstanceActions } from '../substances-page/substance-actions';
 import { SubstanceList } from '../substances-page/substance-list';
+import { ChartsPanel } from '../ui/charts-panel/charts-panel';
 import { MetricsPanel } from '../ui/metrics-panel/metrics-panel';
 import { SubstanceCard } from '../ui/substance-card/substance-card';
 import { BatchList } from './batch-list/batch-list';
@@ -21,16 +22,16 @@ export interface PageHistoryState {
 /**
  * The substance page (design-frontend.md): child route `:id` of the substances page, a window over
  * the darkened list. It shows the substance's card (with its ⋮ menu), its active batches, its
- * one-time consumptions and its metrics (design-statistics.md). It reads the substances page's
+ * one-time consumptions, its metrics and its charts (design-statistics.md). It reads the substances page's
  * list, so its position and prev/next follow the list order. It closes with X, a tap on the
  * backdrop, Esc or the browser's back (it is a route), and after its substance is deleted. When a
  * batch is added, changed or deleted in its batch list, or a one-time consumption added in its
  * one-time list, the substance is asked again: its card here and in the list underneath show the
- * new numbers, and its metrics are asked again.
+ * new numbers, and its metrics and charts are asked again.
  */
 @Component({
   selector: 'app-substance-page',
-  imports: [A11yModule, BatchList, MatButtonModule, MatIconModule, MetricsPanel, OneTimeList, RouterOutlet, SubstanceCard],
+  imports: [A11yModule, BatchList, ChartsPanel, MatButtonModule, MatIconModule, MetricsPanel, OneTimeList, RouterOutlet, SubstanceCard],
   templateUrl: './substance-page.html',
   styleUrl: './substance-page.css',
   host: { '(document:keydown.escape)': 'escape($event)' },

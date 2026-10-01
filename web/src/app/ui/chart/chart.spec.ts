@@ -47,6 +47,7 @@ describe('Chart', () => {
     fixture = TestBed.createComponent(Chart);
     fixture.componentRef.setInput('type', 'bar');
     fixture.componentRef.setInput('unit', 'money');
+    fixture.componentRef.setInput('settings', { timezone: 'Europe/Rome', dayStartsAt: '00:00:00', currency: 'EUR' });
     for (const [name, value] of Object.entries(inputs)) fixture.componentRef.setInput(name, value);
     await fixture.whenStable();
   }
@@ -64,6 +65,15 @@ describe('Chart', () => {
 
     expect(Array.from(element().querySelectorAll('mat-chip-option')).map(text)).toEqual(['Birra', 'Caffè']);
     expect(drawn().series.map((s: any) => s.name)).toEqual(['Birra', 'Caffè']);
+  });
+
+  it('a batch is named with the day it was bought, in the zone of the settings', async () => {
+    // bought years ago: its year is shown, whatever today is
+    const batch: SeriesLine = { ...line('batch:7', 7, 'Lavazza'), kind: 'batch', occurredAt: '2020-09-19T22:30:00Z' };
+    await render({ data: data([batch, { ...batch, key: 'batch:8', id: 8, name: null }]) });
+
+    expect(Array.from(element().querySelectorAll('mat-chip-option')).map(text)).toEqual(['Lavazza · 20 Sept 2020', 'Unnamed batch · 20 Sept 2020']);
+    expect(drawn().series.map((s: any) => s.name)).toEqual(['Lavazza · 20 Sept 2020', 'Unnamed batch · 20 Sept 2020']);
   });
 
   it('a chip tapped hides its line, tapped again shows it', async () => {

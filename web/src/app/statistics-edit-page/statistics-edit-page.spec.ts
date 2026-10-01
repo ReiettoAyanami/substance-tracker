@@ -7,7 +7,8 @@ import { Observable, of, throwError } from 'rxjs';
 
 import { MetricDefinition, MetricScope } from '../data/metric';
 import { MetricsApi } from '../data/metrics-api';
-import { NewViewItem, Surface, ViewItem } from '../data/view-item';
+import { SeriesDefinition } from '../data/series';
+import { Chart, ChartChange, NewViewItem, Surface, ViewItem } from '../data/view-item';
 import { ViewsApi } from '../data/views-api';
 import { StatisticsEditPage } from './statistics-edit-page';
 
@@ -21,18 +22,34 @@ const metric = (key: string, label: string): MetricDefinition => ({
   description: `${label}.`,
 });
 
+const series = (key: string, label: string): SeriesDefinition => ({
+  key,
+  scope: 'series',
+  label,
+  unit: 'money',
+  scales: ['day', 'week', 'month', 'year'],
+  period: true,
+  charts: ['bar', 'line'],
+  description: `${label} over time.`,
+});
+
 const catalog = [
   metric('substance.consumed', 'Consumed'),
   metric('substance.pace', 'Pace'),
   metric('batch.used', 'Used'),
   metric('batch.pace', 'Batch pace'),
   metric('consumption.rankInDay', 'Number that day'),
+  series('series.cost', 'Cost'),
+  series('series.spend', 'Spend'),
 ];
+
+/** An item as the fake API keeps it: id and key, and for a chart how it is drawn and where. */
+type Stored = [number, string] | [number, string, Chart, string | null, string | null];
 
 describe('StatisticsEditPage', () => {
   let harness: RouterTestingHarness;
   /** What the API holds, by surface, in order. */
-  let stored: Record<string, Array<[number, string]>>;
+  let stored: Record<string, Stored[]>;
   let writes: unknown[];
   let failWrites: boolean;
   let snacks: string[];
@@ -42,14 +59,14 @@ describe('StatisticsEditPage', () => {
   const labels = (id: string) => Array.from(card(id).querySelectorAll('.item .label')).map(text);
 
   const listOf = (surface: Surface): ViewItem[] =>
-    (stored[surface] ?? []).map(([id, key], i) => ({
+    (stored[surface] ?? []).map(([id, key, chart, scale, section], i) => ({
       id,
       surface,
-      section: null,
+      section: section ?? null,
       position: i + 1,
       metric: key,
-      chart: null,
-      scale: null,
+      chart: chart ?? null,
+      scale: scale ?? null,
       createdAt: '',
     }));
 
@@ -67,7 +84,16 @@ describe('StatisticsEditPage', () => {
 
   beforeEach(async () => {
     stored = {
-      substance: [[1, 'substance.pace']],
+      statistics: [
+        [20, 'series.cost', 'bar', 'month', 'Money'],
+        [21, 'series.spend', 'line', 'week', 'Money'],
+      ],
+      // the substance page: the metrics of its panel and its charts share one order
+      substance: [
+        [1, 'substance.pace'],
+        [22, 'series.cost', 'bar', 'week', null],
+        [23, 'series.spend', 'bar', 'week', null],
+      ],
       batch: [[2, 'batch.used']],
       consumption: [],
       // the metrics page: its three tables share one order
@@ -90,15 +116,19 @@ describe('StatisticsEditPage', () => {
           useValue: {
             list: (surface: Surface) => of(listOf(surface)),
             add: (item: NewViewItem) =>
-              write(['add', item.surface, item.metric], () => stored[item.surface]!.push([99, item.metric])),
+              write(item.chart ? ['add', item] : ['add', item.surface, item.metric], () =>
+                stored[item.surface]!.push(item.chart ? [99, item.metric, item.chart, item.scale ?? null, item.section ?? null] : [99, item.metric]),
+              ),
+            change: (id: number, change: ChartChange) => write(['change', id, change], () => ({})),
+            renameSection: (from: string | null, to: string | null) => write(['rename', from, to], () => []),
             remove: (id: number) =>
               write(['remove', id], () => {
                 for (const s of Object.keys(stored)) stored[s] = stored[s]!.filter(([i]) => i !== id);
               }),
             reorder: (surface: Surface, ids: number[]) =>
               write(['reorder', surface, ids], () => {
-                const byId = new Map(stored[surface]!);
-                stored[surface] = ids.map((id) => [id, byId.get(id)!]);
+                const byId = new Map(stored[surface]!.map((entry) => [entry[0], entry]));
+                stored[surface] = ids.map((id) => byId.get(id)!);
                 return listOf(surface);
               }),
           },
@@ -109,18 +139,22 @@ describe('StatisticsEditPage', () => {
     }).compileComponents();
   });
 
-  it('one card per place that shows metrics, each with what it shows', async () => {
+  it('one card per place that shows metrics or charts, each with what it shows', async () => {
     await open();
 
     expect(Array.from(document.querySelectorAll('mat-card-title')).map(text)).toEqual([
-      'Substance page',
+      'Statistics page',
+      'Substance page: metrics',
+      'Substance page: charts',
       'Batch page',
       'Consumption details',
       'Metrics page: substances',
       'Metrics page: batches',
       'Metrics page: consumptions',
     ]);
-    expect(labels('substance')).toEqual(['Pace']);
+    expect(labels('statistics')).toEqual(['Cost', 'Spend']);
+    expect(labels('substance')).toEqual(['Pace']); // the charts of the substance page have their own card
+    expect(labels('substance-charts')).toEqual(['Cost', 'Spend']);
     expect(labels('consumption')).toEqual([]);
     expect(labels('metrics-substance')).toEqual(['Consumed', 'Pace']);
     expect(labels('metrics-batch')).toEqual(['Used', 'Batch pace']);
@@ -153,6 +187,58 @@ describe('StatisticsEditPage', () => {
     expect(writes).toEqual([['reorder', 'metrics', [12, 11, 10, 13]]]);
     expect(labels('metrics-substance')).toEqual(['Pace', 'Consumed']);
     expect(labels('metrics-batch')).toEqual(['Used', 'Batch pace']);
+  });
+
+  it('the charts: added, changed, moved (the metrics of the substance page keeping their places) and their sections renamed', async () => {
+    await open();
+    card('substance-charts').querySelector<HTMLElement>('.add mat-select')!.click();
+    await harness.fixture.whenStable();
+    Array.from(document.querySelectorAll<HTMLElement>('mat-option'))
+      .find((o) => text(o).startsWith('Cost'))!
+      .click();
+    await harness.fixture.whenStable();
+    expect(labels('substance-charts')).toEqual(['Cost', 'Spend', 'Cost']);
+
+    card('substance-charts').querySelectorAll<HTMLButtonElement>('.item .up')[1]!.click();
+    await harness.fixture.whenStable();
+
+    card('statistics').querySelector<HTMLElement>('.type mat-select')!.click();
+    await harness.fixture.whenStable();
+    Array.from(document.querySelectorAll<HTMLElement>('mat-option'))
+      .find((o) => text(o) === 'Lines')!
+      .click();
+    await harness.fixture.whenStable();
+
+    const name = card('statistics').querySelector<HTMLInputElement>('.section-name input')!;
+    name.value = 'Spending';
+    name.dispatchEvent(new Event('change'));
+    await harness.fixture.whenStable();
+
+    expect(writes).toEqual([
+      ['add', { surface: 'substance', metric: 'series.cost', chart: 'bar', scale: 'week', section: null }],
+      ['reorder', 'substance', [1, 23, 22, 99]],
+      ['change', 20, { chart: 'line' }],
+      ['rename', 'Money', 'Spending'],
+    ]);
+  });
+
+  it('opens at the place asked (?section=), the charts of the substance page too', async () => {
+    const scrolled: string[] = [];
+    const scrollIntoView = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = function (this: Element) {
+      scrolled.push(this.id);
+    };
+    try {
+      await open('/statistics/edit?section=substance-charts');
+      // the page scrolls once its cards are there: wait for it, not for a fixed time
+      for (let tries = 0; tries < 40 && scrolled.length === 0; tries++) {
+        await new Promise((resolve) => setTimeout(resolve, 25));
+        await harness.fixture.whenStable();
+      }
+    } finally {
+      Element.prototype.scrollIntoView = scrollIntoView;
+    }
+    expect(scrolled).toEqual(['substance-charts']);
   });
 
   it('says why a change was not saved, and shows what the API has', async () => {

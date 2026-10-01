@@ -62,6 +62,24 @@ export interface PatchViewItemBody {
   scale?: string | null;
 }
 
+/** A section of the statistics page renamed: `from` null is the charts without one, `to` blank none. */
+export const renameSectionSchema = {
+  body: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['from', 'to'],
+    properties: {
+      from: { type: ['string', 'null'], maxLength: 100 },
+      to: { type: ['string', 'null'], maxLength: 100 },
+    },
+  },
+} as const;
+
+export interface RenameSectionBody {
+  from: string | null;
+  to: string | null;
+}
+
 export const orderViewItemsSchema = {
   body: {
     type: 'object',

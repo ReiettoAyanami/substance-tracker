@@ -8,6 +8,7 @@ import { of } from 'rxjs';
 import { MetricDefinition } from '../data/metric';
 import { MetricsApi } from '../data/metrics-api';
 import { SeriesDefinition } from '../data/series';
+import { Settings } from '../data/settings';
 import { SettingsApi } from '../data/settings-api';
 import { Surface, ViewItem } from '../data/view-item';
 import { ViewsApi } from '../data/views-api';
@@ -20,7 +21,7 @@ class WidgetStub {
   readonly item = input<ViewItem>();
   readonly definition = input<SeriesDefinition>();
   readonly days = input<number>();
-  readonly currency = input<string>();
+  readonly settings = input<Settings>();
 }
 
 const definition = (key: string, label: string): SeriesDefinition => ({
@@ -90,7 +91,7 @@ describe('StatisticsPage', () => {
     await open('/statistics');
 
     expect(Array.from(element().querySelectorAll('.section-name')).map(text)).toEqual(['Consumption', 'Money']);
-    expect(widgets().map((w) => [w.item()?.id, w.definition()?.label, w.days(), w.currency()])).toEqual([
+    expect(widgets().map((w) => [w.item()?.id, w.definition()?.label, w.days(), w.settings()?.currency])).toEqual([
       [1, 'Consumed', 90, 'CHF'],
       [2, 'Cost', 90, 'CHF'],
       [4, 'Spend', 90, 'CHF'], // a chart of a series the catalog no longer has is left out

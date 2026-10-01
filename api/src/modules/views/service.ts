@@ -16,7 +16,10 @@ export interface ViewItemDto {
   createdAt: string;
 }
 
-/** What a chart of the statistics page can change. */
+/** The surfaces that draw charts: the statistics page (in sections), the substance page (for its substance). */
+const CHART_SURFACES: readonly repo.Surface[] = ['statistics', 'substance'];
+
+/** What a chart can change (the section: on the statistics page only). */
 export interface ChartPatch {
   section?: string | null | undefined;
   chart?: repo.Chart | undefined;
@@ -47,8 +50,10 @@ function toDto(row: repo.ViewItemRow): ViewItemDto {
 /**
  * Views: what each page shows, in which order (lenzi's choices, edited from /statistics/edit).
  * A panel (substance, batch, consumption) lists metrics of its own entity, the metrics page those
- * of every entity (one table per scope), each once. Section, chart and scale belong to the charts
- * of the statistics page. Removing is a soft delete.
+ * of every entity (one table per scope), each once. Chart and scale belong to the charts: those of
+ * the statistics page, in sections, and those of the substance page (an item of its surface with a
+ * chart, drawn for the substance), which share the order of its panel's metrics. Removing is a soft
+ * delete.
  */
 export class ViewsService {
   constructor(
@@ -61,7 +66,7 @@ export class ViewsService {
   }
 
   async add(input: NewViewItemInput): Promise<ViewItemDto> {
-    if (input.surface === 'statistics') return this.addChart(input);
+    if (input.surface === 'statistics' || findSeries(input.metric)) return this.addChart(input);
     const metric = findMetric(input.metric);
     if (!metric) throw badRequest(`metric "${input.metric}" is not in the catalog (GET /api/metrics)`, 'metric');
     if (input.surface !== 'metrics' && metric.scope !== input.surface) {
@@ -90,17 +95,24 @@ export class ViewsService {
     return toDto((await repo.findViewItem(this.pool, id))!);
   }
 
-  /** A chart of the statistics page: a series, one of the charts that draw it, its interval, a section. */
+  /**
+   * A chart: a series, one of the charts that draw it, its interval; on the statistics page a
+   * section, on the substance page none (it is drawn for the substance, under its metrics).
+   */
   private async addChart(input: NewViewItemInput): Promise<ViewItemDto> {
+    if (!CHART_SURFACES.includes(input.surface)) {
+      throw badRequest(`the ${input.surface} page draws no charts: the statistics and the substance pages do`, 'surface');
+    }
     const series = findSeries(input.metric);
-    if (!series) throw badRequest(`the statistics page draws series: "${input.metric}" is not one`, 'metric');
-    if (!input.chart) throw badRequest('a chart of the statistics page needs its chart: bar, line or donut', 'chart');
+    if (!series) throw badRequest(`the ${input.surface} page draws series: "${input.metric}" is not one`, 'metric');
+    if (!input.chart) throw badRequest('a chart needs its chart: bar, line or donut', 'chart');
     const chart = checkChart(series, { chart: input.chart, scale: input.scale ?? null });
+    const section = sectionFor(input.surface, input.section);
     const id = await withTransaction(this.pool, async (conn) =>
       repo.insertViewItem(conn, {
-        surface: 'statistics',
-        section: sectionOf(input.section),
-        position: (await repo.lastPosition(conn, 'statistics')) + 1,
+        surface: input.surface,
+        section,
+        position: (await repo.lastPosition(conn, input.surface)) + 1,
         metric: series.key,
         chart: chart.chart,
         scale: chart.scale,
@@ -110,23 +122,43 @@ export class ViewsService {
     return toDto((await repo.findViewItem(this.pool, id))!);
   }
 
-  /** Changes a chart of the statistics page: its chart, its interval, its section. */
+  /** Changes a chart: its chart, its interval, its section (the statistics page's). */
   async changeChart(id: number, patch: ChartPatch): Promise<ViewItemDto> {
     const row = await repo.findViewItem(this.pool, id);
     if (!row || row.deleted_at) throw notFound('View item', id);
-    if (row.surface !== 'statistics') throw badRequest('only the charts of the statistics page change', 'id');
+    if (row.chart === null) throw badRequest('only charts change: this is a metric of a panel or of the metrics page', 'id');
     const series = findSeries(row.metric);
     if (!series) throw badRequest(`"${row.metric}" is not a series any more: remove it`, 'metric');
     const chart = checkChart(series, {
-      chart: patch.chart ?? row.chart ?? 'bar',
+      chart: patch.chart ?? row.chart,
       scale: patch.scale === undefined ? row.scale : patch.scale,
     });
     await repo.updateChart(this.pool, id, {
       ...(patch.chart !== undefined ? { chart: chart.chart } : {}),
       ...(patch.scale !== undefined ? { scale: chart.scale } : {}),
-      ...(patch.section !== undefined ? { section: sectionOf(patch.section) } : {}),
+      ...(patch.section !== undefined ? { section: sectionFor(row.surface, patch.section) } : {}),
     });
     return toDto((await repo.findViewItem(this.pool, id))!);
+  }
+
+  /**
+   * Renames a section of the statistics page: every chart in `from` (null: those without one) takes
+   * `to` (blank: no section), keeping its place; a name another section has merges the two.
+   */
+  async renameSection(from: string | null, to: string | null): Promise<ViewItemDto[]> {
+    const source = sectionOf(from);
+    const target = sectionOf(to);
+    await withTransaction(this.pool, async (conn) => {
+      const moved = (await repo.listViewItems(conn, 'statistics', { forUpdate: true })).filter((i) => i.section === source);
+      if (moved.length === 0) {
+        throw badRequest(
+          source === null ? 'every chart of the statistics page has a section' : `no chart of the statistics page is in "${source}"`,
+          'from',
+        );
+      }
+      for (const item of moved) await repo.updateChart(conn, item.id, { section: target });
+    });
+    return this.list('statistics');
   }
 
   async remove(id: number): Promise<void> {
@@ -168,4 +200,13 @@ function checkChart(series: SeriesDefinition, input: { chart: repo.Chart; scale:
 function sectionOf(raw: string | null | undefined): string | null {
   const text = raw?.trim() ?? '';
   return text === '' ? null : text;
+}
+
+/** The section of a chart of `surface`: only the statistics page has sections. */
+function sectionFor(surface: repo.Surface, raw: string | null | undefined): string | null {
+  const section = sectionOf(raw);
+  if (section !== null && surface !== 'statistics') {
+    throw badRequest(`the ${surface} page has no sections: only the statistics page does`, 'section');
+  }
+  return section;
 }

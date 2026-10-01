@@ -116,6 +116,20 @@ describe('SubstancePage', () => {
     expect(text(page()?.querySelector('app-one-time-list .total'))).toBe('No consumptions');
   });
 
+  it('ends with its metrics and its charts, closed: they ask for nothing until opened', async () => {
+    await open('/substances/1');
+
+    expect(Array.from(page()!.querySelectorAll('.content > *')).map((e) => e.tagName.toLowerCase())).toEqual([
+      'app-substance-card',
+      'app-batch-list',
+      'app-one-time-list',
+      'app-metrics-panel',
+      'app-charts-panel',
+    ]);
+    expect(text(page()?.querySelector('app-charts-panel mat-panel-title'))).toBe('Charts');
+    TestBed.inject(HttpTestingController).expectNone((req) => req.url.startsWith('/api/view-items') || req.url === '/api/metrics');
+  });
+
   it('closes onto the list when its substance is deleted from its card', async () => {
     await open('/substances/1');
     page()!.querySelector<HTMLButtonElement>('app-substance-card button.more')!.click();

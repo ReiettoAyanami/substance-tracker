@@ -142,3 +142,79 @@ describe('view items of the statistics page (its charts)', () => {
     expectProblem(await api.patch('/api/view-items/999999', { section: 'X' }), 404, 'not-found');
   });
 });
+
+describe('view items of the substance page that are charts', () => {
+  it('a chart of the substance page is a series with its chart and scale, no section; the panel keeps its metrics', async () => {
+    await add({ surface: 'substance', metric: 'substance.pace' });
+    const res = await add({ surface: 'substance', metric: 'series.consumed', chart: 'bar', scale: 'week' });
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    expect(res.body).toMatchObject({ surface: 'substance', metric: 'series.consumed', chart: 'bar', scale: 'week', section: null, position: 2 });
+    // drawn twice is fine, as on the statistics page; a metric is still shown once
+    expect((await add({ surface: 'substance', metric: 'series.consumed', chart: 'line', scale: 'month', section: null })).status).toBe(201);
+    expectProblem(await add({ surface: 'substance', metric: 'substance.pace' }), 409, 'duplicate');
+    expect(metricsOf(await list('substance'))).toEqual(['substance.pace', 'series.consumed', 'series.consumed']);
+  });
+
+  it('refuses a section, what its chart cannot draw, and charts on the other panels and on the metrics page', async () => {
+    expectProblem(await add({ surface: 'substance', metric: 'series.cost', chart: 'bar', scale: 'week', section: 'Money' }), 400, 'validation');
+    expectProblem(await add({ surface: 'substance', metric: 'series.cost', scale: 'week' }), 400, 'validation'); // no chart
+    expectProblem(await add({ surface: 'substance', metric: 'series.consumed', chart: 'donut', scale: 'week' }), 400, 'validation');
+    expectProblem(await add({ surface: 'substance', metric: 'series.hourOfDay', chart: 'bar', scale: 'day' }), 400, 'validation');
+    expectProblem(await add({ surface: 'batch', metric: 'series.cost', chart: 'bar', scale: 'week' }), 400, 'validation');
+    expectProblem(await add({ surface: 'consumption', metric: 'series.cost', chart: 'bar', scale: 'week' }), 400, 'validation');
+    expectProblem(await add({ surface: 'metrics', metric: 'series.cost', chart: 'bar', scale: 'week' }), 400, 'validation');
+    expect(await list('substance')).toEqual([]);
+  });
+
+  it('changes its chart and its scale, never a section; a metric of the panel is not a chart', async () => {
+    const chart = (await add({ surface: 'substance', metric: 'series.cost', chart: 'bar', scale: 'week' })).body;
+    const res = await api.patch(`/api/view-items/${chart.id}`, { chart: 'donut', scale: 'month' });
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    expect(res.body).toMatchObject({ id: chart.id, surface: 'substance', chart: 'donut', scale: 'month', section: null });
+    expectProblem(await api.patch(`/api/view-items/${chart.id}`, { section: 'Money' }), 400, 'validation');
+    const metric = (await add({ surface: 'substance', metric: 'substance.pace' })).body;
+    expectProblem(await api.patch(`/api/view-items/${metric.id}`, { chart: 'bar' }), 400, 'validation');
+  });
+});
+
+describe('the sections of the statistics page', () => {
+  const chart = async (metric: string, section: string | null) =>
+    (await add({ surface: 'statistics', metric, chart: 'bar', scale: 'month', section })).body;
+  const sections = (items: any[]) => items.map((i) => [i.metric, i.section]);
+  const rename = (body: Record<string, unknown>) => api.patch('/api/view-items/sections', body);
+
+  it('renames a section: its charts take the new name, in their places; blank is no section', async () => {
+    await chart('series.cost', 'Money');
+    await chart('series.consumed', 'Consumption');
+    await chart('series.spend', 'Money');
+    const res = await rename({ from: 'Money', to: '  Spending ' });
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    expect(sections(res.body)).toEqual([
+      ['series.cost', 'Spending'],
+      ['series.consumed', 'Consumption'],
+      ['series.spend', 'Spending'],
+    ]);
+    // the name of another section: they join it
+    expect((await rename({ from: 'Consumption', to: 'Spending' })).body.map((i: any) => i.section)).toEqual(['Spending', 'Spending', 'Spending']);
+    // blank: no section; and the charts without one get a name
+    expect((await rename({ from: 'Spending', to: ' ' })).body.map((i: any) => i.section)).toEqual([null, null, null]);
+    expect((await rename({ from: null, to: 'All' })).body.map((i: any) => i.section)).toEqual(['All', 'All', 'All']);
+    expect(sections(await list('statistics'))).toEqual([
+      ['series.cost', 'All'],
+      ['series.consumed', 'All'],
+      ['series.spend', 'All'],
+    ]);
+  });
+
+  it('refuses a section no chart is in, and a name too long', async () => {
+    const gone = await chart('series.spend', 'Gone');
+    await api.del(`/api/view-items/${gone.id}`);
+    await chart('series.cost', 'Money');
+    expectProblem(await rename({ from: 'Nope', to: 'X' }), 400, 'validation');
+    expectProblem(await rename({ from: 'Gone', to: 'X' }), 400, 'validation'); // only a deleted chart is in it
+    expectProblem(await rename({ from: null, to: 'X' }), 400, 'validation'); // every chart has a section
+    expectProblem(await rename({ to: 'X' }), 400, 'validation');
+    expectProblem(await rename({ from: 'Money', to: 'X'.repeat(101) }), 400, 'validation');
+    expect(sections(await list('statistics'))).toEqual([['series.cost', 'Money']]);
+  });
+});

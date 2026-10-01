@@ -187,6 +187,23 @@ describe('migrations', () => {
     expect(await rawRows("SELECT id FROM view_items WHERE surface = 'statistics'")).toHaveLength(rows.length);
   });
 
+  it('005 puts a chart on the substance page, after its metrics, only while it has none', async () => {
+    await rerun('003_view_items.sql');
+    await rerun('005_substance_chart.sql');
+    const rows = await rawRows("SELECT position, metric, chart, scale, section FROM view_items WHERE surface = 'substance' ORDER BY position");
+    expect(rows.filter((r) => r.chart !== null).map((r) => [r.position, r.metric, r.chart, r.scale, r.section])).toEqual([
+      [rows.length, 'series.consumed', 'bar', 'week', null],
+    ]);
+    const series = SERIES.find((s) => s.key === 'series.consumed')!;
+    expect(series.charts).toContain('bar');
+    expect(series.scales).toContain('week');
+
+    // run again, or after lenzi removed it: nothing is added
+    await rawRows("UPDATE view_items SET deleted_at = UTC_TIMESTAMP() WHERE surface = 'substance' AND chart IS NOT NULL");
+    await rerun('005_substance_chart.sql');
+    expect(await rawRows("SELECT id FROM view_items WHERE surface = 'substance'")).toHaveLength(rows.length);
+  });
+
   it('the session and the stored instants are UTC', async () => {
     const [row] = await rawRows('SELECT @@session.time_zone AS tz');
     expect(row?.tz).toBe('+00:00');
