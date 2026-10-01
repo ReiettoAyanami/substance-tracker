@@ -1,5 +1,8 @@
-/* The table scrolls inside its box, never the page. */
+/* The table scrolls inside its box, never the page. Its sticky header and names get z-indexes over
+   100 from the CDK: the box keeps them to itself (isolation), so a window opened over the page (the
+   substance page, z-index 20) and the "+" stay above the table. */
 .table-scroll {
+  isolation: isolate;
   overflow-x: auto;
   border: 1px solid var(--mat-sys-outline-variant);
   border-radius: 12px;
