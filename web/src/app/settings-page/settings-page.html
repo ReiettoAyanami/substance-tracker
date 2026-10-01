@@ -64,4 +64,12 @@
   } @else {
     <p class="message">…</p>
   }
+
+  <!-- A choice of this browser, not a setting of the API: outside the form, applied at once. -->
+  <section class="display" aria-label="Display">
+    <mat-slide-toggle [checked]="appearance.reduceTransparency()" (change)="appearance.setReduceTransparency($event.checked)">
+      Reduce transparency
+    </mat-slide-toggle>
+    <p class="note">Windows, menus and bars become solid, without blurring what is under them. Remembered by this browser.</p>
+  </section>
 </main>

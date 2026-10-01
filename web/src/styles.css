@@ -78,8 +78,78 @@
 /* The consumption's details (lenzi, 2026-10-01: "leggermente più chiara", the content "troppo
    sopra"): a little lighter than the other dialogs (Material's default here is surface): white in
    the light scheme, surface-container-high in the dark one; and 12 px more over its title. Only
-   this dialog (its panelClass). */
+   this dialog (its panelClass). Glass like every window ("glass", below). */
 .consumption-details-dialog {
-  --mat-dialog-container-color: light-dark(var(--mat-sys-surface-container-lowest), var(--mat-sys-surface-container-high));
+  --app-details-surface: light-dark(var(--mat-sys-surface-container-lowest), var(--mat-sys-surface-container-high));
+  --mat-dialog-container-color: color-mix(in srgb, var(--app-details-surface) var(--app-glass), transparent);
   --mat-dialog-headline-padding: 18px 24px 13px;
+}
+
+/* Glass (lenzi, 2026-10-01: "un po' di trasparenza nelle finestre", like Android 17's app menu and
+   notification shade). Windows, menus and bars let what is under them show through, blurred and
+   tinted by the theme; the scrim behind a window blurs the page as well. Not a Material 3 rule for
+   apps (9to5google, 2026-01: "Blur today is not part of Material 3 Expressive for apps"): our own
+   style, on Material's own colours, so light and dark follow the theme. Cards, tables and panels
+   of a page stay solid: nothing is under them. "Reduce transparency" (/settings, Appearance) or
+   the system's own wish make everything solid again. */
+:root {
+  --app-glass: 72%; /* how much of its colour a glass surface keeps */
+  --app-glass-bar: 82%; /* the top bar: its title stays readable over moving content */
+  --app-glass-filter: blur(24px) saturate(160%);
+  --app-scrim-filter: blur(6px);
+}
+
+:root.reduce-transparency {
+  --app-glass: 100%;
+  --app-glass-bar: 100%;
+  --app-glass-filter: none;
+  --app-scrim-filter: none;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --app-glass: 100%;
+    --app-glass-bar: 100%;
+    --app-glass-filter: none;
+    --app-scrim-filter: none;
+  }
+}
+
+/* Material's own colour of each surface (its default, read from @angular/material 21), made
+   see-through. */
+:root {
+  --mat-dialog-container-color: color-mix(in srgb, var(--mat-sys-surface) var(--app-glass), transparent);
+  --mat-menu-container-color: color-mix(in srgb, var(--mat-sys-surface-container) var(--app-glass), transparent);
+  --mat-select-panel-background-color: color-mix(in srgb, var(--mat-sys-surface-container) var(--app-glass), transparent);
+  --mat-autocomplete-background-color: color-mix(in srgb, var(--mat-sys-surface-container) var(--app-glass), transparent);
+  --mat-timepicker-container-background-color: color-mix(in srgb, var(--mat-sys-surface-container) var(--app-glass), transparent);
+  --mat-datepicker-calendar-container-background-color: color-mix(
+    in srgb,
+    var(--mat-sys-surface-container-high) var(--app-glass),
+    transparent
+  );
+  --mat-snack-bar-container-color: color-mix(in srgb, var(--mat-sys-inverse-surface) var(--app-glass-bar), transparent);
+  --mat-toolbar-container-background-color: color-mix(in srgb, var(--mat-sys-surface) var(--app-glass-bar), transparent);
+}
+
+.mat-mdc-dialog-surface,
+.mat-mdc-menu-panel,
+.mat-mdc-select-panel,
+.mat-mdc-autocomplete-panel,
+.mat-timepicker-panel,
+.mat-datepicker-content,
+.mat-mdc-snackbar-surface {
+  backdrop-filter: var(--app-glass-filter);
+}
+
+/* The sidebar as a drawer (a phone) is a window over the page; at the side it stays solid. */
+.mat-drawer.mat-drawer-over {
+  background-color: color-mix(in srgb, var(--mat-sys-surface) var(--app-glass), transparent);
+  backdrop-filter: var(--app-glass-filter);
+}
+
+/* The scrims behind a dialog and behind the drawer: Material's colour, the page under it blurred. */
+.cdk-overlay-dark-backdrop.cdk-overlay-backdrop-showing,
+.mat-drawer-backdrop.mat-drawer-shown {
+  backdrop-filter: var(--app-scrim-filter);
 }

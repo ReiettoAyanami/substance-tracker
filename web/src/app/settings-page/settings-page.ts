@@ -8,6 +8,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatListModule } from '@angular/material/list';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTimepickerModule } from '@angular/material/timepicker';
 import { RouterLink } from '@angular/router';
@@ -16,6 +17,7 @@ import { ApiError } from '../data/api-error';
 import { Settings } from '../data/settings';
 import { SettingsApi } from '../data/settings-api';
 import { LOCALE } from '../locale';
+import { Appearance } from '../ui/appearance';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
@@ -77,6 +79,7 @@ type Field = 'currency' | 'timezone' | 'dayStartsAt';
     MatIconModule,
     MatInputModule,
     MatListModule,
+    MatSlideToggleModule,
     MatTimepickerModule,
     ReactiveFormsModule,
     RouterLink,
@@ -88,6 +91,7 @@ type Field = 'currency' | 'timezone' | 'dayStartsAt';
 export class SettingsPage {
   private readonly api = inject(SettingsApi);
   private readonly snackBar = inject(MatSnackBar);
+  protected readonly appearance = inject(Appearance);
 
   protected readonly settings = rxResource({ stream: () => this.api.getSettings() });
 

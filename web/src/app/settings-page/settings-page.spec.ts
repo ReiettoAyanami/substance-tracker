@@ -7,6 +7,7 @@ import { Observable, of, throwError } from 'rxjs';
 import { ApiError } from '../data/api-error';
 import { Settings } from '../data/settings';
 import { SettingsApi } from '../data/settings-api';
+import { Appearance } from '../ui/appearance';
 import { SettingsPage } from './settings-page';
 
 describe('SettingsPage', () => {
@@ -136,6 +137,22 @@ describe('SettingsPage', () => {
     await type('timezone', 'Europe/Paris'); // a new value clears the API's error
     await save();
     expect(text(element().querySelector('.form-error'))).toBe('Could not save: No connection');
+  });
+
+  it('"Reduce transparency" makes the windows solid at once, without saving anything to the API', async () => {
+    localStorage.clear();
+    await open();
+    const toggle = element().querySelector('.display mat-slide-toggle');
+    expect(text(toggle)).toContain('Reduce transparency');
+    expect(TestBed.inject(Appearance).reduceTransparency()).toBe(false);
+
+    toggle!.querySelector<HTMLButtonElement>('button')!.click();
+    await fixture.whenStable();
+
+    expect(TestBed.inject(Appearance).reduceTransparency()).toBe(true);
+    expect(document.documentElement.classList.contains('reduce-transparency')).toBe(true);
+    expect(sent).toEqual([]);
+    TestBed.inject(Appearance).setReduceTransparency(false);
   });
 
   it('says that the zone and the start of the day move consumptions between days, and links to what the pages show', async () => {

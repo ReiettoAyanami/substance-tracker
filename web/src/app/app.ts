@@ -10,6 +10,7 @@ import { filter, map } from 'rxjs';
 
 import { WIDE_SCREEN } from './layout';
 import { Sidebar } from './sidebar/sidebar';
+import { Appearance } from './ui/appearance';
 
 /** The title of the deepest active route that has one. */
 function routeTitle(route: ActivatedRouteSnapshot): string {
@@ -39,6 +40,9 @@ export class App {
       .pipe(map((state) => state.matches)),
     { requireSync: true },
   );
+
+  /** The look this browser chose (Reduce transparency), applied from the first page, not only in /settings. */
+  private readonly appearance = inject(Appearance);
 
   protected readonly title = toSignal(
     this.router.events.pipe(

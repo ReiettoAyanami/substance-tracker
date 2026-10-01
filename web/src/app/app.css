@@ -14,3 +14,17 @@
   margin-left: -8px;
   margin-right: 8px;
 }
+
+/* The top bar stays at the top while the page scrolls under it, seen through the glass (styles.css).
+   Material's content box scrolls by itself (overflow: auto); here the document scrolls, so it lets
+   the bar stick to the window. Under the page windows (z-index 20) and the "+" (10). */
+mat-sidenav-content {
+  overflow: visible;
+}
+
+mat-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  backdrop-filter: var(--app-glass-filter);
+}

@@ -83,6 +83,16 @@ describe('App', () => {
     expect(app.element.querySelector('app-consumptions-page')).not.toBeNull();
   });
 
+  it('starts with the transparency this browser chose: reduced, the windows are solid from the first page', async () => {
+    localStorage.setItem('substance-tracker.reduce-transparency', 'true');
+    document.documentElement.classList.remove('reduce-transparency');
+    await start('narrow');
+
+    expect(document.documentElement.classList.contains('reduce-transparency')).toBe(true);
+    localStorage.removeItem('substance-tracker.reduce-transparency');
+    document.documentElement.classList.remove('reduce-transparency');
+  });
+
   it('shows the substances page under /substances, and sends an unknown URL to Consumptions', async () => {
     const app = await start('narrow', '/substances');
     expect(app.title()).toBe('Substances');

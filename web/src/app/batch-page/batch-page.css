@@ -5,6 +5,7 @@
   inset: 0 0 0 var(--app-sidebar-width, 0px);
   z-index: 30;
   background-color: color-mix(in srgb, var(--mat-sys-scrim) 40%, transparent);
+  backdrop-filter: var(--app-scrim-filter); /* the page under it blurred (styles.css, "glass") */
 }
 
 .window {
@@ -17,7 +18,8 @@
   gap: 16px;
   padding: 68px 20px 12px;
   border-radius: 28px;
-  background-color: var(--mat-sys-surface-container-high);
+  background-color: color-mix(in srgb, var(--mat-sys-surface-container-high) var(--app-glass), transparent);
+  backdrop-filter: var(--app-glass-filter); /* see-through, like every window (styles.css, "glass") */
   color: var(--mat-sys-on-surface);
   overflow: hidden;
 }
