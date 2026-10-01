@@ -13,6 +13,8 @@ export interface ChartColors {
   outline: string;
   outlineVariant: string;
   surface: string;
+  /** The widget's card under the chart: the gaps between slices and tiles, the text on a tile. */
+  card: string;
   /** Each line's colour, by its key. */
   lines: Record<string, string>;
 }
@@ -116,8 +118,8 @@ interface TooltipEntry {
 }
 
 /**
- * The options of the chart: bars (stacked when the lines add up), lines, or a donut of the lines'
- * totals. Transparent background, text and a faint grid in the theme's colours, no axis lines, each
+ * The options of the chart: bars (stacked when the lines add up), lines, a radar, or a donut or a
+ * treemap of the lines' totals. Transparent background, text and a faint grid in the theme's colours, no axis lines, each
  * line in its identity colour (design-frontend.md, "chart style"): bars with rounded ends, the
  * period in progress striped in violet with its label violet too; soft lines whose last stretch,
  * into the period in progress, is dashed. The quantities of different units are named with their
@@ -148,7 +150,7 @@ export function chartOptions({ data, type, unit, currency, timeZone, hidden, col
           type: 'pie',
           radius: ['48%', '72%'],
           avoidLabelOverlap: true,
-          itemStyle: { borderColor: colors.surface, borderWidth: 2, borderRadius: RADIUS },
+          itemStyle: { borderColor: colors.card, borderWidth: 2, borderRadius: RADIUS },
           // the share only: the chips above name the slices, and long names do not fit a phone
           percentPrecision: 0,
           label: { color: colors.onSurface, formatter: '{d}%' },
@@ -160,12 +162,88 @@ export function chartOptions({ data, type, unit, currency, timeZone, hidden, col
     };
   }
 
+  if (type === 'treemap') {
+    // Rounded tiles as large as each line's total, its name and its share written on it (the
+    // reference photo), dark on the bright identity colours. The share is only how the total
+    // compares with the others shown, as the donut's.
+    const shown = lines.filter((line) => line.total !== null && Number(line.total) > 0);
+    const whole = shown.reduce((sum, line) => sum + Number(line.total), 0);
+    return {
+      ...base,
+      tooltip: { ...tooltip, trigger: 'item' },
+      series: [
+        {
+          type: 'treemap',
+          left: 0,
+          top: 0,
+          right: 0,
+          bottom: 0,
+          roam: false,
+          nodeClick: false,
+          breadcrumb: { show: false },
+          itemStyle: { borderColor: colors.card, borderWidth: 4, gapWidth: 4, borderRadius: 12 },
+          label: {
+            position: 'insideTopLeft',
+            padding: 8,
+            color: colors.card,
+            fontWeight: 500,
+            overflow: 'truncate',
+            formatter: (tile: { name: string; value: number }) => `${tile.name}\n${Math.round((tile.value / whole) * 100)}%`,
+          },
+          data: shown.map((line) => ({ name: name(line), value: Number(line.total), itemStyle: { color: colors.lines[line.key] } })),
+        },
+      ],
+    };
+  }
+
+  const current = currentPeriod(data);
+
+  if (type === 'radar') {
+    // The periods around a circle, clockwise from the top like a clock (the hours of the day are
+    // one), one shape per line with its area lightly filled; one scale for every spoke, so the
+    // shapes compare. A name on every spoke up to a dozen, past that on one every so many; the
+    // period in progress named in violet. ECharts goes round the other way: the spokes are given to
+    // it in reverse after the first.
+    const order = clockwise(data.periods.length);
+    const values = lines.map((line) => order.map((i) => drawn(line.values[i] ?? null)));
+    const top = Math.max(0, ...values.flat().map((v) => v ?? 0));
+    const every = Math.ceil(data.periods.length / 12);
+    return {
+      ...base,
+      tooltip: { ...tooltip, trigger: 'item' },
+      radar: {
+        radius: '68%',
+        indicator: order.map((i) => ({
+          name: i % every === 0 || i === current ? periodLabel(data.periods[i]!) : '',
+          max: top > 0 ? top : 1,
+          ...(i === current ? { color: colors.primary } : {}),
+        })),
+        axisName: { color: colors.onSurfaceVariant },
+        axisLine: { lineStyle: { color: colors.outlineVariant } },
+        splitLine: { lineStyle: { color: colors.outlineVariant } },
+        splitArea: { show: false },
+      },
+      series: [
+        {
+          type: 'radar',
+          symbol: 'none',
+          data: lines.map((line, i) => ({
+            name: name(line),
+            value: values[i],
+            itemStyle: { color: colors.lines[line.key] },
+            lineStyle: { color: colors.lines[line.key], width: 2 },
+            areaStyle: { color: colors.lines[line.key], opacity: 0.15 },
+          })),
+        },
+      ],
+    };
+  }
+
   // Bars of amounts that add up stand one on the other: money, counts, and quantities when every line
   // is in one unit (a substance by batch); quantities of different units and prices side by side.
   // Every line counts, the hidden ones too: hiding one does not change how the others stand.
   const oneUnit = new Set(data.series.map((line) => line.unit)).size === 1;
   const stacked = type === 'bar' && (unit === 'money' || unit === 'count' || (unit === 'quantity' && oneUnit));
-  const current = currentPeriod(data);
   const axes = {
     // The axis labels stay inside the chart (ECharts 6's name for the old containLabel).
     grid: { left: 8, right: 16, top: 16, bottom: 8, outerBoundsMode: 'same', outerBoundsContain: 'axisLabel' },
@@ -258,4 +336,9 @@ function stackRadius(lines: SeriesLine[], index: number, period: number): number
   const top = index === drawnHere[drawnHere.length - 1] ? RADIUS : 0;
   const bottom = index === drawnHere[0] ? RADIUS : 0;
   return [top, top, bottom, bottom];
+}
+
+/** The order in which ECharts gets the spokes of a radar so that they read clockwise: 0, n-1, …, 1. */
+export function clockwise(count: number): number[] {
+  return Array.from({ length: count }, (_, i) => (i === 0 ? 0 : count - i));
 }

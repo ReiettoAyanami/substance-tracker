@@ -115,6 +115,17 @@ describe('Widget', () => {
     expect(asked).toEqual([{ metric: 'series.cost', per: 'month', substanceIds: [4], by: 'batch' }]);
   });
 
+  it('a treemap is a share of the period too; a radar keeps its interval toggle', async () => {
+    await render({ item: item({ chart: 'treemap' }) });
+    expect(text(element().querySelector('mat-card-subtitle'))).toBe('share of the period');
+    expect(toggles()).toEqual([]);
+
+    fixture.componentRef.setInput('item', item({ chart: 'radar' }));
+    await fixture.whenStable();
+    expect(element().querySelector('mat-card-subtitle')).toBeNull();
+    expect(toggles().length).toBeGreaterThan(1);
+  });
+
   it('asks again when its page says something changed (refresh)', async () => {
     await render({ days: 30 });
     fixture.componentRef.setInput('refresh', { id: 4 });

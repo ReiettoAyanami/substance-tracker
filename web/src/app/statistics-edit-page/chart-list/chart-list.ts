@@ -23,7 +23,7 @@ const NEW_SECTION = { new: true } as const;
 type SectionChoice = string | typeof NO_SECTION | typeof NEW_SECTION;
 
 /** How the charts are called in their select: whole words. */
-const CHART_LABELS: Record<ChartType, string> = { bar: 'Bars', line: 'Lines', donut: 'Donut' };
+const CHART_LABELS: Record<ChartType, string> = { bar: 'Bars', line: 'Lines', donut: 'Donut', treemap: 'Treemap', radar: 'Radar' };
 
 /** A chart and its series (null: the catalog no longer has it). */
 interface Row {

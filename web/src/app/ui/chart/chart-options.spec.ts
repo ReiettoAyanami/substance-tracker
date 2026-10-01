@@ -1,5 +1,5 @@
 import { SeriesData, SeriesLine } from '../../data/series';
-import { ChartColors, chartOptions, currentPeriod, hatch, lastStretch, lineLabel, periodLabel, valueFormat } from './chart-options';
+import { ChartColors, chartOptions, clockwise, currentPeriod, hatch, lastStretch, lineLabel, periodLabel, valueFormat } from './chart-options';
 
 const line = (key: string, kind: SeriesLine['kind'], id: number, name: string | null, values: (string | null)[], total: string | null, unit = 'beer'): SeriesLine => ({
   key,
@@ -30,6 +30,7 @@ const colors: ChartColors = {
   outline: 'rgba(3, 3, 3, 1)',
   outlineVariant: 'rgba(4, 4, 4, 1)',
   surface: 'rgba(5, 5, 5, 1)',
+  card: 'rgba(6, 6, 6, 1)',
   lines: { 'substance:4': 'rgba(10, 0, 0, 1)', 'substance:1': 'rgba(0, 10, 0, 1)' },
 };
 
@@ -130,6 +131,41 @@ describe('chartOptions', () => {
       { name: 'Caffè', value: 0.3, itemStyle: { color: 'rgba(0, 10, 0, 1)' } },
     ]);
     expect(o.tooltip.trigger).toBe('item');
+  });
+
+  it("a treemap of the lines' totals: rounded tiles with the name and the share, dark on the colour", () => {
+    const o = options({ type: 'treemap', data: { ...data, series: [...data.series, line('substance:3', 'substance', 3, 'Erba', ['0.00', '0.00'], '0.00')] } });
+    expect(o.series[0].type).toBe('treemap');
+    expect(o.series[0].data).toEqual([
+      { name: 'Birra', value: 7, itemStyle: { color: 'rgba(10, 0, 0, 1)' } },
+      { name: 'Caffè', value: 0.3, itemStyle: { color: 'rgba(0, 10, 0, 1)' } },
+    ]);
+    expect(o.series[0].label.formatter({ name: 'Birra', value: 7 })).toBe('Birra\n96%');
+    expect(o.series[0].label.color).toBe('rgba(6, 6, 6, 1)');
+    expect(o.series[0].nodeClick).toBe(false);
+    expect(o.tooltip.trigger).toBe('item');
+  });
+
+  it('a radar: the periods around, one scale for every spoke, a shape per line, the period in progress violet', () => {
+    const o = options({ type: 'radar' });
+    expect(o.radar.indicator).toEqual([
+      { name: 'W36', max: 4 },
+      { name: 'W37', max: 4, color: 'rgba(9, 9, 9, 1)' },
+    ]);
+    expect(o.series[0].data.map((d: any) => [d.name, d.value, d.lineStyle.color])).toEqual([
+      ['Birra', [4, 3], 'rgba(10, 0, 0, 1)'],
+      ['Caffè', [0, 0.3], 'rgba(0, 10, 0, 1)'],
+    ]);
+    // past a dozen periods, a name on one spoke every so many (and on the one in progress)
+    const days = Array.from({ length: 30 }, (_, i) => `2026-09-${String(i + 1).padStart(2, '0')}`);
+    const month = options({ type: 'radar', data: { ...data, per: 'day', periods: days, series: [line('substance:4', 'substance', 4, 'Birra', days.map(() => '0'), '0')] } });
+    expect(month.radar.indicator.filter((i: any) => i.name !== '').map((i: any) => i.name)).toEqual(['1 Sept', '30 Sept', '28 Sept', '25 Sept', '22 Sept', '19 Sept', '16 Sept', '13 Sept', '10 Sept', '7 Sept', '4 Sept']);
+    expect(month.radar.indicator[0].max).toBe(1); // nothing at all: still a circle
+    // clockwise, like a clock: after the first spoke ECharts gets them in reverse
+    expect(clockwise(4)).toEqual([0, 3, 2, 1]);
+    const hours = options({ type: 'radar', data: { ...data, per: null, periods: ['00', '01', '02'], series: [line('substance:4', 'substance', 4, 'Birra', ['1', '2', '3'], '6')] } });
+    expect(hours.radar.indicator.map((i: any) => i.name)).toEqual(['00:00', '02:00', '01:00']);
+    expect(hours.series[0].data[0].value).toEqual([1, 3, 2]);
   });
 
   it('names the lines and the periods', () => {

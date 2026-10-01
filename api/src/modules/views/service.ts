@@ -108,7 +108,7 @@ export class ViewsService {
     }
     const series = findSeries(input.metric);
     if (!series) throw badRequest(`the ${input.surface} page draws series: "${input.metric}" is not one`, 'metric');
-    if (!input.chart) throw badRequest('a chart needs its chart: bar, line or donut', 'chart');
+    if (!input.chart) throw badRequest('a chart needs its chart: bar, line, donut, treemap or radar', 'chart');
     const chart = checkChart(series, { chart: input.chart, scale: input.scale ?? null });
     const section = sectionFor(input.surface, input.section);
     const id = await withTransaction(this.pool, async (conn) =>

@@ -4,7 +4,7 @@ import type { Queryable } from '../../db/pool.js';
 export const SURFACES = ['statistics', 'metrics', 'substance', 'batch', 'consumption', 'substances'] as const;
 export type Surface = (typeof SURFACES)[number];
 
-export const CHARTS = ['bar', 'line', 'donut'] as const;
+export const CHARTS = ['bar', 'line', 'donut', 'treemap', 'radar'] as const;
 export type Chart = (typeof CHARTS)[number];
 
 export interface ViewItemRow {

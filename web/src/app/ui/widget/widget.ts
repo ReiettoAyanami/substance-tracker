@@ -49,10 +49,10 @@ export class Widget {
   /** The chart's interval: its own, or the one just chosen on the card. */
   protected readonly scale = linkedSignal(() => this.item().scale as SeriesScale | null);
 
-  /** The intervals the toggle offers: the series' own; none for a donut (the whole period) or the hours of the day. */
+  /** The intervals the toggle offers: the series' own; none for the shares of the whole period (donut, treemap) or the hours of the day. */
   private readonly toggle = viewChild(MatButtonToggleGroup);
 
-  protected readonly scales = computed(() => (this.item().chart === 'donut' || this.scale() === null ? [] : this.definition().scales));
+  protected readonly scales = computed(() => (isShare(this.item().chart) || this.scale() === null ? [] : this.definition().scales));
 
   protected readonly series = rxResource({
     params: () => ({
@@ -92,8 +92,8 @@ export class Widget {
     return { quantity: 'inventory_2', count: 'numbers', money: 'payments', unitPrice: 'sell' }[definition.unit];
   });
 
-  /** What a donut says under its name: the share of the whole period (the others have their toggle). */
-  protected readonly subtitle = computed(() => (this.item().chart === 'donut' ? 'share of the period' : ''));
+  /** What a donut or a treemap says under its name: the share of the whole period (the others have their toggle). */
+  protected readonly subtitle = computed(() => (isShare(this.item().chart) ? 'share of the period' : ''));
 
   protected readonly failure = computed(() => {
     const failure = this.series.error();
@@ -120,4 +120,9 @@ export class Widget {
       this.snackBar.open(`Not saved: ${problem.detail || problem.title || 'the API did not answer'}`, 'OK', { duration: 6000 });
     }
   }
+}
+
+/** The charts of the lines' totals over the whole period: shares, no interval of their own. */
+function isShare(chart: ViewItem['chart']): boolean {
+  return chart === 'donut' || chart === 'treemap';
 }

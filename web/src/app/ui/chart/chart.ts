@@ -1,7 +1,7 @@
 import { Component, ElementRef, computed, inject, input, signal } from '@angular/core';
 import { MatChipListboxChange, MatChipsModule } from '@angular/material/chips';
-import { BarChart, LineChart, PieChart } from 'echarts/charts';
-import { GridComponent, TooltipComponent } from 'echarts/components';
+import { BarChart, LineChart, PieChart, RadarChart, TreemapChart } from 'echarts/charts';
+import { GridComponent, RadarComponent, TooltipComponent } from 'echarts/components';
 import * as echarts from 'echarts/core';
 import { SVGRenderer } from 'echarts/renderers';
 import { NgxEchartsDirective, provideEchartsCore } from 'ngx-echarts';
@@ -11,9 +11,9 @@ import { Settings } from '../../data/settings';
 import { IdentityColorPipe } from '../identity-color-pipe';
 import { ChartColors, chartOptions, lineLabel } from './chart-options';
 
-// Only the pieces the charts use (the modular import): three kinds of chart, their grid and
-// tooltip, and the SVG renderer. The whole of ECharts is never bundled.
-echarts.use([BarChart, LineChart, PieChart, GridComponent, TooltipComponent, SVGRenderer]);
+// Only the pieces the charts use (the modular import): five kinds of chart, their grid, the radar's
+// circle and the tooltip, and the SVG renderer. The whole of ECharts is never bundled.
+echarts.use([BarChart, LineChart, PieChart, TreemapChart, RadarChart, GridComponent, RadarComponent, TooltipComponent, SVGRenderer]);
 
 const identity = new IdentityColorPipe();
 
@@ -25,8 +25,8 @@ export function lineColor(line: SeriesLine): string {
 
 /**
  * A chart (design-statistics.md, "chart"): the only component that knows the chart library
- * (Apache ECharts, through ngx-echarts). A series of the API in, a chart out: bars, lines or a
- * donut of the totals, drawn in SVG with the Material 3 colours of the theme (read from its tokens)
+ * (Apache ECharts, through ngx-echarts). A series of the API in, a chart out: bars, lines, a radar,
+ * or a donut or a treemap of the totals, drawn in SVG with the Material 3 colours of the theme (read from its tokens)
  * and each line in its identity colour.
  * Material filter chips above it hide lines by hand (a substance, a batch), when `filters` is on
  * and there is more than one. It computes nothing: every number is the API's.
@@ -66,6 +66,7 @@ export class Chart {
       outline: resolve('var(--mat-sys-outline)'),
       outlineVariant: resolve('var(--mat-sys-outline-variant)'),
       surface: resolve('var(--mat-sys-surface-container-high)'),
+      card: resolve('var(--mat-sys-surface-container-lowest)'),
       lines: Object.fromEntries(lines.map((line) => [line.key, resolve(lineColor(line))])),
     }));
   });

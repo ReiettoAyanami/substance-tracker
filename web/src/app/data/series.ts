@@ -2,7 +2,7 @@
 // draws. Every value is a decimal string computed by the API; the chart only reads it.
 
 /** How a chart draws a series. */
-export type ChartType = 'bar' | 'line' | 'donut';
+export type ChartType = 'bar' | 'line' | 'donut' | 'treemap' | 'radar';
 
 /** The intervals a series groups by. */
 export type SeriesScale = 'day' | 'week' | 'month' | 'year';

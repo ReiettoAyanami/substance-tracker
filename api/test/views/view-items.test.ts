@@ -118,6 +118,17 @@ describe('view items of the statistics page (its charts)', () => {
     expect(metricsOf(await list('statistics'))).toEqual(['series.cost', 'series.cost', 'series.hourOfDay']);
   });
 
+  it('a treemap draws totals that add up, a radar what a line draws', async () => {
+    const tiles = await add({ surface: 'statistics', metric: 'series.spend', chart: 'treemap', scale: 'month', section: 'Money' });
+    expect(tiles.status, JSON.stringify(tiles.body)).toBe(201);
+    expect(tiles.body).toMatchObject({ chart: 'treemap', scale: 'month' });
+    const clock = await add({ surface: 'statistics', metric: 'series.hourOfDay', chart: 'radar' });
+    expect(clock.body).toMatchObject({ chart: 'radar', scale: null });
+    // quantities in different units do not add up: no treemap
+    expectProblem(await add({ surface: 'statistics', metric: 'series.consumed', chart: 'treemap', scale: 'week' }), 400, 'validation');
+    expectProblem(await add({ surface: 'statistics', metric: 'series.cost', chart: 'pie', scale: 'week' }), 400, 'validation');
+  });
+
   it('refuses what cannot be drawn', async () => {
     expectProblem(await add({ surface: 'statistics', metric: 'substance.pace', chart: 'bar', scale: 'week' }), 400, 'validation');
     expectProblem(await add({ surface: 'statistics', metric: 'series.cost', scale: 'week' }), 400, 'validation'); // no chart

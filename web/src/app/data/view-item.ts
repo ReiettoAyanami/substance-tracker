@@ -7,7 +7,7 @@
  */
 export type Surface = 'statistics' | 'metrics' | 'substance' | 'batch' | 'consumption' | 'substances';
 
-export type Chart = 'bar' | 'line' | 'donut';
+export type Chart = 'bar' | 'line' | 'donut' | 'treemap' | 'radar';
 
 /** One item of GET /api/view-items. */
 export interface ViewItem {

@@ -224,6 +224,14 @@ describe('migrations', () => {
     expect(await rawRows("SELECT id FROM view_items WHERE surface = 'substances'")).toHaveLength(rows.length);
   });
 
+  it('007 lets a chart be a treemap or a radar, and is safe to re-run', async () => {
+    await rerun('007_chart_types.sql');
+    const [column] = await rawRows(
+      "SELECT COLUMN_TYPE AS type FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'view_items' AND COLUMN_NAME = 'chart'",
+    );
+    expect(column?.type).toBe("enum('bar','line','donut','treemap','radar')");
+  });
+
   it('the session and the stored instants are UTC', async () => {
     const [row] = await rawRows('SELECT @@session.time_zone AS tz');
     expect(row?.tz).toBe('+00:00');

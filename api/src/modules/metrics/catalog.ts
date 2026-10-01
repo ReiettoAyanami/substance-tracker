@@ -268,7 +268,7 @@ export const METRICS: readonly MetricDefinition[] = [
 ];
 
 /** How a chart draws a series (design-statistics.md, "chart"). */
-export const CHARTS = ['bar', 'line', 'donut'] as const;
+export const CHARTS = ['bar', 'line', 'donut', 'treemap', 'radar'] as const;
 export type Chart = (typeof CHARTS)[number];
 
 /** The intervals a series groups its values by (its periods): the user chooses. */
@@ -278,8 +278,9 @@ export type SeriesScale = (typeof SERIES_SCALES)[number];
 /**
  * A series (design-statistics.md, "series"): numbers of a measure over time, one per period, for
  * each substance (or each batch of one), what a chart draws. `unit` quantity is each series' own
- * unit; unitPrice is money per unit (6 decimals). `charts` are those that can draw it (a donut
- * needs totals that add up: none for quantities in different units, nor for prices).
+ * unit; unitPrice is money per unit (6 decimals). `charts` are those that can draw it (a donut and
+ * a treemap need totals that add up: none for quantities in different units, nor for prices; a
+ * radar draws what a line draws, its periods around a circle).
  */
 export interface SeriesDefinition {
   key: string;
@@ -308,19 +309,19 @@ function series(
 }
 
 export const SERIES: readonly SeriesDefinition[] = [
-  series('series.consumed', 'Consumed', 'quantity', EVERY, ['bar', 'line'], 'Quantity consumed in each interval (each substance in its own unit).'),
-  series('series.consumptions', 'Consumptions', 'count', EVERY, ['bar', 'line', 'donut'], 'How many consumptions in each interval.'),
-  series('series.cost', 'Cost', 'money', EVERY, ['bar', 'line', 'donut'], 'What the consumptions of each interval cost.'),
-  series('series.spend', 'Spend', 'money', EVERY, ['bar', 'line', 'donut'], 'What was paid in each interval: batches bought and one-time consumptions.'),
+  series('series.consumed', 'Consumed', 'quantity', EVERY, ['bar', 'line', 'radar'], 'Quantity consumed in each interval (each substance in its own unit).'),
+  series('series.consumptions', 'Consumptions', 'count', EVERY, ['bar', 'line', 'donut', 'treemap', 'radar'], 'How many consumptions in each interval.'),
+  series('series.cost', 'Cost', 'money', EVERY, ['bar', 'line', 'donut', 'treemap', 'radar'], 'What the consumptions of each interval cost.'),
+  series('series.spend', 'Spend', 'money', EVERY, ['bar', 'line', 'donut', 'treemap', 'radar'], 'What was paid in each interval: batches bought and one-time consumptions.'),
   series(
     'series.unitPrice',
     'Unit price of the batches',
     'unitPrice',
     EVERY,
-    ['line', 'bar'],
+    ['line', 'bar', 'radar'],
     'The average unit price of the batches bought in each interval (total paid ÷ total bought); none where none was bought.',
   ),
-  series('series.hourOfDay', 'Hour of the day', 'count', [], ['bar', 'line'], 'How many consumptions at each hour of the clock, over the period.'),
+  series('series.hourOfDay', 'Hour of the day', 'count', [], ['bar', 'line', 'radar'], 'How many consumptions at each hour of the clock, over the period.'),
 ];
 
 /** Everything the pages can show: the metrics of the entities, then the series of the charts. */

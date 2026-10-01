@@ -149,12 +149,12 @@ describe('GET /api/metrics lists the series too', () => {
     const res = await api.get('/api/metrics');
     const series = res.body.filter((m: any) => m.scope === 'series');
     expect(series.map((m: any) => [m.key, m.unit, m.scales, m.charts])).toEqual([
-      ['series.consumed', 'quantity', ['day', 'week', 'month', 'year'], ['bar', 'line']],
-      ['series.consumptions', 'count', ['day', 'week', 'month', 'year'], ['bar', 'line', 'donut']],
-      ['series.cost', 'money', ['day', 'week', 'month', 'year'], ['bar', 'line', 'donut']],
-      ['series.spend', 'money', ['day', 'week', 'month', 'year'], ['bar', 'line', 'donut']],
-      ['series.unitPrice', 'unitPrice', ['day', 'week', 'month', 'year'], ['line', 'bar']],
-      ['series.hourOfDay', 'count', [], ['bar', 'line']],
+      ['series.consumed', 'quantity', ['day', 'week', 'month', 'year'], ['bar', 'line', 'radar']],
+      ['series.consumptions', 'count', ['day', 'week', 'month', 'year'], ['bar', 'line', 'donut', 'treemap', 'radar']],
+      ['series.cost', 'money', ['day', 'week', 'month', 'year'], ['bar', 'line', 'donut', 'treemap', 'radar']],
+      ['series.spend', 'money', ['day', 'week', 'month', 'year'], ['bar', 'line', 'donut', 'treemap', 'radar']],
+      ['series.unitPrice', 'unitPrice', ['day', 'week', 'month', 'year'], ['line', 'bar', 'radar']],
+      ['series.hourOfDay', 'count', [], ['bar', 'line', 'radar']],
     ]);
     for (const m of series) {
       expect(m.label.length).toBeGreaterThan(0);
