@@ -80,6 +80,10 @@ app-substance-card {
     translate: -50% -50%;
     /* as wide as the list: its card as wide as theirs (720 px, plus 2 x 32 of padding) */
     width: min(784px, calc(100vw - var(--app-sidebar-width, 0px) - 176px));
+    /* always as tall as the screen allows, not as its content: it no longer grows while the
+       batches and the panels load (lenzi, 2026-10-02: "piccole e poi grandi"), nor jumps from one
+       substance to the next; the content scrolls inside */
+    height: calc(100dvh - 64px);
     max-height: calc(100dvh - 64px);
     padding: 72px 32px 32px;
     overflow: visible;

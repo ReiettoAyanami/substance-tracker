@@ -164,6 +164,15 @@
   transition: none;
 }
 
+/* The first frame of a window can come before its content: an empty glass bar 44 px high, the
+   next frame the whole window (measured frame by frame with Playwright: 44 px, then 548). Until
+   its content is there, the window is not shown at all, so it appears whole, at its size. An
+   empty content still holds Angular's comment anchors, which :empty ignores. */
+.mat-mdc-dialog-surface:has(> * > .mat-mdc-dialog-content:empty),
+.mat-mdc-dialog-surface:has(> .mat-mdc-dialog-content:empty) {
+  visibility: hidden;
+}
+
 .cdk-overlay-pane .mat-mdc-dialog-container .mat-mdc-dialog-surface > * {
   opacity: 0;
   transition: opacity linear var(--mat-dialog-transition-duration, 0ms);
