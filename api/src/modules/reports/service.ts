@@ -314,6 +314,8 @@ export interface ConsumptionScope {
   batchId?: number | undefined;
   from?: string | undefined;
   to?: string | undefined;
+  /** Only the one-time consumptions; never with a batch. */
+  oneTime?: boolean | undefined;
 }
 
 /** The scope, plus inclusive ranges on the cost of the consumption and on its quantity (decimal strings). */
@@ -931,9 +933,13 @@ export class ReportsService {
    * series: the consumptions of its batch when the list is one batch's (what that list shows),
    * else those of its substance, of either kind; never those of another substance. The whole
    * series is loaded before the logical days narrow it, so every delta compares with the real
-   * previous one, whatever the days hide.
+   * previous one, whatever the days hide. Only the one-time ones (`oneTime`): they keep the rule of
+   * their substance, so they are picked after the deltas.
    */
   private async scopedConsumptions(scope: ConsumptionScope): Promise<ConsumptionEntry[]> {
+    if (scope.oneTime && scope.batchId !== undefined) {
+      throw badRequest('a one-time consumption has no batch: choose one or the other', 'oneTime');
+    }
     const days = await this.logicalDays(scope.from, scope.to);
     let substanceId = scope.substanceId;
     if (substanceId !== undefined) await this.catalog.get(substanceId);
@@ -948,6 +954,7 @@ export class ReportsService {
     compareWithPrevious(entries, scope.batchId === undefined ? ofItsSubstance : () => scope.batchId!);
     return entries.filter(
       (e) =>
+        (!scope.oneTime || e.type === 'one_time') &&
         (days.start === null || e.occurred_at.getTime() >= days.start.getTime()) &&
         (days.end === null || e.occurred_at.getTime() < days.end.getTime()),
     );

@@ -37,6 +37,8 @@ export interface ConsumptionScope {
   batchId?: number;
   from?: string;
   to?: string;
+  /** Only the one-time consumptions (lenzi, 2026-10-01); never with a batch. */
+  oneTime?: true;
 }
 
 /** The scope, plus inclusive ranges on the cost of the consumption (its price) and on its quantity (decimal strings). */

@@ -123,6 +123,16 @@ describe('filters of GET /api/consumptions', () => {
     expect(await list(`batchId=${peroni.id}`)).toEqual([C(p1)]);
   });
 
+  it('only the one-time consumptions (oneTime=true; lenzi, 2026-10-01), each still compared with the previous of its substance', async () => {
+    const { beer, coffee, pub } = await seed();
+    expect(await list('oneTime=true')).toEqual([O(pub)]);
+    expect(await list(`oneTime=true&substanceId=${beer.id}`)).toEqual([O(pub)]);
+    expect(await list(`oneTime=true&substanceId=${coffee.id}`)).toEqual([]);
+    expect((await list('oneTime=false')).length).toBe(5); // false: no filter
+    // vs the Peroni of the day before, as in the whole list
+    expect((await api.get('/api/consumptions?oneTime=true')).body).toMatchObject([{ id: pub.id, deltaQuantity: '-0.5000', deltaCost: '0.6667' }]);
+  });
+
   it('by logical days from..to, both included, in Europe/Rome', async () => {
     const { c1, c2, p1, pub, m1 } = await seed();
     expect(await list('from=2026-09-06&to=2026-09-08')).toEqual([O(pub), C(p1), C(c2)]);
@@ -216,8 +226,17 @@ describe('GET /api/consumptions refuses', () => {
       'before=yesterday',
       'substanceId=0',
       'batchId=x',
+      'oneTime=maybe',
     ];
     for (const query of bad) expectProblem(await api.get(`/api/consumptions?${query}`), 400);
+  });
+
+  it('one-time consumptions of a batch: a one-time consumption has none', async () => {
+    const { corona } = await seedBeerAndCoffee();
+    const res = await api.get(`/api/consumptions?oneTime=true&batchId=${corona.id}`);
+    expectProblem(res, 400);
+    expect(res.body.errors).toEqual([{ field: 'oneTime', message: 'a one-time consumption has no batch: choose one or the other' }]);
+    expectProblem(await api.get(`/api/consumptions/bounds?oneTime=true&batchId=${corona.id}`), 400);
   });
 
   it('a range the wrong way round, under its min field', async () => {
@@ -251,6 +270,7 @@ describe('GET /api/consumptions/bounds', () => {
     expect(await bounds(`batchId=${corona.id}`)).toEqual({ minCost: '1.00', maxCost: '3.00', minQuantity: '1.000', maxQuantity: '3.000' });
     expect(await bounds('from=2026-09-07&to=2026-09-07')).toEqual({ minCost: '3.00', maxCost: '3.00', minQuantity: '2.000', maxQuantity: '2.000' });
     expect(await bounds('from=2026-10-01')).toEqual(none);
+    expect(await bounds('oneTime=true')).toEqual({ minCost: '5.00', maxCost: '5.00', minQuantity: '1.000', maxQuantity: '1.000' });
   });
 
   it('takes no price, quantity or page filters, and refuses bad dates and unknown ids', async () => {

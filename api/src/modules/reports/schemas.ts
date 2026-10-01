@@ -74,6 +74,7 @@ const consumptionScopeProperties = {
   batchId: idQuery,
   from: logicalDate,
   to: logicalDate,
+  oneTime: { type: 'boolean' },
 } as const;
 
 export interface ConsumptionScopeQuery {
@@ -84,6 +85,8 @@ export interface ConsumptionScopeQuery {
   from?: string;
   /** Logical date YYYY-MM-DD, inclusive. */
   to?: string;
+  /** Only the one-time consumptions (lenzi, 2026-10-01); never with a batch. */
+  oneTime?: boolean;
 }
 
 export const consumptionsSchema = {

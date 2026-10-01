@@ -22,9 +22,10 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const DECIMAL = /^\d+(\.\d+)?$/;
 
 /**
- * The filter in the URL's query (?substanceId=&batchId=&from=&to=&minCost=&maxCost=
+ * The filter in the URL's query (?substanceId=&batchId=&oneTime=true&from=&to=&minCost=&maxCost=
  * &minQuantity=&maxQuantity=). A value that does not look right is left out: the API would refuse
- * it, and an old or hand-made link should still show a list.
+ * it, and an old or hand-made link should still show a list. A batch wins over "only the one-time
+ * ones": the API takes not both.
  */
 function filterOfQuery(query: Params): ConsumptionFilter {
   const text = (key: string, pattern: RegExp) => {
@@ -35,9 +36,11 @@ function filterOfQuery(query: Params): ConsumptionFilter {
     const value = text(key, ID);
     return value === undefined ? undefined : Number(value);
   };
+  const batchId = id('batchId');
   const filter: ConsumptionFilter = {
     substanceId: id('substanceId'),
-    batchId: id('batchId'),
+    batchId,
+    oneTime: batchId === undefined && query['oneTime'] === 'true' ? true : undefined,
     from: text('from', DAY),
     to: text('to', DAY),
     minCost: text('minCost', DECIMAL),
@@ -49,8 +52,8 @@ function filterOfQuery(query: Params): ConsumptionFilter {
 }
 
 /** The part of the filter the slider bounds depend on. */
-function scopeOf({ substanceId, batchId, from, to }: ConsumptionFilter): ConsumptionScope {
-  return Object.fromEntries(Object.entries({ substanceId, batchId, from, to }).filter(([, v]) => v !== undefined));
+function scopeOf({ substanceId, batchId, oneTime, from, to }: ConsumptionFilter): ConsumptionScope {
+  return Object.fromEntries(Object.entries({ substanceId, batchId, oneTime, from, to }).filter(([, v]) => v !== undefined));
 }
 
 /** Two filters built by the functions above (same key order) are equal when they print the same. */

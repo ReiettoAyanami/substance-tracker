@@ -18,8 +18,9 @@
 
     <mat-form-field appearance="outline">
       <mat-label>Batch</mat-label>
-      <mat-select class="batch" [value]="filter().batchId ?? null" (selectionChange)="chooseBatch($event.value)">
+      <mat-select class="batch" [value]="filter().oneTime ? 'one_time' : (filter().batchId ?? null)" (selectionChange)="chooseBatch($event.value)">
         <mat-option [value]="null">All batches</mat-option>
+        <mat-option value="one_time">One-time</mat-option>
         @for (group of batchGroups(); track group.substanceId) {
           @if (group.label) {
             <mat-optgroup [label]="group.label">

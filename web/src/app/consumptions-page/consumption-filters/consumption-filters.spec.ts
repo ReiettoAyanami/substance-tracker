@@ -107,6 +107,7 @@ describe('ConsumptionFilters', () => {
     ]);
     expect(options.map(text)).toEqual([
       'All batches',
+      'One-time',
       'Peroni 6-pack · 5 Sept 2026 · finished',
       'Unnamed batch · 20 Sept 2026',
       'Unnamed batch · 1 Aug 2026',
@@ -116,7 +117,7 @@ describe('ConsumptionFilters', () => {
     await render({ substanceId: 2 });
     options = await open('batch');
     expect(document.querySelector('mat-optgroup')).toBeNull();
-    expect(options.map(text)).toEqual(['All batches', 'Unnamed batch · 20 Sept 2026', 'Unnamed batch · 1 Aug 2026']);
+    expect(options.map(text)).toEqual(['All batches', 'One-time', 'Unnamed batch · 20 Sept 2026', 'Unnamed batch · 1 Aug 2026']);
   });
 
   it('lists substances and batches with the same name one by one: only the id tells them apart', async () => {
@@ -148,13 +149,32 @@ describe('ConsumptionFilters', () => {
       'Birra',
       'Birra',
     ]);
-    expect(options.map(text)).toEqual(['All batches', 'Peroni · 5 Sept 2026', 'Peroni · 5 Sept 2026', 'Peroni · 5 Sept 2026']);
-    options[2]!.click();
+    expect(options.map(text)).toEqual(['All batches', 'One-time', 'Peroni · 5 Sept 2026', 'Peroni · 5 Sept 2026', 'Peroni · 5 Sept 2026']);
     options[3]!.click();
+    options[4]!.click();
     expect(emitted).toEqual([
       { batchId: 20, substanceId: 4 },
       { batchId: 30, substanceId: 9 },
     ]);
+  });
+
+  it('"One-time" shows only the one-time consumptions: it takes the place of a batch, keeps the substance, drops the ranges (lenzi, 2026-10-01)', async () => {
+    await render({ substanceId: 4, batchId: 11, minCost: '1.00' });
+    let options = await open('batch');
+    options.find((o) => text(o) === 'One-time')!.click();
+    expect(emitted).toEqual([{ substanceId: 4, oneTime: true }]);
+
+    document.querySelectorAll('.cdk-overlay-container').forEach((overlay) => (overlay.innerHTML = ''));
+    await render({ substanceId: 4, oneTime: true });
+    expect(text(element().querySelector('mat-select.batch'))).toBe('One-time');
+    expect(text(element().querySelector('.count'))).toBe('2 active');
+    // another substance keeps it; a batch takes its place
+    (await open('substance')).find((o) => text(o) === 'Sigarette')!.click();
+    expect(emitted).toEqual([{ substanceId: 2, oneTime: true }]);
+    document.querySelectorAll('.cdk-overlay-container').forEach((overlay) => (overlay.innerHTML = ''));
+    options = await open('batch');
+    options.find((o) => text(o).startsWith('Peroni'))!.click();
+    expect(emitted.at(-1)).toEqual({ substanceId: 4, batchId: 11 });
   });
 
   it('fills in the substance of the batch chosen', async () => {

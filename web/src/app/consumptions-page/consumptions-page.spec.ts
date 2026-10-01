@@ -125,6 +125,23 @@ describe('ConsumptionsPage', () => {
     expect(scopes).toEqual([{ substanceId: 2, batchId: 8, from: '2026-09-01' }]); // the bounds ignore the ranges
   });
 
+  it('reads "only the one-time ones" from the URL (lenzi, 2026-10-01); a batch wins over it, the API takes not both', async () => {
+    await render('/consumptions?substanceId=2&oneTime=true');
+    expect(calls).toEqual([{ filter: { substanceId: 2, oneTime: true }, page: { limit: 20 } }]);
+    expect(scopes).toEqual([{ substanceId: 2, oneTime: true }]);
+
+    calls = [];
+    await harness.navigateByUrl('/consumptions?batchId=8&oneTime=true');
+    await harness.fixture.whenStable();
+    expect(calls).toEqual([{ filter: { batchId: 8 }, page: { limit: 20 } }]);
+  });
+
+  it('a tap on a card opens its details (lenzi, 2026-10-01)', async () => {
+    await render('/consumptions');
+    element().querySelector<HTMLElement>('app-consumption-card .amount')!.click();
+    expect(asked).toEqual([['details', consumption(0).id, settings.currency]]);
+  });
+
   it('puts a new filter in the URL, in place of the current entry, and lists what it asks for', async () => {
     await render('/consumptions?from=2026-09-01');
     const entries = history.length;

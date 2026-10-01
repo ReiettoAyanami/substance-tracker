@@ -139,7 +139,7 @@ export class ConsumptionFilters {
   /** How many filters are set (the days count once, each range once). */
   protected readonly activeCount = computed(() => {
     const f = this.filter();
-    return [f.substanceId, f.batchId, f.from ?? f.to, f.minCost ?? f.maxCost, f.minQuantity ?? f.maxQuantity].filter(
+    return [f.substanceId, f.batchId ?? f.oneTime, f.from ?? f.to, f.minCost ?? f.maxCost, f.minQuantity ?? f.maxQuantity].filter(
       (value) => value !== undefined,
     ).length;
   });
@@ -214,12 +214,19 @@ export class ConsumptionFilters {
       substanceId: substanceId ?? undefined,
       // a batch of another substance goes, and so does any batch when every substance is shown again
       batchId: substanceId !== null && batch?.substanceId === substanceId ? batch.id : undefined,
+      // "only the one-time ones" holds for any substance
+      oneTime: this.filter().oneTime,
     });
   }
 
-  protected chooseBatch(batchId: number | null): void {
+  /** A batch, every batch (null), or only the one-time consumptions, which have none (lenzi, 2026-10-01). */
+  protected chooseBatch(batchId: number | 'one_time' | null): void {
+    if (batchId === 'one_time') {
+      this.changeScope({ batchId: undefined, oneTime: true, substanceId: this.filter().substanceId });
+      return;
+    }
     const batch = this.batches().find((b) => b.id === batchId);
-    this.changeScope({ batchId: batch?.id, substanceId: batch ? batch.substanceId : this.filter().substanceId });
+    this.changeScope({ batchId: batch?.id, oneTime: undefined, substanceId: batch ? batch.substanceId : this.filter().substanceId });
   }
 
   /** The picker closed: its days become the filter's from..to (a day alone is fine). */
@@ -257,7 +264,7 @@ export class ConsumptionFilters {
   }
 
   /** Substance and batch changed: the ranges go (other substances, other units). */
-  private changeScope(scope: Pick<ConsumptionFilter, 'substanceId' | 'batchId'>): void {
+  private changeScope(scope: Pick<ConsumptionFilter, 'substanceId' | 'batchId' | 'oneTime'>): void {
     this.emit({ ...scope, minCost: undefined, maxCost: undefined, minQuantity: undefined, maxQuantity: undefined });
   }
 
