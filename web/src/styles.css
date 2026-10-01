@@ -138,7 +138,7 @@
 .mat-mdc-autocomplete-panel,
 .mat-timepicker-panel,
 .mat-datepicker-content,
-.mat-mdc-snackbar-surface {
+.mat-mdc-snack-bar-container {
   backdrop-filter: var(--app-glass-filter);
 }
 
@@ -152,4 +152,73 @@
 .cdk-overlay-dark-backdrop.cdk-overlay-backdrop-showing,
 .mat-drawer-backdrop.mat-drawer-shown {
   backdrop-filter: var(--app-scrim-filter);
+}
+
+/* The blur from the first frame of an opening (lenzi, 2026-10-02: "metti il blur all'apertura di
+   ogni pagina che sotto mostra il resto"). Whatever fades (an element around the glass, or the
+   glass itself) shows the page sharp under it until the fade ends: the blur came last. So the
+   glass is whole from the first frame and what it holds fades in; the scrims keep full opacity and
+   grow their tint and their blur instead. Measured with Playwright, animations slowed 20 times. */
+
+/* Dialog: Material fades the box around the surface and grows the surface from 80%. The box stays
+   opaque, the surface (the glass) is whole at once and still grows; its content fades in with
+   Material's own timing. Closing, the whole surface fades (75 ms). Material ends the opening with a
+   timer, not with the transition, so nothing waits on these. */
+.cdk-overlay-pane .mat-mdc-dialog-container .mat-mdc-dialog-inner-container {
+  opacity: 1;
+  transition: none;
+}
+
+.cdk-overlay-pane .mat-mdc-dialog-container .mat-mdc-dialog-surface > * {
+  opacity: 0;
+  transition: opacity linear var(--mat-dialog-transition-duration, 0ms);
+}
+
+.cdk-overlay-pane .mat-mdc-dialog-container.mdc-dialog--open .mat-mdc-dialog-surface > *,
+.cdk-overlay-pane .mat-mdc-dialog-container.mdc-dialog--closing .mat-mdc-dialog-surface > *,
+.cdk-overlay-pane .mat-mdc-dialog-container._mat-animation-noopable .mat-mdc-dialog-surface > * {
+  opacity: 1;
+}
+
+.cdk-overlay-pane .mat-mdc-dialog-container.mdc-dialog--closing .mat-mdc-dialog-surface {
+  opacity: 0;
+  transition: opacity 75ms linear;
+}
+
+/* The dialog's scrim: the CDK fades it (opacity, 400 ms). Here it is always opaque and its tint
+   (the CDK's own rgba(0, 0, 0, 0.32)) and its blur grow from nothing, in the same 400 ms; the CDK
+   removes it when that transition ends. */
+.cdk-overlay-container .cdk-overlay-dark-backdrop {
+  opacity: 1;
+  background: transparent;
+  backdrop-filter: blur(0);
+  transition:
+    background-color 400ms cubic-bezier(0.25, 0.8, 0.25, 1),
+    backdrop-filter 400ms cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.cdk-overlay-container .cdk-overlay-dark-backdrop.cdk-overlay-backdrop-showing {
+  background-color: rgba(0, 0, 0, 0.32);
+  backdrop-filter: var(--app-scrim-filter);
+}
+
+.cdk-overlay-container .cdk-overlay-dark-backdrop.cdk-overlay-backdrop-noop-animation {
+  transition: none;
+}
+
+/* The drawer's scrim: Material grows its tint (400 ms); its blur grows with it. */
+.mat-drawer-container .mat-drawer-backdrop {
+  backdrop-filter: blur(0);
+  transition-property: background-color, visibility, backdrop-filter;
+}
+
+.mat-drawer-container .mat-drawer-backdrop.mat-drawer-shown {
+  backdrop-filter: var(--app-scrim-filter);
+}
+
+/* Snackbar: Material fades its container and ends the snackbar by that animation's name, so the
+   animation stays as it is and the blur goes on the container itself (above), with the surface's
+   corners. */
+.mat-mdc-snack-bar-container {
+  border-radius: var(--mat-snack-bar-container-shape, var(--mat-sys-corner-extra-small));
 }
