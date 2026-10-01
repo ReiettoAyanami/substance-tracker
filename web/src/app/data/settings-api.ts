@@ -15,4 +15,9 @@ export class SettingsApi {
   getSettings(): Observable<Settings> {
     return this.http.get<Settings>('/api/settings');
   }
+
+  /** PATCH /api/settings: what changed (`dayStartsAt` as HH:MM or HH:MM:SS) → every setting, as saved. */
+  updateSettings(patch: Partial<Settings>): Observable<Settings> {
+    return this.http.patch<Settings>('/api/settings', patch);
+  }
 }

@@ -42,6 +42,11 @@ export const routes: Routes = [
     loadComponent: () => import('./statistics-edit-page/statistics-edit-page').then((m) => m.StatisticsEditPage),
     title: 'What the pages show',
   },
+  {
+    path: 'settings',
+    loadComponent: () => import('./settings-page/settings-page').then((m) => m.SettingsPage),
+    title: 'Settings',
+  },
   // An unknown URL (an old bookmark, a typo) lands on the start page.
   { path: '**', redirectTo: 'consumptions' },
 ];

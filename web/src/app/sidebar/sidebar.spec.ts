@@ -17,6 +17,7 @@ describe('Sidebar', () => {
           { path: 'substances', component: Blank, children: [{ path: ':id', component: Blank }] },
           { path: 'metrics', component: Blank },
           { path: 'statistics', component: Blank },
+          { path: 'settings', component: Blank },
         ]),
       ],
     });
@@ -48,16 +49,29 @@ describe('Sidebar', () => {
       { icon: 'inventory_2', label: 'Substances', href: '/substances' },
       { icon: 'table_chart', label: 'Metrics', href: '/metrics' },
       { icon: 'insights', label: 'Statistics', href: '/statistics' },
+      { icon: 'settings', label: 'Settings', href: '/settings' },
     ]);
+  });
+
+  it('puts the settings at the bottom, apart from the pages', async () => {
+    const element = (await sidebarAt('/settings')).nativeElement as HTMLElement;
+    const lists = Array.from(element.querySelectorAll('mat-nav-list'));
+
+    expect(lists.map((list) => Array.from(list.querySelectorAll('[matListItemTitle]')).map((t) => t.textContent?.trim()))).toEqual([
+      ['Consumptions', 'Substances', 'Metrics', 'Statistics'],
+      ['Settings'],
+    ]);
+    expect(lists[1]!.classList).toContain('bottom');
+    expect(links(element).map((l) => l.current)).toEqual([null, null, null, null, 'page']);
   });
 
   it('highlights the current page, also on a child route', async () => {
     const onConsumptions = await sidebarAt('/consumptions');
-    expect(links(onConsumptions.nativeElement).map((l) => l.current)).toEqual(['page', null, null, null]);
+    expect(links(onConsumptions.nativeElement).map((l) => l.current)).toEqual(['page', null, null, null, null]);
 
     await TestBed.inject(Router).navigateByUrl('/substances/5');
     await onConsumptions.whenStable();
-    expect(links(onConsumptions.nativeElement).map((l) => l.current)).toEqual([null, 'page', null, null]);
+    expect(links(onConsumptions.nativeElement).map((l) => l.current)).toEqual([null, 'page', null, null, null]);
     expect(onConsumptions.nativeElement.querySelector('.mdc-list-item--activated')?.textContent).toContain('Substances');
   });
 

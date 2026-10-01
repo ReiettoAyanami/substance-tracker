@@ -1,5 +1,19 @@
+/* The whole height of the drawer: the settings sit at its bottom. */
+:host {
+  display: block;
+  height: 100%;
+}
+
 nav {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  min-height: 100%;
   padding: 12px;
+}
+
+.bottom {
+  margin-top: auto;
 }
 
 .app-name {

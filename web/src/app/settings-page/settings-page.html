@@ -1,0 +1,67 @@
+<main class="settings-page">
+  @if (failure(); as failure) {
+    <p class="message error">{{ failure }}</p>
+  } @else if (settings.hasValue()) {
+    <form class="form" [formGroup]="form" (ngSubmit)="save()">
+      <mat-form-field class="currency" appearance="outline">
+        <mat-label>Currency</mat-label>
+        <input matInput formControlName="currency" [matAutocomplete]="currencies" autocomplete="off" />
+        <mat-autocomplete #currencies="matAutocomplete">
+          @for (option of currencyChoices(); track option.code) {
+            <mat-option [value]="option.code">{{ option.code }} · {{ option.name }}</mat-option>
+          }
+        </mat-autocomplete>
+        <mat-hint>Every amount is shown in it; nothing is converted.</mat-hint>
+        @if (errorOf('currency'); as error) {
+          <mat-error>{{ error }}</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field class="timezone" appearance="outline">
+        <mat-label>Time zone</mat-label>
+        <input matInput formControlName="timezone" [matAutocomplete]="zones" autocomplete="off" />
+        <mat-autocomplete #zones="matAutocomplete">
+          @for (zone of zoneChoices(); track zone) {
+            <mat-option [value]="zone">{{ zone }}</mat-option>
+          }
+        </mat-autocomplete>
+        @if (errorOf('timezone'); as error) {
+          <mat-error>{{ error }}</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field class="day-start" appearance="outline">
+        <mat-label>Day starts at</mat-label>
+        <input matInput [matTimepicker]="dayStart" formControlName="dayStartsAt" autocomplete="off" />
+        <mat-timepicker-toggle matIconSuffix [for]="dayStart" />
+        <mat-timepicker #dayStart />
+        @if (errorOf('dayStartsAt'); as error) {
+          <mat-error>{{ error }}</mat-error>
+        }
+      </mat-form-field>
+
+      <p class="note">
+        The time zone and the time the day starts decide which day a consumption belongs to: changing them moves consumptions
+        between days. With the day starting at 04:00, a consumption at 02:00 counts on the day before.
+      </p>
+
+      @if (formError(); as error) {
+        <p class="form-error">{{ error }}</p>
+      }
+
+      <div class="actions">
+        <button mat-flat-button type="submit" [disabled]="saving() || form.pristine">Save</button>
+      </div>
+    </form>
+
+    <mat-nav-list class="links">
+      <a mat-list-item routerLink="/statistics/edit">
+        <mat-icon matListItemIcon>tune</mat-icon>
+        <span matListItemTitle>What the pages show</span>
+        <span matListItemLine>The metrics and the charts of each page</span>
+      </a>
+    </mat-nav-list>
+  } @else {
+    <p class="message">…</p>
+  }
+</main>

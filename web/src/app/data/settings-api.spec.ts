@@ -27,4 +27,14 @@ describe('SettingsApi', () => {
     req.flush(settings);
     expect(await result).toEqual(settings);
   });
+
+  it('changes what is sent, and answers with every setting', async () => {
+    const saved = { timezone: 'Europe/London', dayStartsAt: '05:30:00', currency: 'EUR' };
+    const result = firstValueFrom(api.updateSettings({ timezone: 'Europe/London', dayStartsAt: '05:30' }));
+    const req = backend.expectOne('/api/settings');
+    expect(req.request.method).toBe('PATCH');
+    expect(req.request.body).toEqual({ timezone: 'Europe/London', dayStartsAt: '05:30' });
+    req.flush(saved);
+    expect(await result).toEqual(saved);
+  });
 });
