@@ -37,6 +37,8 @@ const readDays = () => readPreference<number>(DAYS_KEY, (v) => (PERIODS.some((p)
   imports: [MatButtonModule, MatExpansionModule, MatIconModule, MetricValuePipe, PeriodScale, RouterLink],
   templateUrl: './metrics-panel.html',
   styleUrl: './metrics-panel.css',
+  // Its first numbers are on screen: until then a window that holds it waits (styles.css, "glass").
+  host: { '[class.ready]': '!loading()' },
 })
 export class MetricsPanel {
   readonly scope = input.required<MetricScope>();
@@ -142,6 +144,18 @@ export class MetricsPanel {
     const error = (failure.cause ?? failure) as Partial<ApiError>;
     return `Could not load the metrics${error.status ? ` (${error.status})` : ''}`;
   });
+
+  /**
+   * Open, and its first numbers not on screen yet (nor a failure, nor "no metric chosen"): the
+   * panel will still grow.
+   */
+  protected readonly loading = computed(
+    () =>
+      this.wasOpened() &&
+      this.failure() === null &&
+      !this.empty() &&
+      (this.values() === null || !this.catalog.hasValue() || !this.items.hasValue()),
+  );
 
   protected choosePer(per: TimeScale): void {
     this.per.set(per);

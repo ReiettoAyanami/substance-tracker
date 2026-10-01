@@ -173,6 +173,21 @@
   visibility: hidden;
 }
 
+/* A window whose metrics panel is not ready, i.e. its first numbers are not on screen yet (the
+   consumption's details: 233, 413, then 694 px in three frames), waits for them hidden, so it
+   appears at its size; at most 400 ms, then it shows anyway (a slow API) and grows when they come.
+   "Not ready" rather than "loading": in its first frame the panel has not marked itself yet. */
+.mat-mdc-dialog-surface:has(app-metrics-panel:not(.ready)) {
+  visibility: hidden;
+  animation: app-show-anyway 0s linear 400ms forwards;
+}
+
+@keyframes app-show-anyway {
+  to {
+    visibility: visible;
+  }
+}
+
 .cdk-overlay-pane .mat-mdc-dialog-container .mat-mdc-dialog-surface > * {
   opacity: 0;
   transition: opacity linear var(--mat-dialog-transition-duration, 0ms);

@@ -124,6 +124,8 @@ describe('MetricsPanel', () => {
     expect(text(element().querySelector('.summary'))).toBe('Last 30 days · per day');
     expect(asked).toEqual([]);
     expect(catalogs).toBe(0);
+    // closed, it will not grow: a window holding it need not wait
+    expect(element().classList).toContain('ready');
   });
 
   it('opened, shows the metrics its page lists, the value first and what it is under it', async () => {
@@ -142,6 +144,8 @@ describe('MetricsPanel', () => {
     await render({ open: true });
 
     expect(texts('.metric .label')).toEqual(['Since the last one', 'Consumed']);
+    // its numbers are on screen: a window holding it shows (styles.css)
+    expect(element().classList).toContain('ready');
   });
 
   it('says when its page shows no metric, and offers no scale or period', async () => {
@@ -153,6 +157,7 @@ describe('MetricsPanel', () => {
     expect(element().querySelector('.per')).toBeNull();
     expect(element().querySelector('.period')).toBeNull();
     expect(text(element().querySelector('.summary'))).toBe('');
+    expect(element().classList).toContain('ready');
   });
 
   it('offers the period only when a metric shown follows one', async () => {
