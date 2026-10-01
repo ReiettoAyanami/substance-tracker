@@ -1,14 +1,8 @@
 /* Identity colours (design-frontend.md): the hue comes from the id (IdentityColorPipe), the chroma
-   is the same for everyone, the lightness follows the theme so the colour reads in light and dark. */
+   is the same for everyone, the lightness is the dark theme's. */
 :root {
   --identity-chroma: 0.14;
-  --identity-lightness: 62%;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --identity-lightness: 74%;
-  }
+  --identity-lightness: 74%;
 }
 
 /* The batch bar's tooltip (BatchBar): the name on the first line, the unit price on the second. The
@@ -76,11 +70,11 @@
 }
 
 /* The consumption's details (lenzi, 2026-10-01: "leggermente più chiara", the content "troppo
-   sopra"): a little lighter than the other dialogs (Material's default here is surface): white in
-   the light scheme, surface-container-high in the dark one; and 12 px more over its title. Only
+   sopra"): a little lighter than the other dialogs (Material's default here is surface):
+   surface-container-high; and 12 px more over its title. Only
    this dialog (its panelClass). Glass like every window ("glass", below). */
 .consumption-details-dialog {
-  --app-details-surface: light-dark(var(--mat-sys-surface-container-lowest), var(--mat-sys-surface-container-high));
+  --app-details-surface: var(--mat-sys-surface-container-high);
   --mat-dialog-container-color: color-mix(in srgb, var(--app-details-surface) var(--app-glass), transparent);
   --mat-dialog-headline-padding: 18px 24px 13px;
 }
@@ -89,7 +83,7 @@
    notification shade). Windows, menus and bars let what is under them show through, blurred and
    tinted by the theme; the scrim behind a window blurs the page as well. Not a Material 3 rule for
    apps (9to5google, 2026-01: "Blur today is not part of Material 3 Expressive for apps"): our own
-   style, on Material's own colours, so light and dark follow the theme. Cards, tables and panels
+   style, on Material's own colours, so it follows the theme. Cards, tables and panels
    of a page stay solid: nothing is under them. "Reduce transparency" (/settings, Appearance) or
    the system's own wish make everything solid again. */
 :root {

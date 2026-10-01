@@ -1,4 +1,4 @@
-import { Component, DestroyRef, ElementRef, computed, inject, input, signal } from '@angular/core';
+import { Component, ElementRef, computed, inject, input, signal } from '@angular/core';
 import { MatChipListboxChange, MatChipsModule } from '@angular/material/chips';
 import { BarChart, LineChart, PieChart } from 'echarts/charts';
 import { GridComponent, TooltipComponent } from 'echarts/components';
@@ -26,8 +26,8 @@ export function lineColor(line: SeriesLine): string {
 /**
  * A chart (design-statistics.md, "chart"): the only component that knows the chart library
  * (Apache ECharts, through ngx-echarts). A series of the API in, a chart out: bars, lines or a
- * donut of the totals, drawn in SVG with the Material 3 colours of the theme (read from its tokens,
- * again when the system switches between light and dark) and each line in its identity colour.
+ * donut of the totals, drawn in SVG with the Material 3 colours of the theme (read from its tokens)
+ * and each line in its identity colour.
  * Material filter chips above it hide lines by hand (a substance, a batch), when `filters` is on
  * and there is more than one. It computes nothing: every number is the API's.
  */
@@ -51,19 +51,6 @@ export class Chart {
 
   /** The lines hidden by hand: they stay hidden while the chart is shown. */
   protected readonly hidden = signal<ReadonlySet<string>>(new Set());
-  /** The system is dark: the theme's colours change, and the chart is drawn again. */
-  private readonly dark = signal(false);
-
-  constructor() {
-    const query = window.matchMedia?.('(prefers-color-scheme: dark)');
-    if (query) {
-      this.dark.set(query.matches);
-      const changed = (event: MediaQueryListEvent) => this.dark.set(event.matches);
-      query.addEventListener('change', changed);
-      inject(DestroyRef).onDestroy(() => query.removeEventListener('change', changed));
-    }
-  }
-
   protected label(line: SeriesLine): string {
     return lineLabel(line, this.settings().timezone);
   }
@@ -71,7 +58,6 @@ export class Chart {
 
   /** The theme's colours and the lines', resolved to what ECharts can draw. */
   private readonly colors = computed<ChartColors>(() => {
-    this.dark();
     const lines = this.data().series;
     return resolveColors(this.host.nativeElement, (resolve) => ({
       onSurface: resolve('var(--mat-sys-on-surface)'),

@@ -5,23 +5,49 @@
 // custom components at https://material.angular.dev/guide/theming
 @use '@angular/material' as mat;
 
+// Violet on dark greys, like Obsidian (lenzi, 2026-10-02: "Come in foto, quindi viola/g scuro come
+// obsidian"): dark only, Material's violet palette for the accents, and the surfaces neutral greys
+// instead of the palette's own violet-tinted ones. The page is anthracite, the cards on it almost
+// black (the reference photo, diary 2026-10-03), the containers of windows and menus lighter.
 html {
   height: 100%;
   @include mat.theme(
     (
       color: (
-        primary: mat.$azure-palette,
-        tertiary: mat.$blue-palette,
+        theme-type: dark,
+        primary: mat.$violet-palette,
+        tertiary: mat.$cyan-palette,
       ),
       typography: Roboto,
       density: 0,
     )
   );
+  @include mat.theme-overrides(
+    (
+      background: #1f1f22,
+      surface: #1f1f22,
+      surface-dim: #18181b,
+      surface-bright: #3a3a3f,
+      surface-container-lowest: #121214,
+      surface-container-low: #18181b,
+      surface-container: #232327,
+      surface-container-high: #2b2b30,
+      surface-container-highest: #34343a,
+      surface-variant: #34343a,
+      on-background: #e6e6ea,
+      on-surface: #e6e6ea,
+      on-surface-variant: #b9b9c1,
+      outline: #8b8b95,
+      outline-variant: #3d3d44,
+      inverse-surface: #e6e6ea,
+      inverse-on-surface: #232327,
+    )
+  );
 }
 
 body {
-  // Light and dark follow the system setting (design-frontend.md).
-  color-scheme: light dark;
+  // Dark only (lenzi, 2026-10-02): the system's light setting is not followed any more.
+  color-scheme: dark;
 
   // Set a default background, font and text colors for the application using
   // Angular Material's system-level CSS variables. Learn more about these
