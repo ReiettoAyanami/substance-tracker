@@ -24,6 +24,7 @@
   backdrop-filter: var(--app-glass-filter); /* see-through, like every window (styles.css, "glass") */
   color: var(--mat-sys-on-surface);
   overflow: hidden;
+  animation: var(--app-window-in); /* rises into place (styles.css) */
 }
 
 /* Card and batches scroll inside the window; the close button and the pager stay put. */
