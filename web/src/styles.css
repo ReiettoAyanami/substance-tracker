@@ -74,3 +74,12 @@
 .mat-expansion-panel.flat .mat-expansion-panel-body {
   padding: 0 0 8px;
 }
+
+/* The consumption's details (lenzi, 2026-10-01: "leggermente più chiara", the content "troppo
+   sopra"): a little lighter than the other dialogs (Material's default here is surface): white in
+   the light scheme, surface-container-high in the dark one; and 12 px more over its title. Only
+   this dialog (its panelClass). */
+.consumption-details-dialog {
+  --mat-dialog-container-color: light-dark(var(--mat-sys-surface-container-lowest), var(--mat-sys-surface-container-high));
+  --mat-dialog-headline-padding: 18px 24px 13px;
+}

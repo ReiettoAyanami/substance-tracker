@@ -59,7 +59,8 @@ export class ConsumptionActions {
     await this.dialogs.open<ConsumptionDetails, ConsumptionDetailsData, void>(
       ConsumptionDetails,
       { consumption, settings },
-      { ariaLabel: `Details of the consumption of ${consumption.substanceName}` },
+      // its own look (styles.css): a little lighter, its content a little lower
+      { ariaLabel: `Details of the consumption of ${consumption.substanceName}`, panelClass: 'consumption-details-dialog' },
     );
   }
 
