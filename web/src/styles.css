@@ -147,12 +147,20 @@
    glass is whole from the first frame and what it holds fades in; the scrims keep full opacity and
    grow their tint and their blur instead. Measured with Playwright, animations slowed 20 times. */
 
-/* Dialog: Material fades the box around the surface and grows the surface from 80%. The box stays
-   opaque, the surface (the glass) is whole at once and still grows; its content fades in with
-   Material's own timing. Closing, the whole surface fades (150 ms, app.config.ts). Material ends the opening with a
-   timer, not with the transition, so nothing waits on these. */
+/* Dialog: Material fades the box around the surface and grows the surface from 80%. Here the box
+   stays opaque and the surface (the glass) is whole and full size from the first frame: no growth
+   (lenzi, 2026-10-02: the windows "all'inizio sono piccole e poi grandi [...] effetto molla [...]
+   sembra che lagga"; a blurred surface changing size makes the browser blur again at every frame,
+   and it stutters). Only its content fades in, with Material's timing (250 ms, app.config.ts).
+   Closing, the whole surface fades (150 ms). Material ends the opening with a timer, not with the
+   transition, so nothing waits on these. */
 .cdk-overlay-pane .mat-mdc-dialog-container .mat-mdc-dialog-inner-container {
   opacity: 1;
+  transition: none;
+}
+
+.cdk-overlay-pane .mat-mdc-dialog-container .mat-mdc-dialog-surface {
+  transform: none;
   transition: none;
 }
 
