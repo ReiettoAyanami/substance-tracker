@@ -1,12 +1,16 @@
-import { Component, computed, inject, input } from '@angular/core';
+import { Component, computed, inject, input, linkedSignal, viewChild } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
+import { MatButtonToggleGroup, MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatCardModule } from '@angular/material/card';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { firstValueFrom } from 'rxjs';
 
 import { ApiError } from '../../data/api-error';
 import { MetricsApi } from '../../data/metrics-api';
 import { SeriesDefinition, SeriesScale } from '../../data/series';
 import { Settings } from '../../data/settings';
 import { ViewItem } from '../../data/view-item';
+import { ViewsApi } from '../../data/views-api';
 import { Chart } from '../chart/chart';
 
 /**
@@ -14,10 +18,12 @@ import { Chart } from '../chart/chart';
  * statistics page (which series, drawn how, in which interval). It asks the API for its series in
  * the period of its page, and shows it in a Material card under the series' name. Reusable: the
  * statistics page shows every one, a substance's page one of its own (`substanceIds`, `by`).
+ * Each card chooses its own interval (lenzi, 2026-10-01: "ogni card suo toggle"): a toggle of the
+ * series' intervals, drawn at once and saved on the chart, the same field /statistics/edit edits.
  */
 @Component({
   selector: 'app-widget',
-  imports: [Chart, MatCardModule],
+  imports: [Chart, MatButtonToggleModule, MatCardModule],
   templateUrl: './widget.html',
   styleUrl: './widget.css',
 })
@@ -35,11 +41,21 @@ export class Widget {
   readonly refresh = input<unknown>(null);
 
   private readonly api = inject(MetricsApi);
+  private readonly views = inject(ViewsApi);
+  private readonly snackBar = inject(MatSnackBar);
+
+  /** The chart's interval: its own, or the one just chosen on the card. */
+  protected readonly scale = linkedSignal(() => this.item().scale as SeriesScale | null);
+
+  /** The intervals the toggle offers: the series' own; none for a donut (the whole period) or the hours of the day. */
+  private readonly toggle = viewChild(MatButtonToggleGroup);
+
+  protected readonly scales = computed(() => (this.item().chart === 'donut' || this.scale() === null ? [] : this.definition().scales));
 
   protected readonly series = rxResource({
     params: () => ({
       metric: this.item().metric,
-      per: (this.item().scale as SeriesScale | null) ?? undefined,
+      per: this.scale() ?? undefined,
       days: this.days(),
       substanceIds: this.substanceIds(),
       by: this.by(),
@@ -55,12 +71,8 @@ export class Widget {
       }),
   });
 
-  /** What the card says under its name: "per month"; a donut is the share of the whole period. */
-  protected readonly subtitle = computed(() => {
-    if (this.item().chart === 'donut') return 'share of the period';
-    const scale = this.item().scale;
-    return scale ? `per ${scale}` : '';
-  });
+  /** What a donut says under its name: the share of the whole period (the others have their toggle). */
+  protected readonly subtitle = computed(() => (this.item().chart === 'donut' ? 'share of the period' : ''));
 
   protected readonly failure = computed(() => {
     const failure = this.series.error();
@@ -69,4 +81,22 @@ export class Widget {
     const error = (failure.cause ?? failure) as Partial<ApiError>;
     return `Could not load the chart${error.status ? ` (${error.status})` : ''}`;
   });
+
+  /** Draws the chart in another interval at once and saves it; not saved, back to the one it had. */
+  protected async chooseScale(scale: SeriesScale): Promise<void> {
+    const before = this.scale();
+    if (scale === before) return;
+    this.scale.set(scale);
+    try {
+      await firstValueFrom(this.views.change(this.item().id, { scale }));
+    } catch (error) {
+      this.scale.set(before);
+      // The toggle chose by itself: when the answer comes before the page is drawn again, the
+      // binding never sees a change, so it is put back here too.
+      const toggle = this.toggle();
+      if (toggle) toggle.value = before;
+      const problem = error as Partial<ApiError>;
+      this.snackBar.open(`Not saved: ${problem.detail || problem.title || 'the API did not answer'}`, 'OK', { duration: 6000 });
+    }
+  }
 }

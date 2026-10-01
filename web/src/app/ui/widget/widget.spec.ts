@@ -1,12 +1,14 @@
 import { Component, input } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { Observable, of, throwError } from 'rxjs';
 
 import { MetricsApi } from '../../data/metrics-api';
 import { SeriesData, SeriesDefinition, SeriesQuery } from '../../data/series';
 import { Settings } from '../../data/settings';
-import { ViewItem } from '../../data/view-item';
+import { ChartChange, ViewItem } from '../../data/view-item';
+import { ViewsApi } from '../../data/views-api';
 import { Chart } from '../chart/chart';
 import { Widget } from './widget';
 
@@ -48,9 +50,20 @@ describe('Widget', () => {
   let fixture: ComponentFixture<Widget>;
   let asked: SeriesQuery[];
   let answer: () => Observable<SeriesData>;
+  let changes: { id: number; change: ChartChange }[];
+  let saved: () => Observable<ViewItem>;
+  let snacks: string[];
 
   const element = () => fixture.nativeElement as HTMLElement;
   const text = (e: Element | null | undefined) => (e?.textContent ?? '').replace(/\s+/g, ' ').trim();
+  /** The interval toggle: its options, and the one chosen. */
+  const toggles = () => [...element().querySelectorAll('.scales mat-button-toggle')];
+  const scales = () => toggles().map((t) => text(t));
+  const chosen = () => text(toggles().find((t) => t.classList.contains('mat-button-toggle-checked')));
+  const choose = async (scale: string) => {
+    (toggles().find((t) => text(t) === scale)?.querySelector('button') as HTMLButtonElement).click();
+    await fixture.whenStable();
+  };
   const chart = () => fixture.debugElement.query((d) => d.componentInstance instanceof ChartStub)?.componentInstance as ChartStub | undefined;
 
   async function render(inputs: Record<string, unknown>): Promise<void> {
@@ -65,11 +78,16 @@ describe('Widget', () => {
   beforeEach(async () => {
     asked = [];
     answer = () => of(data);
+    changes = [];
+    saved = () => of(item({ scale: changes.at(-1)?.change.scale ?? 'month' }));
+    snacks = [];
     TestBed.overrideComponent(Widget, { remove: { imports: [Chart] }, add: { imports: [ChartStub] } });
     await TestBed.configureTestingModule({
       imports: [Widget],
       providers: [
         { provide: MetricsApi, useValue: { getSeries: (q: SeriesQuery) => (asked.push(q), answer()) } },
+        { provide: ViewsApi, useValue: { change: (id: number, change: ChartChange) => (changes.push({ id, change }), saved()) } },
+        { provide: MatSnackBar, useValue: { open: (message: string) => snacks.push(message) } },
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
       ],
     }).compileComponents();
@@ -80,7 +98,9 @@ describe('Widget', () => {
 
     expect(asked).toEqual([{ metric: 'series.cost', per: 'month', days: 90 }]);
     expect(text(element().querySelector('mat-card-title'))).toBe('Cost');
-    expect(text(element().querySelector('mat-card-subtitle'))).toBe('per month');
+    expect(element().querySelector('mat-card-subtitle')).toBeNull();
+    expect(scales()).toEqual(['day', 'week', 'month', 'year']);
+    expect(chosen()).toBe('month');
     expect(chart()?.data()).toBe(data);
     expect([chart()?.type(), chart()?.unit(), chart()?.settings()?.currency]).toEqual(['bar', 'money', 'GBP']);
   });
@@ -89,6 +109,7 @@ describe('Widget', () => {
     await render({ item: item({ chart: 'donut' }), days: 0, substanceIds: [4], by: 'batch' });
 
     expect(text(element().querySelector('mat-card-subtitle'))).toBe('share of the period');
+    expect(toggles()).toEqual([]);
     expect(asked).toEqual([{ metric: 'series.cost', per: 'month', substanceIds: [4], by: 'batch' }]);
   });
 
@@ -108,6 +129,39 @@ describe('Widget', () => {
 
     expect(asked).toEqual([{ metric: 'series.hourOfDay' }]);
     expect(element().querySelector('mat-card-subtitle')).toBeNull();
+    expect(toggles()).toEqual([]);
+  });
+
+  it('each card chooses its own interval: drawn at once, saved on the chart', async () => {
+    await render({ days: 90 });
+    await choose('week');
+
+    expect(chosen()).toBe('week');
+    expect(changes).toEqual([{ id: 3, change: { scale: 'week' } }]);
+    expect(asked).toEqual([
+      { metric: 'series.cost', per: 'month', days: 90 },
+      { metric: 'series.cost', per: 'week', days: 90 },
+    ]);
+    expect(snacks).toEqual([]);
+  });
+
+  it('offers only the intervals of its series, and choosing the same one saves nothing', async () => {
+    await render({ definition: { ...cost, scales: ['month', 'year'] } });
+    await choose('month');
+
+    expect(scales()).toEqual(['month', 'year']);
+    expect(changes).toEqual([]);
+    expect(asked.length).toBe(1);
+  });
+
+  it('not saved: back to the interval it had, and says why', async () => {
+    saved = () => throwError(() => ({ status: 400, title: 'Bad Request', detail: 'series.cost has no interval decade' }));
+    await render({ days: 30 });
+    await choose('year');
+
+    expect(chosen()).toBe('month');
+    expect(snacks).toEqual(['Not saved: series.cost has no interval decade']);
+    expect(asked.at(-1)).toEqual({ metric: 'series.cost', per: 'month', days: 30 });
   });
 
   it('says when its chart cannot be loaded', async () => {

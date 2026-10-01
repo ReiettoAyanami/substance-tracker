@@ -17,3 +17,8 @@ mat-card-content {
   font: var(--mat-sys-body-medium);
   color: var(--mat-sys-on-surface-variant);
 }
+
+/* The interval toggle, above the chart: Material's pills, 32 px like every toggle of the app. */
+.scales {
+  margin-bottom: 8px;
+}
