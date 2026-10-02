@@ -19,12 +19,13 @@ html {
         tertiary: mat.$cyan-palette,
       ),
       // Two fonts (lenzi, 2026-10-02: "l'informazione andrebbe letta come testo normale, tutto ciò
-      // che è UI invece va in mono"): Roboto for what is read, the body text (values, dates,
-      // descriptions); Space Mono for the interface and the top of the hierarchy: Material's brand
+      // che è UI invece va in mono"; then "per quello che adesso usiamo roboto usiamo roboto mono"):
+      // Roboto Mono for what is read, the body text (values, dates, descriptions); Space Mono for
+      // the interface and the top of the hierarchy: Material's brand
       // family is its display, headline and title styles, and the labels (buttons, chips, tabs,
       // toggles, menus) follow below.
       typography: (
-        plain-family: (Roboto, sans-serif),
+        plain-family: ('Roboto Mono', monospace),
         brand-family: ('Space Mono', monospace),
         regular-weight: 400,
         medium-weight: 500,

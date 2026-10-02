@@ -43,7 +43,7 @@ mat-panel-title {
   padding: 8px 0;
 }
 
-/* The number is information: plain text, Roboto, a little heavier. What it is, its name, is
+/* The number is information: plain text, Roboto Mono, a little heavier. What it is, its name, is
    interface: Space Mono (lenzi, 2026-10-02: names and labels mono, values text). */
 .value {
   margin: 0;
