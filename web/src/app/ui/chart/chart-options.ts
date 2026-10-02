@@ -15,6 +15,9 @@ export interface ChartColors {
   surface: string;
   /** The font of the chart's text (ECharts draws its own): the interface's, Space Mono (the labels' token). */
   font: string;
+  /** The tooltip's glass, as the Material tooltips' (styles.css): its see-through colour and its blur, `none` with Reduce transparency. */
+  glass: string;
+  glassFilter: string;
   /** The widget's card under the chart: the gaps between slices and tiles, the text on a tile. */
   card: string;
   /** Each line's colour, by its key. */
@@ -135,8 +138,8 @@ export function chartOptions({ data, type, unit, currency, timeZone, hidden, col
   const tooltip = {
     // inside the chart, never cut by its card; a long name goes to the next line
     confine: true,
-    extraCssText: 'max-width: 280px; white-space: normal;',
-    backgroundColor: colors.surface,
+    extraCssText: `max-width: 280px; white-space: normal; backdrop-filter: ${colors.glassFilter};`,
+    backgroundColor: colors.glass,
     borderColor: colors.outlineVariant,
     textStyle: { color: colors.onSurface },
     valueFormatter,

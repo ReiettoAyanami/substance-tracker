@@ -319,15 +319,22 @@
   border-radius: var(--mat-snack-bar-container-shape, var(--mat-sys-corner-extra-small));
 }
 
-/* Tooltips (lenzi, 2026-10-02: the batch bar's tooltip "trasparenza blurrata anche su questo"):
-   glass like the snackbar, at the bar's 82% (a small text over anything). Material fades the
+/* Tooltips (lenzi, 2026-10-02: the batch bar's tooltip "trasparenza blurrata anche su questo";
+   later "mettile scure se il tema è scuro"): dark glass like a window, not Material's light inverse
+   surface (at 82% its see-through hardly showed): surface-container-high at the windows' 72%, the
+   theme's text colour, a thin outline so its edge reads over a dark page. Material fades the
    tooltip's box and ends it by the animation's name, so the blur goes on that box, with the
-   surface's corners. */
+   surface's corners. The charts' tooltips take the same glass (ui/chart). */
 :root {
-  --mat-tooltip-container-color: color-mix(in srgb, var(--mat-sys-inverse-surface) var(--app-glass-bar), transparent);
+  --mat-tooltip-container-color: color-mix(in srgb, var(--mat-sys-surface-container-high) var(--app-glass), transparent);
+  --mat-tooltip-supporting-text-color: var(--mat-sys-on-surface);
 }
 
 .mat-mdc-tooltip {
   border-radius: var(--mat-tooltip-container-shape, var(--mat-sys-corner-extra-small));
   backdrop-filter: var(--app-glass-filter);
+}
+
+.mat-mdc-tooltip .mat-mdc-tooltip-surface {
+  border: 1px solid var(--mat-sys-outline-variant);
 }

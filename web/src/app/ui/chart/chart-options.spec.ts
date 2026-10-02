@@ -32,6 +32,8 @@ const colors: ChartColors = {
   surface: 'rgba(5, 5, 5, 1)',
   card: 'rgba(6, 6, 6, 1)',
   font: 'Space Mono',
+  glass: 'rgba(7, 7, 7, 0.72)',
+  glassFilter: 'blur(24px)',
   lines: { 'substance:4': 'rgba(10, 0, 0, 1)', 'substance:1': 'rgba(0, 10, 0, 1)' },
 };
 
@@ -52,6 +54,9 @@ describe('chartOptions', () => {
     expect(o.tooltip.valueFormatter(0.3)).toBe('€0.30');
     expect(o.tooltip.valueFormatter(null)).toBe('—');
     expect(o.tooltip.confine).toBe(true);
+    // dark glass, like the Material tooltips
+    expect(o.tooltip.backgroundColor).toBe('rgba(7, 7, 7, 0.72)');
+    expect(o.tooltip.extraCssText).toContain('backdrop-filter: blur(24px);');
     expect(o.yAxis.splitLine.lineStyle.color).toBe('rgba(4, 4, 4, 1)');
   });
 

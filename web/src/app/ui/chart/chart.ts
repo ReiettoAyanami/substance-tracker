@@ -8,6 +8,7 @@ import { NgxEchartsDirective, provideEchartsCore } from 'ngx-echarts';
 
 import { ChartType, SeriesData, SeriesDefinition, SeriesLine } from '../../data/series';
 import { Settings } from '../../data/settings';
+import { Appearance } from '../appearance';
 import { IdentityColorPipe } from '../identity-color-pipe';
 import { ChartColors, chartOptions, lineLabel } from './chart-options';
 
@@ -48,6 +49,7 @@ export class Chart {
   readonly filters = input(true);
 
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly appearance = inject(Appearance);
 
   /** The lines hidden by hand: they stay hidden while the chart is shown. */
   protected readonly hidden = signal<ReadonlySet<string>>(new Set());
@@ -58,6 +60,8 @@ export class Chart {
 
   /** The theme's colours and the lines', resolved to what ECharts can draw. */
   private readonly colors = computed<ChartColors>(() => {
+    // read again when Reduce transparency changes: the tooltip's glass follows it
+    this.appearance.reduceTransparency();
     const lines = this.data().series;
     return resolveColors(this.host.nativeElement, (resolve) => ({
       primary: resolve('var(--mat-sys-primary)'),
@@ -67,6 +71,8 @@ export class Chart {
       outlineVariant: resolve('var(--mat-sys-outline-variant)'),
       surface: resolve('var(--mat-sys-surface-container-high)'),
       card: resolve('var(--mat-sys-surface-container-lowest)'),
+      glass: resolve('color-mix(in srgb, var(--mat-sys-surface-container-high) var(--app-glass), transparent)'),
+      glassFilter: getComputedStyle(this.host.nativeElement).getPropertyValue('--app-glass-filter').trim() || 'none',
       font: getComputedStyle(this.host.nativeElement).getPropertyValue('--mat-sys-label-medium-font').trim() || 'monospace',
       lines: Object.fromEntries(lines.map((line) => [line.key, resolve(lineColor(line))])),
     }));
