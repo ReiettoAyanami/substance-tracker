@@ -239,6 +239,34 @@
   --app-panel-rise: 24px;
 }
 
+/* Rounded on every side (lenzi, 2026-10-02: "la scelta nelle metrics non ha border radius"):
+   Material joins a select's and an autocomplete's panel to their field, square where they meet,
+   and rounds menus by 4 px. Here every one of them is a rounded window of its own, 12 px, a few px
+   away from its field so the corners show. Each class twice: above Material's own rule. */
+.mat-mdc-select-panel.mat-mdc-select-panel,
+.mat-mdc-autocomplete-panel.mat-mdc-autocomplete-panel,
+.mat-mdc-menu-panel.mat-mdc-menu-panel {
+  border-radius: 12px;
+}
+
+.cdk-overlay-pane:has(> .mat-mdc-select-panel:not(.mat-mdc-select-panel-above), > .mat-mdc-autocomplete-panel:not(.mat-mdc-autocomplete-panel-above)) {
+  margin-top: 4px;
+}
+
+.cdk-overlay-pane:has(> .mat-mdc-select-panel-above, > .mat-mdc-autocomplete-panel-above) {
+  margin-top: -4px;
+}
+
+/* The choices inside them too: the chosen, hovered or focused one is a rounded pill a few px in
+   from the panel's sides, not a band from edge to edge. */
+.mat-mdc-select-panel .mat-mdc-option,
+.mat-mdc-autocomplete-panel .mat-mdc-option,
+.mat-mdc-menu-panel .mat-mdc-menu-item {
+  width: auto;
+  margin: 0 6px;
+  border-radius: 8px;
+}
+
 /* Each class twice: above Material's own rule, wherever the CDK puts the panel (some go in the
    browser's top layer, outside .cdk-overlay-container). */
 .mat-mdc-menu-panel.mat-mdc-menu-panel:not(.mat-menu-panel-exit-animation),
