@@ -25,6 +25,12 @@
   animation: var(--app-window-in); /* rises into place (styles.css) */
 }
 
+/* The rise starts once its metrics have their numbers (substance-page.css), at most 400 ms. */
+.window:has(app-metrics-panel:not(.ready)) {
+  visibility: hidden;
+  animation: app-show-anyway 0s linear 400ms forwards;
+}
+
 .content {
   flex: 1 1 auto;
   min-height: 0;

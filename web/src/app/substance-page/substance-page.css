@@ -27,6 +27,15 @@
   animation: var(--app-window-in); /* rises into place (styles.css) */
 }
 
+/* The rise starts once the content is drawn: until its metrics panel has its numbers the window
+   waits hidden, at most 400 ms (styles.css, the consumption's details do the same). Started with
+   the window, the rise ran while the batches, the metrics and the charts were drawn and was eaten
+   by them (Playwright: three frames at 24 px, then 6). */
+.window:has(app-metrics-panel:not(.ready)) {
+  visibility: hidden;
+  animation: app-show-anyway 0s linear 400ms forwards;
+}
+
 /* Card and batches scroll inside the window; the close button and the pager stay put. */
 .content {
   flex: 1 1 auto;
