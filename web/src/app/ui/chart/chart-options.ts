@@ -13,7 +13,7 @@ export interface ChartColors {
   outline: string;
   outlineVariant: string;
   surface: string;
-  /** The font of the chart's text (ECharts draws its own): the interface's, Space Mono (the labels' token). */
+  /** The font of the chart's text (ECharts draws its own): the theme's, Roboto Mono. */
   font: string;
   /** The tooltip's glass, as the Material tooltips' (styles.css): its see-through colour and its blur, `none` with Reduce transparency. */
   glass: string;

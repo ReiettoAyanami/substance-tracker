@@ -18,15 +18,12 @@ html {
         primary: mat.$violet-palette,
         tertiary: mat.$cyan-palette,
       ),
-      // Two fonts (lenzi, 2026-10-02: "l'informazione andrebbe letta come testo normale, tutto ciò
-      // che è UI invece va in mono"; then "per quello che adesso usiamo roboto usiamo roboto mono"):
-      // Roboto Mono for what is read, the body text (values, dates, descriptions); Space Mono for
-      // the interface and the top of the hierarchy: Material's brand
-      // family is its display, headline and title styles, and the labels (buttons, chips, tabs,
-      // toggles, menus) follow below.
+      // One font, Roboto Mono, for everything (lenzi, 2026-10-02: "Usa roboto mono per tutto";
+      // before, Space Mono for the interface and Roboto, then Roboto Mono, for the text). The
+      // hierarchy is Material's sizes and weights (400, 500, 700).
       typography: (
         plain-family: ('Roboto Mono', monospace),
-        brand-family: ('Space Mono', monospace),
+        brand-family: ('Roboto Mono', monospace),
         regular-weight: 400,
         medium-weight: 500,
         bold-weight: 700,
@@ -56,27 +53,29 @@ html {
     )
   );
 
-  // The labels are interface, and the smaller titles (Material puts them in the plain family) are
-  // the top of a card or a panel: Space Mono too. It has 400 and 700 only, so what Material sets in
-  // medium (500) is its bold, or it would fall back to the regular. Material writes the composite
-  // tokens (`--mat-sys-label-large`, used as `font:`) with the family as text, not as a var(): both
-  // the parts and the composites are set again here.
-  $mono: ('Space Mono', monospace);
-  --mat-sys-label-large-font: #{$mono};
-  --mat-sys-label-medium-font: #{$mono};
-  --mat-sys-label-small-font: #{$mono};
-  --mat-sys-title-medium-font: #{$mono};
-  --mat-sys-title-small-font: #{$mono};
-  --mat-sys-label-large-weight: 700;
-  --mat-sys-label-medium-weight: 700;
-  --mat-sys-label-small-weight: 700;
-  --mat-sys-title-medium-weight: 700;
-  --mat-sys-title-small-weight: 700;
-  --mat-sys-label-large: 700 0.875rem / 1.25rem #{$mono};
-  --mat-sys-label-medium: 700 0.75rem / 1rem #{$mono};
-  --mat-sys-label-small: 700 0.688rem / 1rem #{$mono};
-  --mat-sys-title-medium: 700 1rem / 1.5rem #{$mono};
-  --mat-sys-title-small: 700 0.875rem / 1.25rem #{$mono};
+  // Bold where Space Mono was (lenzi, 2026-10-02: "dove prima usavamo l'altro rendi bold almeno"):
+  // the top of the hierarchy (display, headline, title) and the labels (buttons, chips, tabs,
+  // toggles, menus). Material writes the composite tokens (`--mat-sys-label-large`, used as
+  // `font:`) with the weight as text, not as a var(): the weight and the composite are both set
+  // again, with Material's own sizes.
+  $bold-styles: (
+    display-large: (3.562rem, 4rem),
+    display-medium: (2.812rem, 3.25rem),
+    display-small: (2.25rem, 2.75rem),
+    headline-large: (2rem, 2.5rem),
+    headline-medium: (1.75rem, 2.25rem),
+    headline-small: (1.5rem, 2rem),
+    title-large: (1.375rem, 1.75rem),
+    title-medium: (1rem, 1.5rem),
+    title-small: (0.875rem, 1.25rem),
+    label-large: (0.875rem, 1.25rem),
+    label-medium: (0.75rem, 1rem),
+    label-small: (0.688rem, 1rem),
+  );
+  @each $style, $size in $bold-styles {
+    --mat-sys-#{$style}-weight: 700;
+    --mat-sys-#{$style}: 700 #{nth($size, 1)} / #{nth($size, 2)} 'Roboto Mono', monospace;
+  }
 }
 
 body {

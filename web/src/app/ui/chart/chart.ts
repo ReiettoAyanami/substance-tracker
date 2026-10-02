@@ -73,7 +73,7 @@ export class Chart {
       card: resolve('var(--mat-sys-surface-container-lowest)'),
       glass: resolve('color-mix(in srgb, var(--mat-sys-surface-container-high) var(--app-glass), transparent)'),
       glassFilter: getComputedStyle(this.host.nativeElement).getPropertyValue('--app-glass-filter').trim() || 'none',
-      font: getComputedStyle(this.host.nativeElement).getPropertyValue('--mat-sys-label-medium-font').trim() || 'monospace',
+      font: getComputedStyle(this.host.nativeElement).getPropertyValue('--mat-sys-body-medium-font').trim() || 'monospace',
       lines: Object.fromEntries(lines.map((line) => [line.key, resolve(lineColor(line))])),
     }));
   });

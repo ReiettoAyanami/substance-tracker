@@ -36,8 +36,8 @@ td {
 
 /* A long name is cut; the whole name is on its page. */
 .name-text {
-  /* a row's name is its label: Space Mono, the numbers stay text (material-theme.scss) */
-  font-family: var(--mat-sys-label-large-font);
+  /* a row's name is its label: bold, the numbers regular */
+  font-weight: 700;
   max-width: 160px;
   overflow: hidden;
   text-overflow: ellipsis;

@@ -33,7 +33,7 @@ h2 {
   color: var(--mat-sys-on-surface-variant);
 }
 
-/* a value: plain text, Roboto Mono, a little heavier (the title fonts are Space Mono) */
+/* a value: plain text, a little heavier */
 .amount {
   margin-bottom: 16px;
   font: var(--mat-sys-body-large);

@@ -43,8 +43,7 @@ mat-panel-title {
   padding: 8px 0;
 }
 
-/* The number is information: plain text, Roboto Mono, a little heavier. What it is, its name, is
-   interface: Space Mono (lenzi, 2026-10-02: names and labels mono, values text). */
+/* What it is on top, bold like a label; the number under it, a little heavier than text. */
 .value {
   margin: 0;
   font: var(--mat-sys-body-large);
@@ -55,7 +54,7 @@ mat-panel-title {
 
 .label {
   font: var(--mat-sys-body-medium);
-  font-family: var(--mat-sys-label-large-font);
+  font-weight: 700;
   color: var(--mat-sys-on-surface-variant);
 }
 
