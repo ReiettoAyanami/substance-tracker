@@ -87,14 +87,8 @@
   --app-glass-bar: 66%; /* the top bar: its title stays readable over moving content */
   --app-glass-filter: blur(24px) saturate(160%);
   --app-scrim-filter: blur(6px);
-  /* The grain on every blurred surface, like Windows' Acrylic (lenzi, 2026-10-02: "mi piacerebbe
-     avere un grainy blur su tutte le superfici blurrate"): grey noise, light and dark specks at 10%
-     and about a pixel wide (2026-10-03: "ci dev'essere più grain", "leggermente più piccolo";
-     before 6% at baseFrequency .8), drawn once by the browser and tiled. Every blurred surface has
-     it; the scrims, the blurred page behind a window or the drawer, do not (lenzi, 2026-10-03: "il
-     blur grain usalo solo per le superfici e non per il blur di ciò che sta nel retro di una
-     pagina"). Solid surfaces (Reduce transparency) have none. */
-  --app-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='2' intercept='-.5'/%3E%3CfeFuncG type='linear' slope='2' intercept='-.5'/%3E%3CfeFuncB type='linear' slope='2' intercept='-.5'/%3E%3CfeFuncA type='linear' slope='0' intercept='.1'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+  /* No grain on the glass (lenzi, 2026-10-03: "togli l'effetto grain scherzavo, da tutto"; it was
+     there from 2026-10-02, d8bb52c). */
 }
 
 :root.reduce-transparency {
@@ -102,7 +96,6 @@
   --app-glass-bar: 100%;
   --app-glass-filter: none;
   --app-scrim-filter: none;
-  --app-grain: none;
 }
 
 @media (prefers-reduced-transparency: reduce) {
@@ -111,7 +104,6 @@
     --app-glass-bar: 100%;
     --app-glass-filter: none;
     --app-scrim-filter: none;
-    --app-grain: none;
   }
 }
 
@@ -140,20 +132,6 @@
 .mat-datepicker-content,
 .mat-mdc-snack-bar-container {
   backdrop-filter: var(--app-glass-filter);
-}
-
-/* The grain goes on the element that has the surface's colour: the same ones, the snackbar's and
-   the tooltip's inner surface (their outer box has the blur). */
-.mat-mdc-dialog-surface,
-.mat-mdc-menu-panel,
-.mat-mdc-select-panel,
-.mat-mdc-autocomplete-panel,
-.mat-timepicker-panel,
-.mat-datepicker-content,
-.mat-mdc-snackbar-surface,
-.mat-mdc-tooltip-surface,
-.mat-drawer.mat-drawer-over {
-  background-image: var(--app-grain);
 }
 
 /* The sidebar as a drawer (a phone) is a window over the page; at the side it stays solid. */

@@ -33,5 +33,4 @@ mat-toolbar {
   margin: 8px;
   border-radius: 16px;
   backdrop-filter: var(--app-glass-filter);
-  background-image: var(--app-grain); /* grainy, like every blurred surface (styles.css) */
 }

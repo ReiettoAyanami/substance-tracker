@@ -21,7 +21,6 @@
   border-radius: 28px;
   background-color: color-mix(in srgb, var(--mat-sys-surface-container-high) var(--app-glass), transparent);
   backdrop-filter: var(--app-glass-filter); /* see-through, like every window (styles.css, "glass") */
-  background-image: var(--app-grain); /* grainy, like every blurred surface (styles.css) */
   border: var(--app-border) solid var(--mat-sys-outline-variant); /* like every surface (styles.css, "Borders") */
   color: var(--mat-sys-on-surface);
   overflow: hidden;
