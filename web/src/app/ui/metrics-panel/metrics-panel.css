@@ -29,8 +29,8 @@ mat-panel-title {
   color: var(--mat-sys-primary);
 }
 
-/* One number per line: the value is what is read first, what it is under it (the value comes
-   after the label in the markup, for screen readers; the order puts it on top). */
+/* One number per line: what it is on top, its value under it (lenzi, 2026-10-02: "Voglio cos'è
+   sopra e il valore sotto"), as the markup has them. */
 .metrics {
   display: grid;
   gap: 4px 24px;
@@ -46,7 +46,6 @@ mat-panel-title {
 /* The number is information: plain text, Roboto, a little heavier. What it is, its name, is
    interface: Space Mono (lenzi, 2026-10-02: names and labels mono, values text). */
 .value {
-  order: -1;
   margin: 0;
   font: var(--mat-sys-body-large);
   font-weight: 500;

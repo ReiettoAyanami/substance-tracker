@@ -128,7 +128,7 @@ describe('MetricsPanel', () => {
     expect(element().classList).toContain('ready');
   });
 
-  it('opened, shows the metrics its page lists, the value first and what it is under it', async () => {
+  it('opened, shows the metrics its page lists, what it is on top and its value under it', async () => {
     await render();
     await expand();
 
@@ -136,6 +136,10 @@ describe('MetricsPanel', () => {
     expect(asked).toEqual([{ id: 4, query: { per: 'day', days: 30 } }]);
     expect(texts('.metric .value')).toEqual(['9 beer', '0.321 beer / day', '—']);
     expect(texts('.metric .label')).toEqual(['Consumed', 'Pace', 'Since the last one']);
+    // the name above the value, on screen as in the markup
+    const first = element().querySelector('.metric')!;
+    expect([...first.children].map((c) => c.className)).toEqual(['label', 'value']);
+    expect(getComputedStyle(first.querySelector('.value')!).order).not.toBe('-1');
     expect(element().querySelector('.description')).toBeNull();
   });
 
