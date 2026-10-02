@@ -13,6 +13,7 @@ import { CatalogApi } from './data/catalog-api';
 import { MetricsApi } from './data/metrics-api';
 import { ReportsApi } from './data/reports-api';
 import { SettingsApi } from './data/settings-api';
+import { VersionApi } from './data/version-api';
 import { ViewsApi } from './data/views-api';
 
 /** The pages' data: the shell is tested here, not what the pages show. */
@@ -39,6 +40,8 @@ const pageData = [
     provide: SettingsApi,
     useValue: { getSettings: () => of({ timezone: 'Europe/Rome', dayStartsAt: '00:00:00', currency: 'EUR' }) },
   },
+  // the shell's own: the version in the corner
+  { provide: VersionApi, useValue: { getVersion: () => of('dev26.0.0') } },
 ];
 
 describe('App', () => {
@@ -75,6 +78,9 @@ describe('App', () => {
     expect(TestBed.inject(Router).url).toBe('/consumptions');
     expect(app.title()).toBe('Consumptions');
     expect(app.element.querySelector('app-consumptions-page')).not.toBeNull();
+    // the instance's version, in the corner
+    app.fixture.detectChanges();
+    expect(app.element.querySelector('app-version-label')?.textContent?.trim()).toBe('dev26.0.0');
   });
 
   it('starts with the transparency this browser chose: reduced, the windows are solid from the first page', async () => {

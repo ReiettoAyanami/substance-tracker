@@ -9,6 +9,7 @@ import { filter, map } from 'rxjs';
 
 import { Sidebar } from './sidebar/sidebar';
 import { Appearance } from './ui/appearance';
+import { VersionLabel } from './ui/version-label/version-label';
 
 /** The title of the deepest active route that has one. */
 function routeTitle(route: ActivatedRouteSnapshot): string {
@@ -25,7 +26,7 @@ function routeTitle(route: ActivatedRouteSnapshot): string {
  */
 @Component({
   selector: 'app-root',
-  imports: [MatButtonModule, MatIconModule, MatSidenavModule, MatToolbarModule, RouterOutlet, Sidebar],
+  imports: [MatButtonModule, MatIconModule, MatSidenavModule, MatToolbarModule, RouterOutlet, Sidebar, VersionLabel],
   templateUrl: './app.html',
   styleUrl: './app.css',
 })

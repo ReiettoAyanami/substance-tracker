@@ -22,6 +22,7 @@ import {
   type ProblemFieldError,
 } from './shared/errors.js';
 import { systemClock, type Clock } from './shared/time.js';
+import { VERSION } from './version.js';
 
 export interface BuildAppOptions {
   /** mysql2 pool. When omitted, one is created from the environment and closed with the app. */
@@ -119,6 +120,9 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
       });
     }
   });
+
+  // The product's version, for the corner of every page (version.ts).
+  app.get('/api/version', async () => ({ version: VERSION }));
 
   catalogRoutes(app, { catalog, reports });
   ledgerRoutes(app, { ledger });

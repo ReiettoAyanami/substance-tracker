@@ -6,6 +6,7 @@ import { buildApp } from '../../src/app.js';
 import { createPool } from '../../src/db/pool.js';
 import { Api, expectProblem, fixedClock, makeApi } from '../support/api.js';
 import { testDbConfig } from '../support/db.js';
+import { VERSION, VERSION_FORMAT } from '../../src/version.js';
 
 let api: Api;
 beforeAll(async () => {
@@ -32,6 +33,24 @@ describe('GET /api/health', () => {
     } finally {
       await app.close();
       await deadPool.end();
+    }
+  });
+});
+
+describe('GET /api/version', () => {
+  it('the product version, in the agreed format', async () => {
+    const res = await api.get('/api/version');
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ version: VERSION });
+    expect(VERSION).toMatch(VERSION_FORMAT);
+  });
+
+  it('the format: dev may carry a short text, final versions are numbers only', () => {
+    for (const ok of ['dev26.0.0', 'dev26.12.3', 'dev26.0.1-squircle', 'dev26.0.1-new-login', 'a26.0.0', 'b26.1.2', 'v27.3.10']) {
+      expect(ok).toMatch(VERSION_FORMAT);
+    }
+    for (const bad of ['26.0.0', 'dev26.0', 'a26.0.1-test', 'v26.x.0', 'dev2026.0.0', 'dev26.0.0-', 'rc26.0.0']) {
+      expect(bad).not.toMatch(VERSION_FORMAT);
     }
   });
 });
