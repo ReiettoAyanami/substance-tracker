@@ -6,7 +6,7 @@ import { LOCALE } from '../../locale';
 
 /** The colours a chart takes from the Material 3 theme, resolved (ECharts needs real colours). */
 export interface ChartColors {
-  /** The theme's violet: the period in progress. */
+  /** The theme's violet: the label of the period in progress. */
   primary: string;
   onSurface: string;
   onSurfaceVariant: string;
@@ -99,7 +99,7 @@ export function currentPeriod(data: SeriesData): number | null {
   return data.per === null || data.periods.length === 0 ? null : data.periods.length - 1;
 }
 
-/** Oblique stripes over a bar (ECharts' decal): the period in progress, in the theme's violet. */
+/** Oblique stripes over a bar (ECharts' decal): the period in progress, dark on the violet bars. */
 export function hatch(color: string): Record<string, unknown> {
   return { symbol: 'rect', symbolSize: 1, dashArrayX: [1, 0], dashArrayY: [2, 4], rotation: -Math.PI / 4, color };
 }
@@ -121,7 +121,7 @@ interface TooltipEntry {
  * The options of the chart: bars (stacked when the lines add up), lines, a radar, or a donut or a
  * treemap of the lines' totals. Transparent background, text and a faint grid in the theme's colours, no axis lines, each
  * line in its identity colour (design-frontend.md, "chart style"): bars with rounded ends, the
- * period in progress striped in violet with its label violet too; soft lines whose last stretch,
+ * period in progress striped (dark on the violet bars) with its label violet; soft lines whose last stretch,
  * into the period in progress, is dashed. The quantities of different units are named with their
  * unit.
  */
@@ -275,7 +275,7 @@ export function chartOptions({ data, type, unit, currency, timeZone, hidden, col
           value: drawn(value),
           itemStyle: {
             borderRadius: stacked ? stackRadius(lines, index, period) : RADIUS,
-            ...(period === current ? { decal: hatch(colors.primary) } : {}),
+            ...(period === current ? { decal: hatch(colors.card) } : {}),
           },
         })),
         itemStyle: { color: colors.lines[line.key] },

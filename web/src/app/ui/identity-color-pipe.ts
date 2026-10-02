@@ -3,25 +3,27 @@ import { Pipe, PipeTransform } from '@angular/core';
 /** Step between consecutive ids, as a fraction of the band: the golden ratio, so neighbouring ids land far apart. */
 const GOLDEN_RATIO = 0.6180339887;
 
-/** The band of hues (oklch degrees): yellow, lime, neon green, cyan, light blue; the opposite of the theme's violet. */
-const HUE_FROM = 95;
-const HUE_SPAN = 140;
+/** The band of hues (oklch degrees): blue-violet, violet, purple, magenta; the theme's own violet. */
+const HUE_FROM = 260;
+const HUE_SPAN = 80;
 
 /** Substances and batches have separate id sequences: substance 1 and batch 1 must differ (half the band apart). */
 const BAND_OFFSET = { substance: 0, batch: 0.5 } as const;
 
 /** Three lightnesses, by `id % 3`: two neighbouring hues still differ in lightness. */
-const LIGHTNESS = [0.9, 0.8, 0.7] as const;
+const LIGHTNESS = [0.88, 0.74, 0.6] as const;
 
-/** The most chroma a colour takes ("neon" on the dark background); less where sRGB cannot show it. */
-const MAX_CHROMA = 0.17;
+/** The most chroma a colour takes; less where sRGB cannot show it (the light violets). */
+const MAX_CHROMA = 0.22;
 
 /**
  * The identity colour of a substance or a batch (design-frontend.md): computed from the id, never
- * stored, never a status colour. Variant A (lenzi, 2026-10-02): only a band of hues, from yellow to
- * light blue, so every colour sits well with the violet theme; the hue walks the band by the golden
- * ratio, the lightness is one of three by `id % 3`, the chroma the most the screen can show up to
- * 0.17, so no colour is clipped into another. A plain `oklch()`, the same everywhere.
+ * stored, never a status colour. All violet (lenzi, 2026-10-02: "per i colori terrei tutto viola
+ * anche per le sostanze e i batch"; before, variant A, yellow to light blue): a band of hues from
+ * blue-violet to magenta; the hue walks the band by the golden ratio, the lightness is one of three
+ * by `id % 3`, the chroma the most the screen can show up to 0.22, so no colour is clipped into
+ * another. Closer to each other than variant A's (least OKLab distance among the first 8: 0.027
+ * against 0.060). A plain `oklch()`, the same everywhere.
  * FROZEN: changing the algorithm repaints everything.
  */
 @Pipe({

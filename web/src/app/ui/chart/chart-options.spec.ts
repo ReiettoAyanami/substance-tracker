@@ -76,7 +76,7 @@ describe('chartOptions', () => {
     expect(options({ unit: 'unitPrice', data: batches }).series.map((s: any) => s.stack)).toEqual([undefined, undefined]);
   });
 
-  it('bars: rounded ends, square where pieces of a stack meet; the period in progress striped in violet', () => {
+  it('bars: rounded ends, square where pieces of a stack meet; the period in progress striped, its label violet', () => {
     const o = options({});
     // W36: Birra alone (Caffè is 0); W37: Caffè on Birra
     expect(o.series[0].data.map((d: any) => d.itemStyle.borderRadius)).toEqual([
@@ -88,7 +88,7 @@ describe('chartOptions', () => {
       [6, 6, 0, 0],
     ]);
     expect(o.series[0].data[0].itemStyle.decal).toBeUndefined();
-    expect(o.series[0].data[1].itemStyle.decal).toEqual(hatch('rgba(9, 9, 9, 1)'));
+    expect(o.series[0].data[1].itemStyle.decal).toEqual(hatch('rgba(6, 6, 6, 1)'));
     expect(o.xAxis.axisLabel.color('W37', 1)).toBe('rgba(9, 9, 9, 1)');
     expect(o.xAxis.axisLabel.color('W36', 0)).toBe('rgba(2, 2, 2, 1)');
     expect(o.xAxis.axisLine.show).toBe(false);
