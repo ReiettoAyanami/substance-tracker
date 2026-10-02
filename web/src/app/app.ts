@@ -9,7 +9,6 @@ import { filter, map } from 'rxjs';
 
 import { Sidebar } from './sidebar/sidebar';
 import { Appearance } from './ui/appearance';
-import { Reveal } from './ui/reveal';
 
 /** The title of the deepest active route that has one. */
 function routeTitle(route: ActivatedRouteSnapshot): string {
@@ -35,9 +34,6 @@ export class App {
 
   /** The look this browser chose (Reduce transparency), applied from the first page, not only in /settings. */
   private readonly appearance = inject(Appearance);
-
-  /** The light that follows the pointer on the surfaces near it (ui/reveal), on every page. */
-  private readonly reveal = inject(Reveal);
 
   protected readonly title = toSignal(
     this.router.events.pipe(

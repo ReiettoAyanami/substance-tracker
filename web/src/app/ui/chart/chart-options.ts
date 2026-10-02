@@ -141,6 +141,7 @@ export function chartOptions({ data, type, unit, currency, timeZone, hidden, col
     extraCssText: `max-width: 280px; white-space: normal; backdrop-filter: ${colors.glassFilter}; background-image: var(--app-grain);`,
     backgroundColor: colors.glass,
     borderColor: colors.outlineVariant,
+    borderWidth: 2, // even corners, like every border (styles.css, "Borders")
     textStyle: { color: colors.onSurface },
     valueFormatter,
   };

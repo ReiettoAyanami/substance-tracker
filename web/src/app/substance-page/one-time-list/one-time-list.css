@@ -34,7 +34,7 @@ mat-panel-title {
   flex-direction: column;
   gap: 4px;
   padding: 12px;
-  border: 1px solid var(--mat-sys-outline-variant);
+  border: var(--app-border) solid var(--mat-sys-outline-variant); /* 2 px: even corners (styles.css) */
   border-radius: 12px;
 }
 

@@ -3,12 +3,12 @@
   min-width: 0;
 }
 
-/* The card of the reference photo (diary 2026-10-03): almost black on the anthracite page, no
-   outline, very round corners; an icon in a round well at its head, a large title. */
+/* The card of the reference photo (diary 2026-10-03): almost black on the anthracite page, very
+   round corners; an icon in a round well at its head, a large title. Its outline, none at first,
+   is every card's since 2026-10-02 evening (styles.css, "Borders"). */
 .widget {
   height: 100%;
   --mat-card-outlined-container-color: var(--mat-sys-surface-container-lowest);
-  --mat-card-outlined-outline-color: transparent;
   --mat-card-outlined-container-shape: 24px;
   --mat-card-title-text-font: var(--mat-sys-title-large-font);
   --mat-card-title-text-size: 22px;

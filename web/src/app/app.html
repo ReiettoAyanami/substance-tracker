@@ -1,5 +1,5 @@
 <mat-sidenav-container class="shell">
-  <mat-sidenav #sidebar class="sidebar" fixedInViewport mode="over">
+  <mat-sidenav #sidebar class="sidebar" fixedInViewport [fixedTopGap]="8" [fixedBottomGap]="8" mode="over">
     <app-sidebar (navigated)="navigated(sidebar)" />
   </mat-sidenav>
 

@@ -80,8 +80,10 @@
    of a page stay solid: nothing is under them. "Reduce transparency" (/settings, Appearance) or
    the system's own wish make everything solid again. */
 :root {
-  --app-glass: 72%; /* how much of its colour a glass surface keeps */
-  --app-glass-bar: 82%; /* the top bar: its title stays readable over moving content */
+  /* a little more see-through since 2026-10-02 evening (lenzi: "abbassa leggermente opacità delle
+     cose che sono vetro"; 72% and 82% before) */
+  --app-glass: 64%; /* how much of its colour a glass surface keeps */
+  --app-glass-bar: 74%; /* the top bar: its title stays readable over moving content */
   --app-glass-filter: blur(24px) saturate(160%);
   --app-scrim-filter: blur(6px);
   /* The grain on every blurred surface, like Windows' Acrylic (lenzi, 2026-10-02: "mi piacerebbe
@@ -384,49 +386,53 @@
 }
 
 .mat-mdc-tooltip .mat-mdc-tooltip-surface {
-  border: 1px solid var(--mat-sys-outline-variant);
+  border: var(--app-border) solid var(--mat-sys-outline-variant);
 }
 
-/* Reveal, as in Windows 10's start menu (lenzi, 2026-10-02): a light follows the pointer and lights
-   the edges of the surfaces near it, thin (1 px) and light, a little violet: brighter violet on a
-   light theme, lighter violet on a dark one (light-dark() follows the page's color-scheme; the app
-   is dark only today, the light values wait for a light theme). Only the edges: nothing lights
-   inside a surface (lenzi, 2026-10-02: "fai modo che si veda solo sui bordi"). ui/reveal marks the surfaces in reach (`app-reveal`) and
-   gives them the pointer's place; its reach is the light's radius. Material keeps an ::after on
-   cards for high-contrast mode (a transparent border, none on outlined cards): in that mode the
-   reveal is off and Material's own rule stands. */
+/* Borders (lenzi, 2026-10-02: "i bordi agli angoli non hanno lo stesso spessore dei lati DA NESSUNA
+   PARTE"). On a screen at 100% a 1 px border is one device pixel: whole on the straight sides,
+   smeared over two pixels at half strength along the curve of a rounded corner, so every corner
+   looked thinner and fainter than its sides (measured with Playwright, device scale 1, 1.25, 1.5,
+   2). At 2 px the curve keeps a whole pixel all along it. So every rounded border is 2 px, Material's
+   (cards, outlined buttons such as the delta pill, chips, text fields, toggles) and ours (tables,
+   sub-cards, tooltips); 1.5 px would be drawn as 1, Chrome rounds borders down to whole device
+   pixels. Straight dividers stay 1 px: they have no corners. A focused field goes to 3 px, one more
+   than at rest, as in Material. */
 :root {
-  --app-reveal-color: light-dark(rgb(132 61 255 / 0.75), rgb(222 206 255 / 0.6));
+  --app-border: 2px;
+  --mat-card-outlined-outline-width: var(--app-border);
+  --mat-button-outlined-outline-width: var(--app-border);
+  --mat-chip-outline-width: var(--app-border);
+  --mat-form-field-outlined-outline-width: var(--app-border);
+  --mat-form-field-outlined-focus-outline-width: 3px;
 }
 
-@media (forced-colors: none) {
-  /* the class twice: above Material's own ::after on cards, injected after this file */
-  .app-reveal.app-reveal::after {
-    content: '';
-    display: block;
-    position: absolute;
-    inset: 0;
-    width: auto; /* Material's ::after on cards is 100% x 100%: here the inset alone sizes it */
-    height: auto;
-    box-sizing: border-box;
-    padding: 1px;
-    border: none;
-    border-radius: inherit;
-    pointer-events: none;
-    background: radial-gradient(
-      circle var(--app-reveal-reach, 120px) at var(--app-reveal-x) var(--app-reveal-y),
-      var(--app-reveal-color),
-      transparent
-    );
-    /* only the 1 px ring: the whole box minus its content box */
-    mask:
-      linear-gradient(#000 0 0) content-box,
-      linear-gradient(#000 0 0);
-    mask-composite: exclude;
-  }
+/* The toggles' border and dividers are not tokens: each class twice, above Material's own rule. */
+.mat-button-toggle-group-appearance-standard.mat-button-toggle-group-appearance-standard {
+  border-width: var(--app-border);
+}
 
-  /* An outlined card has a border of its own: the light lies on it, not 1 px inside it. */
-  .mat-mdc-card-outlined.app-reveal.app-reveal::after {
-    inset: calc(-1 * var(--mat-card-outlined-outline-width, 1px));
-  }
+.mat-button-toggle-appearance-standard.mat-button-toggle-appearance-standard + .mat-button-toggle-appearance-standard {
+  border-left-width: var(--app-border);
+}
+
+/* Every surface that rises above the page has a border (lenzi, 2026-10-02, in place of the Windows 10
+   reveal light tried the same evening: "rimuovere l'effetto sui bordi. ma aggiungi un bordo
+   leggermente più spesso"): cards (their outline, above), panels, dialogs, the substance and batch
+   windows (substance-page.css, batch-page.css), the sidebar drawer. Material's outline colour for
+   surfaces, at the same 2 px. */
+.mat-expansion-panel:not(.flat),
+.mat-mdc-dialog-surface,
+.mat-drawer.mat-drawer-over {
+  border: var(--app-border) solid var(--mat-sys-outline-variant);
+}
+
+/* The sidebar drawer floats like the top bar (app.css): 8 px from the screen's edges (the gaps above
+   and below are fixedTopGap/fixedBottomGap in app.html), rounded on every corner, so its border
+   goes all around it. A border on its free side alone would thin out to nothing along the rounded
+   corners, the very fault fixed above. */
+.mat-drawer.mat-drawer-over {
+  left: 8px;
+  box-sizing: border-box;
+  border-radius: 16px;
 }
