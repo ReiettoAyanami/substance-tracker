@@ -84,6 +84,10 @@
   --app-glass-bar: 82%; /* the top bar: its title stays readable over moving content */
   --app-glass-filter: blur(24px) saturate(160%);
   --app-scrim-filter: blur(6px);
+  /* The grain on every blurred surface, like Windows' Acrylic (lenzi, 2026-10-02: "mi piacerebbe
+     avere un grainy blur su tutte le superfici blurrate"): grey noise, light and dark specks at 6%,
+     drawn once by the browser and tiled. Solid surfaces (Reduce transparency) have none. */
+  --app-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='2' intercept='-.5'/%3E%3CfeFuncG type='linear' slope='2' intercept='-.5'/%3E%3CfeFuncB type='linear' slope='2' intercept='-.5'/%3E%3CfeFuncA type='linear' slope='0' intercept='.06'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
 }
 
 :root.reduce-transparency {
@@ -91,6 +95,7 @@
   --app-glass-bar: 100%;
   --app-glass-filter: none;
   --app-scrim-filter: none;
+  --app-grain: none;
 }
 
 @media (prefers-reduced-transparency: reduce) {
@@ -99,6 +104,7 @@
     --app-glass-bar: 100%;
     --app-glass-filter: none;
     --app-scrim-filter: none;
+    --app-grain: none;
   }
 }
 
@@ -127,6 +133,20 @@
 .mat-datepicker-content,
 .mat-mdc-snack-bar-container {
   backdrop-filter: var(--app-glass-filter);
+}
+
+/* The grain goes on the element that has the surface's colour: the same ones, the snackbar's and
+   the tooltip's inner surface (their outer box has the blur). */
+.mat-mdc-dialog-surface,
+.mat-mdc-menu-panel,
+.mat-mdc-select-panel,
+.mat-mdc-autocomplete-panel,
+.mat-timepicker-panel,
+.mat-datepicker-content,
+.mat-mdc-snackbar-surface,
+.mat-mdc-tooltip-surface,
+.mat-drawer.mat-drawer-over {
+  background-image: var(--app-grain);
 }
 
 /* The sidebar as a drawer (a phone) is a window over the page; at the side it stays solid. */
@@ -365,4 +385,48 @@
 
 .mat-mdc-tooltip .mat-mdc-tooltip-surface {
   border: 1px solid var(--mat-sys-outline-variant);
+}
+
+/* Reveal, as in Windows 10's start menu (lenzi, 2026-10-02): a light follows the pointer and lights
+   the edges of the surfaces near it, thin (1 px) and light, a little violet: brighter violet on a
+   light theme, lighter violet on a dark one (light-dark() follows the page's color-scheme; the app
+   is dark only today, the light values wait for a light theme). Only the edges: nothing lights
+   inside a surface (lenzi, 2026-10-02: "fai modo che si veda solo sui bordi"). ui/reveal marks the surfaces in reach (`app-reveal`) and
+   gives them the pointer's place; its reach is the light's radius. Material keeps an ::after on
+   cards for high-contrast mode (a transparent border, none on outlined cards): in that mode the
+   reveal is off and Material's own rule stands. */
+:root {
+  --app-reveal-color: light-dark(rgb(132 61 255 / 0.75), rgb(222 206 255 / 0.6));
+}
+
+@media (forced-colors: none) {
+  /* the class twice: above Material's own ::after on cards, injected after this file */
+  .app-reveal.app-reveal::after {
+    content: '';
+    display: block;
+    position: absolute;
+    inset: 0;
+    width: auto; /* Material's ::after on cards is 100% x 100%: here the inset alone sizes it */
+    height: auto;
+    box-sizing: border-box;
+    padding: 1px;
+    border: none;
+    border-radius: inherit;
+    pointer-events: none;
+    background: radial-gradient(
+      circle var(--app-reveal-reach, 120px) at var(--app-reveal-x) var(--app-reveal-y),
+      var(--app-reveal-color),
+      transparent
+    );
+    /* only the 1 px ring: the whole box minus its content box */
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
+  }
+
+  /* An outlined card has a border of its own: the light lies on it, not 1 px inside it. */
+  .mat-mdc-card-outlined.app-reveal.app-reveal::after {
+    inset: calc(-1 * var(--mat-card-outlined-outline-width, 1px));
+  }
 }

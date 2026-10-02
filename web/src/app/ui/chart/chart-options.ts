@@ -138,7 +138,7 @@ export function chartOptions({ data, type, unit, currency, timeZone, hidden, col
   const tooltip = {
     // inside the chart, never cut by its card; a long name goes to the next line
     confine: true,
-    extraCssText: `max-width: 280px; white-space: normal; backdrop-filter: ${colors.glassFilter};`,
+    extraCssText: `max-width: 280px; white-space: normal; backdrop-filter: ${colors.glassFilter}; background-image: var(--app-grain);`,
     backgroundColor: colors.glass,
     borderColor: colors.outlineVariant,
     textStyle: { color: colors.onSurface },

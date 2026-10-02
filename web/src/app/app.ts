@@ -1,4 +1,3 @@
-import { BreakpointObserver } from '@angular/cdk/layout';
 import { Component, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
@@ -8,9 +7,9 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRouteSnapshot, NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter, map } from 'rxjs';
 
-import { WIDE_SCREEN } from './layout';
 import { Sidebar } from './sidebar/sidebar';
 import { Appearance } from './ui/appearance';
+import { Reveal } from './ui/reveal';
 
 /** The title of the deepest active route that has one. */
 function routeTitle(route: ActivatedRouteSnapshot): string {
@@ -21,8 +20,9 @@ function routeTitle(route: ActivatedRouteSnapshot): string {
 
 /**
  * App shell (design-frontend.md): the sidebar with the pages, the top bar with the current route's
- * title, and the routes. On a wide screen the sidebar stays open at the side; on a narrow one it is
- * a drawer, opened from the top bar and closed after a tap on a link.
+ * title, and the routes. The sidebar is a drawer on every screen, as on a phone (lenzi, 2026-10-02:
+ * "la barra di fianco si apra con un tasto come la versione android"): opened from the top bar,
+ * closed after a tap on a link.
  */
 @Component({
   selector: 'app-root',
@@ -33,16 +33,11 @@ function routeTitle(route: ActivatedRouteSnapshot): string {
 export class App {
   private readonly router = inject(Router);
 
-  /** The sidebar stays at the side. BreakpointObserver answers at once, then on every change. */
-  protected readonly wide = toSignal(
-    inject(BreakpointObserver)
-      .observe(WIDE_SCREEN)
-      .pipe(map((state) => state.matches)),
-    { requireSync: true },
-  );
-
   /** The look this browser chose (Reduce transparency), applied from the first page, not only in /settings. */
   private readonly appearance = inject(Appearance);
+
+  /** The light that follows the pointer on the surfaces near it (ui/reveal), on every page. */
+  private readonly reveal = inject(Reveal);
 
   protected readonly title = toSignal(
     this.router.events.pipe(
@@ -61,8 +56,8 @@ export class App {
     void sidebar.open(click.detail === 0 ? 'keyboard' : 'mouse');
   }
 
-  /** A link of the sidebar was tapped: the drawer closes; at the side the sidebar stays. */
+  /** A link of the sidebar was tapped: the drawer closes. */
   protected navigated(sidebar: MatSidenav): void {
-    if (!this.wide()) void sidebar.close();
+    void sidebar.close();
   }
 }

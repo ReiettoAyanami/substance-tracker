@@ -57,6 +57,7 @@ describe('chartOptions', () => {
     // dark glass, like the Material tooltips
     expect(o.tooltip.backgroundColor).toBe('rgba(7, 7, 7, 0.72)');
     expect(o.tooltip.extraCssText).toContain('backdrop-filter: blur(24px);');
+    expect(o.tooltip.extraCssText).toContain('background-image: var(--app-grain);');
     expect(o.yAxis.splitLine.lineStyle.color).toBe('rgba(4, 4, 4, 1)');
   });
 

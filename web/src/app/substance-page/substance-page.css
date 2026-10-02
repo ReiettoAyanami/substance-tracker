@@ -1,8 +1,7 @@
-/* The darkened list behind the window (design-frontend.md, "backdrop"). A sidebar at the side stays
-   out of it, visible and usable (--app-sidebar-width comes from the app shell; 0 on a phone). */
+/* The darkened list behind the window (design-frontend.md, "backdrop"). */
 .backdrop {
   position: fixed;
-  inset: 0 0 0 var(--app-sidebar-width, 0px);
+  inset: 0;
   z-index: 20;
   background-color: color-mix(in srgb, var(--mat-sys-scrim) 40%, transparent);
   backdrop-filter: var(--app-scrim-filter); /* the page under it blurred (styles.css, "glass") */
@@ -22,6 +21,7 @@
   border-radius: 28px;
   background-color: color-mix(in srgb, var(--mat-sys-surface-container-high) var(--app-glass), transparent);
   backdrop-filter: var(--app-glass-filter); /* see-through, like every window (styles.css, "glass") */
+  background-image: var(--app-grain); /* grainy, like every blurred surface (styles.css) */
   color: var(--mat-sys-on-surface);
   overflow: hidden;
   animation: var(--app-window-in); /* rises into place (styles.css) */
@@ -80,16 +80,16 @@ app-substance-card {
   color: var(--mat-sys-on-surface-variant);
 }
 
-/* Desktop: a window centred over the content (right of a sidebar at the side), with < and >
+/* Desktop: a window centred over the content, with < and >
    outside it and the position at the top. */
 @media (min-width: 600px) {
   .window {
     inset: auto;
     top: 50%;
-    left: calc(50% + var(--app-sidebar-width, 0px) / 2);
+    left: 50%;
     translate: -50% -50%;
     /* as wide as the list: its card as wide as theirs (720 px, plus 2 x 32 of padding) */
-    width: min(784px, calc(100vw - var(--app-sidebar-width, 0px) - 176px));
+    width: min(784px, calc(100vw - 176px));
     /* always as tall as the screen allows, not as its content: it no longer grows while the
        batches and the panels load (lenzi, 2026-10-02: "piccole e poi grandi"), nor jumps from one
        substance to the next; the content scrolls inside */

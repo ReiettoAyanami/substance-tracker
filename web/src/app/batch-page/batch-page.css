@@ -2,7 +2,7 @@
    shape, one level up. */
 .backdrop {
   position: fixed;
-  inset: 0 0 0 var(--app-sidebar-width, 0px);
+  inset: 0;
   z-index: 30;
   background-color: color-mix(in srgb, var(--mat-sys-scrim) 40%, transparent);
   backdrop-filter: var(--app-scrim-filter); /* the page under it blurred (styles.css, "glass") */
@@ -20,6 +20,7 @@
   border-radius: 28px;
   background-color: color-mix(in srgb, var(--mat-sys-surface-container-high) var(--app-glass), transparent);
   backdrop-filter: var(--app-glass-filter); /* see-through, like every window (styles.css, "glass") */
+  background-image: var(--app-grain); /* grainy, like every blurred surface (styles.css) */
   color: var(--mat-sys-on-surface);
   overflow: hidden;
   animation: var(--app-window-in); /* rises into place (styles.css) */
@@ -127,9 +128,9 @@
   .window {
     inset: auto;
     top: 50%;
-    left: calc(50% + var(--app-sidebar-width, 0px) / 2);
+    left: 50%;
     translate: -50% -50%;
-    width: min(720px, calc(100vw - var(--app-sidebar-width, 0px) - 96px));
+    width: min(720px, calc(100vw - 96px));
     max-height: calc(100dvh - 96px);
     padding: 72px 32px 32px;
   }

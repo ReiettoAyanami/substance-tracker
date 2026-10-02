@@ -1,4 +1,3 @@
-import { BreakpointObserver } from '@angular/cdk/layout';
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
@@ -43,8 +42,7 @@ const pageData = [
 ];
 
 describe('App', () => {
-  /** The app on a wide screen (the sidebar at the side) or a narrow one (a drawer). */
-  async function start(screen: 'wide' | 'narrow', url = '/') {
+  async function start(url = '/') {
     TestBed.configureTestingModule({
       imports: [App],
       providers: [
@@ -53,10 +51,6 @@ describe('App', () => {
         provideRouter(routes),
         // jsdom has no animation events: the drawer opens and closes at once
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
-        {
-          provide: BreakpointObserver,
-          useValue: { observe: () => of({ matches: screen === 'wide', breakpoints: {} }), isMatched: () => screen === 'wide' },
-        },
         ...pageData,
       ],
     });
@@ -76,7 +70,7 @@ describe('App', () => {
   }
 
   it('opens on Consumptions, with its title in the top bar', async () => {
-    const app = await start('narrow');
+    const app = await start();
 
     expect(TestBed.inject(Router).url).toBe('/consumptions');
     expect(app.title()).toBe('Consumptions');
@@ -86,7 +80,7 @@ describe('App', () => {
   it('starts with the transparency this browser chose: reduced, the windows are solid from the first page', async () => {
     localStorage.setItem('substance-tracker.reduce-transparency', 'true');
     document.documentElement.classList.remove('reduce-transparency');
-    await start('narrow');
+    await start();
 
     expect(document.documentElement.classList.contains('reduce-transparency')).toBe(true);
     localStorage.removeItem('substance-tracker.reduce-transparency');
@@ -94,7 +88,7 @@ describe('App', () => {
   });
 
   it('shows the substances page under /substances, and sends an unknown URL to Consumptions', async () => {
-    const app = await start('narrow', '/substances');
+    const app = await start('/substances');
     expect(app.title()).toBe('Substances');
     expect(app.element.querySelector('app-substances-page')).not.toBeNull();
 
@@ -103,8 +97,8 @@ describe('App', () => {
     expect(TestBed.inject(Router).url).toBe('/consumptions');
   });
 
-  it('on a narrow screen: a drawer opened from the top bar, closed after a tap on a link', async () => {
-    const app = await start('narrow');
+  it('the sidebar is a drawer on every screen, as on a phone: opened from the top bar, closed after a tap on a link', async () => {
+    const app = await start();
     expect(app.sidebar.mode).toBe('over');
     expect(app.sidebar.opened).toBe(false);
 
@@ -117,20 +111,5 @@ describe('App', () => {
     expect(TestBed.inject(Router).url).toBe('/substances');
     expect(app.title()).toBe('Substances');
     expect(app.sidebar.opened).toBe(false);
-  });
-
-  it('on a wide screen: the sidebar stays open at the side, with no menu button', async () => {
-    const app = await start('wide');
-    expect(app.sidebar.mode).toBe('side');
-    expect(app.sidebar.opened).toBe(true);
-    expect(app.menuButton()).toBeNull();
-    // the room it takes, for the windows centred over the content (the substance page)
-    const container = app.element.querySelector<HTMLElement>('mat-sidenav-container')!;
-    expect(container.style.getPropertyValue('--app-sidebar-width')).toBe('240px');
-
-    app.link('Substances').click();
-    await app.fixture.whenStable();
-    expect(TestBed.inject(Router).url).toBe('/substances');
-    expect(app.sidebar.opened).toBe(true);
   });
 });

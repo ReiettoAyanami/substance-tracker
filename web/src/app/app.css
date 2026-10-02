@@ -17,14 +17,21 @@
 
 /* The top bar stays at the top while the page scrolls under it, seen through the glass (styles.css).
    Material's content box scrolls by itself (overflow: auto); here the document scrolls, so it lets
-   the bar stick to the window. Under the page windows (z-index 20) and the "+" (10). */
+   the bar stick to the window. Under the page windows (z-index 20) and the "+" (10). It floats,
+   8 px from the edges, with rounded corners on every screen (lenzi, 2026-10-02: "la barra in cima
+   deve avere bordi arrotondati in entrambe le versioni"): 16 px, Material 3's large shape. */
 mat-sidenav-content {
   overflow: visible;
 }
 
 mat-toolbar {
   position: sticky;
-  top: 0;
+  top: 8px;
   z-index: 5;
+  box-sizing: border-box;
+  width: auto;
+  margin: 8px;
+  border-radius: 16px;
   backdrop-filter: var(--app-glass-filter);
+  background-image: var(--app-grain); /* grainy, like every blurred surface (styles.css) */
 }
