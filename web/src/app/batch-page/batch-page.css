@@ -29,7 +29,8 @@
 
 /* The rise starts once its metrics have their numbers (substance-page.css), at most 400 ms. */
 .window:has(app-metrics-panel:not(.ready)) {
-  visibility: hidden;
+  opacity: 0; /* not visibility: an open expansion panel sets its own content visible (styles.css) */
+  pointer-events: none;
   animation: app-show-anyway 0s linear 400ms forwards;
 }
 

@@ -33,7 +33,8 @@
    the window, the rise ran while the batches, the metrics and the charts were drawn and was eaten
    by them (Playwright: three frames at 24 px, then 6). */
 .window:has(app-metrics-panel:not(.ready)) {
-  visibility: hidden;
+  opacity: 0; /* not visibility: an open expansion panel sets its own content visible (styles.css) */
+  pointer-events: none;
   animation: app-show-anyway 0s linear 400ms forwards;
 }
 

@@ -303,15 +303,22 @@
 /* A window whose metrics panel is not ready, i.e. its first numbers are not on screen yet (the
    consumption's details: 233, 413, then 694 px in three frames), waits for them hidden, so it
    appears at its size; at most 400 ms, then it shows anyway (a slow API) and grows when they come.
-   "Not ready" rather than "loading": in its first frame the panel has not marked itself yet. */
+   "Not ready" rather than "loading": in its first frame the panel has not marked itself yet.
+   Hidden by opacity, not visibility (lenzi, 2026-10-02: the substance window "si apre da piccola e
+   diventa più grande dopo"): Material's open expansion panels set `visibility: visible` on their
+   content, which beats a hidden parent, so Metrics and Charts showed alone, a frame before their
+   window (Playwright: two panel contents visible inside the hidden window). Opacity hides every
+   descendant; it changes at once, no fade, so the blur is whole from the first visible frame. */
 .mat-mdc-dialog-surface:has(app-metrics-panel:not(.ready)) {
-  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
   animation: app-show-anyway 0s linear 400ms forwards;
 }
 
 @keyframes app-show-anyway {
   to {
-    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
   }
 }
 
