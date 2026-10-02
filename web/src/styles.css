@@ -80,16 +80,21 @@
    of a page stay solid: nothing is under them. "Reduce transparency" (/settings, Appearance) or
    the system's own wish make everything solid again. */
 :root {
-  /* a little more see-through since 2026-10-02 evening (lenzi: "abbassa leggermente opacità delle
-     cose che sono vetro"; 72% and 82% before) */
-  --app-glass: 64%; /* how much of its colour a glass surface keeps */
-  --app-glass-bar: 74%; /* the top bar: its title stays readable over moving content */
+  /* more see-through, twice: 2026-10-02 evening (lenzi: "abbassa leggermente opacità delle cose che
+     sono vetro"; 72% and 82% before), then 2026-10-03 ("abbassa ancor un po' l'opacità delle
+     superfici in vetro"; 64% and 74% before) */
+  --app-glass: 56%; /* how much of its colour a glass surface keeps */
+  --app-glass-bar: 66%; /* the top bar: its title stays readable over moving content */
   --app-glass-filter: blur(24px) saturate(160%);
   --app-scrim-filter: blur(6px);
   /* The grain on every blurred surface, like Windows' Acrylic (lenzi, 2026-10-02: "mi piacerebbe
-     avere un grainy blur su tutte le superfici blurrate"): grey noise, light and dark specks at 6%,
-     drawn once by the browser and tiled. Solid surfaces (Reduce transparency) have none. */
-  --app-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='2' intercept='-.5'/%3E%3CfeFuncG type='linear' slope='2' intercept='-.5'/%3E%3CfeFuncB type='linear' slope='2' intercept='-.5'/%3E%3CfeFuncA type='linear' slope='0' intercept='.06'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+     avere un grainy blur su tutte le superfici blurrate"): grey noise, light and dark specks at 10%
+     and about a pixel wide (2026-10-03: "ci dev'essere più grain", "leggermente più piccolo";
+     before 6% at baseFrequency .8), drawn once by the browser and tiled. Every blurred surface has
+     it; the scrims, the blurred page behind a window or the drawer, do not (lenzi, 2026-10-03: "il
+     blur grain usalo solo per le superfici e non per il blur di ciò che sta nel retro di una
+     pagina"). Solid surfaces (Reduce transparency) have none. */
+  --app-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='2' intercept='-.5'/%3E%3CfeFuncG type='linear' slope='2' intercept='-.5'/%3E%3CfeFuncB type='linear' slope='2' intercept='-.5'/%3E%3CfeFuncA type='linear' slope='0' intercept='.1'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
 }
 
 :root.reduce-transparency {
@@ -378,7 +383,7 @@
 
 /* Tooltips (lenzi, 2026-10-02: the batch bar's tooltip "trasparenza blurrata anche su questo";
    later "mettile scure se il tema è scuro"): dark glass like a window, not Material's light inverse
-   surface (at 82% its see-through hardly showed): surface-container-high at the windows' 72%, the
+   surface (at 82% its see-through hardly showed): surface-container-high at the windows' glass, the
    theme's text colour, a thin outline so its edge reads over a dark page. Material fades the
    tooltip's box and ends it by the animation's name, so the blur goes on that box, with the
    surface's corners. The charts' tooltips take the same glass (ui/chart). */
