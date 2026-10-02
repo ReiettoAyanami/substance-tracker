@@ -13,7 +13,7 @@ export interface ChartColors {
   outline: string;
   outlineVariant: string;
   surface: string;
-  /** The UI's font (ECharts draws its own text): the theme's, as the page computes it. */
+  /** The font of the chart's text (ECharts draws its own): the interface's, Space Mono (the labels' token). */
   font: string;
   /** The widget's card under the chart: the gaps between slices and tiles, the text on a tile. */
   card: string;

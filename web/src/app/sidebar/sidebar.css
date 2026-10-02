@@ -5,6 +5,8 @@
 }
 
 nav {
+  /* the pages' names are interface: Space Mono, like every label (material-theme.scss) */
+  --mat-list-list-item-label-text-font: var(--mat-sys-label-large-font);
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
