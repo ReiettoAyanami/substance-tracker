@@ -200,6 +200,56 @@
   animation: var(--app-window-in);
 }
 
+/* Every other panel that appears over the page rises the same way (lenzi, 2026-10-02: "La voglio
+   su ogni pannello che appare in quel modo"): menus, selects, autocomplete, date and time pickers,
+   snackbars. Same curve and time; less distance for what opens from a field or a button (8 px),
+   the snackbar from the bottom edge as far as a window (24 px). Material grows and fades these
+   from 80% and waits for its own animation by name (the menu, the snackbar), so its animation
+   stays, cut to 1 ms: the glass is whole at once. The rise goes on the overlay pane around the
+   panel, with `translate`, which does not touch the transform the CDK may position the pane with.
+   Exits stay Material's. None with reduced motion. */
+:root {
+  --app-panel-in: app-panel-in 300ms cubic-bezier(0.05, 0.7, 0.1, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --app-panel-in: none;
+  }
+}
+
+@keyframes app-panel-in {
+  from {
+    translate: 0 var(--app-panel-rise, 8px);
+  }
+}
+
+.cdk-overlay-pane:has(
+    > .mat-mdc-menu-panel,
+    > .mat-mdc-select-panel,
+    > .mat-mdc-autocomplete-panel,
+    > .mat-timepicker-panel,
+    > .mat-datepicker-content,
+    > .mat-mdc-snack-bar-container
+  ) {
+  animation: var(--app-panel-in);
+}
+
+.cdk-overlay-pane:has(> .mat-mdc-snack-bar-container) {
+  --app-panel-rise: 24px;
+}
+
+/* Each class twice: above Material's own rule, wherever the CDK puts the panel (some go in the
+   browser's top layer, outside .cdk-overlay-container). */
+.mat-mdc-menu-panel.mat-mdc-menu-panel:not(.mat-menu-panel-exit-animation),
+.mat-select-panel-animations-enabled.mat-select-panel-animations-enabled:not(.mat-select-panel-exit),
+.mat-autocomplete-panel-animations-enabled.mat-autocomplete-panel-animations-enabled,
+.mat-timepicker-panel-animations-enabled.mat-timepicker-panel-animations-enabled:not(.mat-timepicker-panel-exit),
+.mat-datepicker-content.mat-datepicker-content-animations-enabled.mat-datepicker-content-animations-enabled:not(.mat-datepicker-content-exit),
+.mat-snack-bar-container-animations-enabled.mat-snack-bar-container-enter.mat-snack-bar-container-enter {
+  animation-duration: 1ms;
+}
+
 /* A window whose metrics panel is not ready, i.e. its first numbers are not on screen yet (the
    consumption's details: 233, 413, then 694 px in three frames), waits for them hidden, so it
    appears at its size; at most 400 ms, then it shows anyway (a slow API) and grows when they come.
