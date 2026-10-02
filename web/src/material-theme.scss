@@ -18,7 +18,16 @@ html {
         primary: mat.$violet-palette,
         tertiary: mat.$cyan-palette,
       ),
-      typography: Roboto,
+      // Space Mono for the whole UI (lenzi, 2026-10-02). It has two weights, 400 and 700: the
+      // "medium" of Material's titles, labels and buttons (500) is its bold, so they still stand
+      // out from the text; a 500 would fall back to the regular.
+      typography: (
+        plain-family: ('Space Mono', monospace),
+        brand-family: ('Space Mono', monospace),
+        regular-weight: 400,
+        medium-weight: 700,
+        bold-weight: 700,
+      ),
       density: 0,
     )
   );

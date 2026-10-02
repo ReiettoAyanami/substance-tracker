@@ -67,6 +67,7 @@ export class Chart {
       outlineVariant: resolve('var(--mat-sys-outline-variant)'),
       surface: resolve('var(--mat-sys-surface-container-high)'),
       card: resolve('var(--mat-sys-surface-container-lowest)'),
+      font: getComputedStyle(this.host.nativeElement).fontFamily,
       lines: Object.fromEntries(lines.map((line) => [line.key, resolve(lineColor(line))])),
     }));
   });

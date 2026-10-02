@@ -31,6 +31,7 @@ const colors: ChartColors = {
   outlineVariant: 'rgba(4, 4, 4, 1)',
   surface: 'rgba(5, 5, 5, 1)',
   card: 'rgba(6, 6, 6, 1)',
+  font: 'Space Mono',
   lines: { 'substance:4': 'rgba(10, 0, 0, 1)', 'substance:1': 'rgba(0, 10, 0, 1)' },
 };
 
@@ -41,6 +42,7 @@ describe('chartOptions', () => {
   it('bars of money stand one on the other, each line in its colour, on a transparent background', () => {
     const o = options({});
     expect(o.backgroundColor).toBe('transparent');
+    expect(o.textStyle.fontFamily).toBe('Space Mono');
     expect(o.xAxis.data).toEqual(['W36', 'W37']);
     expect(o.series.map((s: any) => [s.type, s.name, s.data.map((d: any) => d.value), s.stack, s.itemStyle.color])).toEqual([
       ['bar', 'Birra', [4, 3], 'total', 'rgba(10, 0, 0, 1)'],

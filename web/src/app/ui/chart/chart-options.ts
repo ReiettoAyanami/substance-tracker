@@ -13,6 +13,8 @@ export interface ChartColors {
   outline: string;
   outlineVariant: string;
   surface: string;
+  /** The UI's font (ECharts draws its own text): the theme's, as the page computes it. */
+  font: string;
   /** The widget's card under the chart: the gaps between slices and tiles, the text on a tile. */
   card: string;
   /** Each line's colour, by its key. */
@@ -140,7 +142,7 @@ export function chartOptions({ data, type, unit, currency, timeZone, hidden, col
     valueFormatter,
   };
   // a little slower than ECharts' 300 ms (lenzi, 2026-10-02: "poco più lente"): drawn in 600, redrawn in 500
-  const base = { backgroundColor: 'transparent', animationDuration: 600, animationDurationUpdate: 500, textStyle: { color: colors.onSurfaceVariant } };
+  const base = { backgroundColor: 'transparent', animationDuration: 600, animationDurationUpdate: 500, textStyle: { color: colors.onSurfaceVariant, fontFamily: colors.font } };
 
   if (type === 'donut') {
     return {
