@@ -2,7 +2,15 @@
   <p class="error" role="alert">{{ why }}</p>
 } @else if (recent(); as items) {
   @for (item of items; track item.id) {
-    <app-consumption-card variant="compact" [consumption]="item" [settings]="settings()" />
+    <app-consumption-card
+      variant="compact"
+      [consumption]="item"
+      [settings]="settings()"
+      (open)="openInConsumptions(item)"
+      (details)="details(item)"
+      (edit)="edit(item)"
+      (remove)="remove(item)"
+    />
   } @empty {
     <p class="empty">No consumptions</p>
   }

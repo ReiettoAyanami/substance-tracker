@@ -9,5 +9,14 @@
 
 <mat-dialog-actions align="end">
   <button mat-button type="button" (click)="cancel()">Cancel</button>
-  <button mat-flat-button type="button" class="confirm" [disabled]="running()" (click)="confirm()">{{ data.confirm }}</button>
+  <button
+    mat-flat-button
+    type="button"
+    class="confirm"
+    [class.destructive]="data.destructive !== false"
+    [disabled]="running()"
+    (click)="confirm()"
+  >
+    {{ data.confirm }}
+  </button>
 </mat-dialog-actions>

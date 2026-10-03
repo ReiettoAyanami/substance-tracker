@@ -1,9 +1,11 @@
-import { Component, inject, output, signal } from '@angular/core';
+import { Component, ElementRef, inject, output } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
 import { IsActiveMatchOptions, Router, RouterLink, RouterLinkActive } from '@angular/router';
+import { from } from 'rxjs';
 
-import type { ApiError } from '../data/api-error';
+import { ConfirmDialog, ConfirmDialogData } from '../confirm-dialog/confirm-dialog';
+import { HistoryDialogs } from '../history-dialogs';
 import { Session } from '../session/session';
 
 const ROOT: IsActiveMatchOptions = { paths: 'exact', queryParams: 'ignored', matrixParams: 'ignored', fragment: 'ignored' };
@@ -28,6 +30,8 @@ export class Sidebar {
 
   protected readonly session = inject(Session);
   private readonly router = inject(Router);
+  private readonly dialogs = inject(HistoryDialogs);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   /**
    * The user's pages, under their root. The start page is the root itself: highlighted on the root
@@ -41,19 +45,26 @@ export class Sidebar {
   ] as const;
   protected readonly settingsMatch = SUBTREE;
 
-  /** Why the last sign-out did not happen; the drawer stays open to say it. */
-  protected readonly signOutError = signal<string | null>(null);
-
+  /**
+   * Asks first (lenzi, 2026-10-03: "sign out ha bisogno di una richiesta di conferma"). The dialog
+   * signs out and says why when the server did not take it (still signed in, then).
+   */
   protected async signOut(): Promise<void> {
-    this.signOutError.set(null);
-    try {
-      await this.session.signOut();
-    } catch (error) {
-      this.signOutError.set(
-        (error as Partial<ApiError> | null)?.status === null
-          ? 'Not signed out: the server cannot be reached.'
-          : 'Not signed out: try again.',
-      );
+    const signedOut = await this.dialogs.open<ConfirmDialog, ConfirmDialogData, true>(
+      ConfirmDialog,
+      {
+        title: 'Sign out?',
+        message: 'You will have to sign in again on this device.',
+        confirm: 'Sign out',
+        destructive: false,
+        action: () => from(this.session.signOut()),
+      },
+      // Not back on "Sign out": a focused entry is drawn highlighted, and after Cancel it stayed so
+      // (lenzi, 2026-10-03). The focus goes to the current page's entry, as when the drawer opens.
+      { width: '400px', restoreFocus: false },
+    );
+    if (!signedOut) {
+      this.host.nativeElement.querySelector<HTMLElement>('[aria-current="page"]')?.focus();
       return;
     }
     this.navigated.emit();

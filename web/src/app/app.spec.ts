@@ -170,6 +170,15 @@ describe('App', () => {
     expect(app.sidebar.opened).toBe(false);
   });
 
+  it("opened, the drawer puts the focus on the current page's entry, never on the first one (it would look selected)", async () => {
+    const app = await start('/lenzi/metrics');
+    app.menuButton()!.click();
+    await app.fixture.whenStable();
+    // The drawer moves the focus once it is open: wait for the entry itself, the current page's.
+    await vi.waitFor(() => expect(document.activeElement?.getAttribute('aria-current')).toBe('page'));
+    expect(document.activeElement?.textContent).toContain('Metrics');
+  });
+
   it('/admin: the admin view in the app for an administrator; for a user, the 404 page', async () => {
     const app = await start('/admin');
     expect(app.router.url).toBe('/admin');
@@ -197,12 +206,20 @@ describe('App', () => {
     expect(app.element.querySelector('app-viewing-as-bar')).toBeNull();
   });
 
-  it('signs out from the sidebar: the session ends and the sign-in page stands alone', async () => {
+  it('signs out from the sidebar, after confirming: the session ends and the sign-in page stands alone', async () => {
     const app = await start('/lenzi/metrics');
     app.menuButton()!.click();
     await app.fixture.whenStable();
 
     app.link('Sign out').click();
+    await app.fixture.whenStable();
+    // the confirmation first: nothing has happened yet
+    const dialog = document.querySelector('.cdk-overlay-container app-confirm-dialog');
+    expect(dialog?.querySelector('h2')?.textContent?.trim()).toBe('Sign out?');
+    expect(app.signOut).not.toHaveBeenCalled();
+
+    dialog!.querySelector<HTMLButtonElement>('button.confirm')!.click();
+    await vi.waitFor(() => expect(app.router.url).toBe('/login'));
     await app.fixture.whenStable();
 
     expect(app.signOut).toHaveBeenCalledTimes(1);

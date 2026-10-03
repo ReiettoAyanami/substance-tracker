@@ -169,7 +169,7 @@ describe('ConsumptionCard', () => {
     expect(asked).toEqual([]);
   });
 
-  it('compact: only when, how much, the cost and the delta, with no menu', async () => {
+  it('compact: when, how much, the cost and the delta, then the open button and the ⋮ (lenzi, 2026-10-03)', async () => {
     const card = await render(coffee, 'compact');
 
     expect(text(card.querySelector('.when'))).toBe('28 Sept 2026, 08:45');
@@ -178,7 +178,33 @@ describe('ConsumptionCard', () => {
     expect(card.querySelector('.substance')).toBeNull();
     expect(card.querySelector('.source')).toBeNull();
     expect(card.querySelector('.note')).toBeNull();
-    expect(card.querySelector('button.more')).toBeNull();
+    const open = card.querySelector<HTMLButtonElement>('.actions button.open')!;
+    expect(text(open)).toBe('open_in_new');
+    expect(open.getAttribute('aria-label')).toBe('Open the consumption of 28 Sept 2026, 08:45 in the consumptions page');
+    expect(card.querySelector('.actions button.more')).not.toBeNull();
+    // a compact card is not tapped as a whole: only its buttons do something
+    expect(card.querySelector('mat-card')!.classList).not.toContain('tappable');
+  });
+
+  it('compact: the open button and the ⋮ menu (details, edit, delete) ask the parent', async () => {
+    const card = await render(coffee, 'compact');
+    const said: string[] = [];
+    fixture.componentInstance.open.subscribe(() => said.push('open'));
+    fixture.componentInstance.details.subscribe(() => said.push('details'));
+    fixture.componentInstance.edit.subscribe(() => said.push('edit'));
+    fixture.componentInstance.remove.subscribe(() => said.push('remove'));
+
+    card.querySelector<HTMLButtonElement>('.actions button.open')!.click();
+    for (const label of ['Details', 'Edit', 'Delete']) {
+      card.querySelector<HTMLButtonElement>('.actions button.more')!.click();
+      await fixture.whenStable();
+      Array.from(document.querySelectorAll<HTMLButtonElement>('.mat-mdc-menu-panel button[mat-menu-item]'))
+        .find((b) => b.textContent?.includes(label))!
+        .click();
+      await fixture.whenStable();
+    }
+
+    expect(said).toEqual(['open', 'details', 'edit', 'remove']);
   });
 
   it('compact: has no pill for the first consumption, and still says when, how much and the cost', async () => {

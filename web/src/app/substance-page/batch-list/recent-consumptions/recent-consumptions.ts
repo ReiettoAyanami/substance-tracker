@@ -1,10 +1,12 @@
-import { Component, computed, inject, input } from '@angular/core';
+import { Component, computed, inject, input, output } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 
+import { ConsumptionActions } from '../../../consumptions-page/consumption-actions';
 import { ApiError } from '../../../data/api-error';
+import { Consumption } from '../../../data/consumption';
 import { ReportsApi } from '../../../data/reports-api';
 import { Settings } from '../../../data/settings';
 import { Batch } from '../../../data/substance-batches';
@@ -17,11 +19,12 @@ const RECENT = 5;
 /**
  * The last consumptions of a batch, under its sub-card in the batch list (design-frontend.md,
  * "recent consumptions"): five at most, newest first, as compact consumption cards, each with its
- * change from the consumption before it in the batch (the list is asked by batch). They are only
- * shown here: the item after them, "…", leads to the consumptions page filtered on the batch,
- * where every consumption of it is listed, edited and deleted. Adjustments are never in the list.
- * Loads its data from the API when it is created (its sub-card is opened), and again whenever its
- * batch is (a new price changes the costs).
+ * change from the consumption before it in the batch (the list is asked by batch). Each card opens
+ * its consumption in the consumptions page (its details open there) and has the ⋮ of every card:
+ * details, edit, delete (lenzi, 2026-10-03); a change is told to the parent (`changed`), whose
+ * numbers move with it. The item after them, "…", leads to the consumptions page filtered on the
+ * batch. Adjustments are never in the list. Loads its data from the API when it is created (its
+ * sub-card is opened), and again whenever its batch is (a new price changes the costs).
  */
 @Component({
   selector: 'app-recent-consumptions',
@@ -35,8 +38,12 @@ export class RecentConsumptions {
   /** The substance of the batch, for the link to the consumptions page. */
   readonly substanceId = input.required<number>();
   readonly settings = input.required<Settings>();
+  /** A consumption of the batch was changed or deleted: the batch's numbers changed with it. */
+  readonly changed = output<void>();
 
   private readonly reports = inject(ReportsApi);
+  private readonly actions = inject(ConsumptionActions);
+  private readonly router = inject(Router);
   protected readonly session = inject(Session);
   private readonly consumptions = rxResource({
     params: () => this.batch(),
@@ -57,4 +64,26 @@ export class RecentConsumptions {
 
   /** The consumptions page with its filters set on this batch (and its substance, as the page would). */
   protected readonly filter = computed(() => ({ substanceId: this.substanceId(), batchId: this.batch().id }));
+
+  /** The consumptions page filtered on this batch, with this consumption's details open (`consumption`). */
+  protected openInConsumptions(consumption: Consumption): void {
+    void this.router.navigate([this.session.path()], { queryParams: { ...this.filter(), consumption: consumption.id } });
+  }
+
+  protected details(consumption: Consumption): void {
+    void this.actions.details(consumption, this.settings());
+  }
+
+  protected async edit(consumption: Consumption): Promise<void> {
+    if (await this.actions.edit(consumption)) this.written();
+  }
+
+  protected async remove(consumption: Consumption): Promise<void> {
+    if (await this.actions.delete(consumption)) this.written();
+  }
+
+  private written(): void {
+    this.consumptions.reload();
+    this.changed.emit();
+  }
 }

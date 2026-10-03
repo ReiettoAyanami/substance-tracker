@@ -19,11 +19,39 @@ const quantityFormat = new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 3 
 const exact = (format: Intl.NumberFormat, value: string) => format.format(value as unknown as number);
 
 /**
+ * The formats of a time zone and of a currency, made once and shared by every card: making an Intl
+ * format costs, and a list makes many cards at once (the recent consumptions of a batch).
+ */
+const whenFormats = new Map<string, Intl.DateTimeFormat>();
+const moneyFormats = new Map<string, Intl.NumberFormat>();
+
+function whenFormat(timeZone: string): Intl.DateTimeFormat {
+  let format = whenFormats.get(timeZone);
+  if (!format) {
+    format = new Intl.DateTimeFormat(LOCALE, { timeZone, day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    whenFormats.set(timeZone, format);
+  }
+  return format;
+}
+
+function moneyFormat(currency: string): Intl.NumberFormat {
+  let format = moneyFormats.get(currency);
+  if (!format) {
+    format = new Intl.NumberFormat(LOCALE, { style: 'currency', currency, minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    moneyFormats.set(currency, format);
+  }
+  return format;
+}
+
+/**
  * One consumption (design-frontend.md, "consumption card"). Presentational: every number is the
  * API's (the cost, the change from the previous consumption); it only formats them. Full, it says
  * when, what, from which batch (or "One-time"), how much, what it cost, the change from the
  * previous one (a delta pill) and the note, with a ⋮ menu that asks the parent for its details (so does a tap on a full card), to
- * edit it or to delete it. Compact, only when, how much, the cost and the delta pill.
+ * edit it or to delete it. Compact, only when, how much, the cost and the delta pill, then a button
+ * that opens it in the consumptions page and the same ⋮ menu (lenzi, 2026-10-03: "il tasto per
+ * portarti alla pagina delle consumption con quella consumption aperta", "i tre puntini ... come
+ * tutte le altre card").
  */
 @Component({
   selector: 'app-consumption-card',
@@ -41,27 +69,15 @@ export class ConsumptionCard {
   readonly edit = output<void>();
   /** "Delete" in the ⋮ menu. */
   readonly remove = output<void>();
+  /** The open button of a compact card: the consumptions page, with this consumption's details open. */
+  readonly open = output<void>();
 
   protected readonly view = computed(() => {
     const consumption = this.consumption();
     const settings = this.settings();
-    const when = new Intl.DateTimeFormat(LOCALE, {
-      timeZone: settings.timezone,
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(new Date(consumption.occurredAt));
-    const money = new Intl.NumberFormat(LOCALE, {
-      style: 'currency',
-      currency: settings.currency,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
     return {
-      when,
-      amount: `${exact(quantityFormat, consumption.quantity)} ${consumption.unit} · ${exact(money, consumption.cost)}`,
+      when: whenFormat(settings.timezone).format(new Date(consumption.occurredAt)),
+      amount: `${exact(quantityFormat, consumption.quantity)} ${consumption.unit} · ${exact(moneyFormat(settings.currency), consumption.cost)}`,
     };
   });
 }

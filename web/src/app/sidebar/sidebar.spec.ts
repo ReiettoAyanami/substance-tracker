@@ -2,9 +2,11 @@ import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { of, throwError } from 'rxjs';
+import { firstValueFrom, of, throwError } from 'rxjs';
 
+import { ConfirmDialog, type ConfirmDialogData } from '../confirm-dialog/confirm-dialog';
 import { AuthApi } from '../data/auth-api';
+import { HistoryDialogs } from '../history-dialogs';
 import { Session } from '../session/session';
 import { Sidebar } from './sidebar';
 
@@ -13,9 +15,14 @@ class Blank {}
 
 describe('Sidebar', () => {
   let signOut: ReturnType<typeof vi.fn>;
+  /** The confirmation dialogs opened, and what the user answers in them (true: confirm). */
+  let asked: Array<{ component: unknown; data: ConfirmDialogData; config: unknown }>;
+  let answer: boolean;
 
   beforeEach(async () => {
     signOut = vi.fn(() => of(undefined));
+    asked = [];
+    answer = true;
     TestBed.configureTestingModule({
       providers: [
         provideRouter([
@@ -34,6 +41,23 @@ describe('Sidebar', () => {
         {
           provide: AuthApi,
           useValue: { getSession: () => of({ id: 1, username: 'lenzi', role: 'user', impersonatedBy: null }), signOut },
+        },
+        // The confirm dialog as the user uses it: Cancel closes it with nothing; confirming runs its
+        // action and closes it with true, or stays open (closed later with nothing) when it fails.
+        {
+          provide: HistoryDialogs,
+          useValue: {
+            open: async (component: unknown, data: ConfirmDialogData, config: unknown) => {
+              asked.push({ component, data, config });
+              if (!answer) return undefined;
+              try {
+                await firstValueFrom(data.action());
+                return true;
+              } catch {
+                return undefined;
+              }
+            },
+          },
         },
       ],
     });
@@ -105,7 +129,7 @@ describe('Sidebar', () => {
     expect(TestBed.inject(Router).url).toBe('/lenzi/substances');
   });
 
-  it('signs out: the drawer closes, the session ends, the sign-in page opens', async () => {
+  it('signs out after asking: the session ends, the drawer closes, the sign-in page opens', async () => {
     const fixture = await sidebarAt('/lenzi/metrics');
     let tapped = 0;
     fixture.componentInstance.navigated.subscribe(() => tapped++);
@@ -113,9 +137,34 @@ describe('Sidebar', () => {
     (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>('button.sign-out')!.click();
     await vi.waitFor(() => expect(TestBed.inject(Router).url).toBe('/login'));
 
+    expect(asked.map((a) => [a.component, a.data.title, a.data.confirm, a.data.destructive])).toEqual([
+      [ConfirmDialog, 'Sign out?', 'Sign out', false],
+    ]);
     expect(tapped).toBe(1);
     expect(signOut).toHaveBeenCalledTimes(1);
     expect(TestBed.inject(Session).user()).toBeNull();
+  });
+
+  it('a sign-out cancelled in the dialog: nothing happens, and the focus is not left on "Sign out"', async () => {
+    answer = false;
+    const fixture = await sidebarAt('/lenzi/metrics');
+    let tapped = 0;
+    fixture.componentInstance.navigated.subscribe(() => tapped++);
+    const button = (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>('button.sign-out')!;
+
+    button.focus();
+    button.click();
+    await vi.waitFor(() => expect(asked).toHaveLength(1));
+    await fixture.whenStable();
+
+    expect(signOut).not.toHaveBeenCalled();
+    expect(tapped).toBe(0);
+    expect(TestBed.inject(Router).url).toBe('/lenzi/metrics');
+    expect(TestBed.inject(Session).user()?.username).toBe('lenzi');
+    // a focused entry is drawn highlighted: the focus goes to the current page's, never back to Sign out
+    await vi.waitFor(() => expect(document.activeElement?.getAttribute('aria-current')).toBe('page'));
+    expect(document.activeElement?.textContent).toContain('Metrics');
+    expect(asked[0]!.config).toMatchObject({ restoreFocus: false });
   });
 
   it('an administrator acting as itself also finds "Admin", above "Sign out"', async () => {
@@ -137,18 +186,15 @@ describe('Sidebar', () => {
     expect(bottomTitles()).toEqual(['Sign out', 'Settings']);
   });
 
-  it('a sign-out the server did not take: still signed in, the drawer stays open and says why', async () => {
+  it('a sign-out the server did not take (the dialog says why): still signed in, still here', async () => {
     signOut.mockReturnValue(throwError(() => ({ status: null })));
     const fixture = await sidebarAt('/lenzi/metrics');
     let tapped = 0;
     fixture.componentInstance.navigated.subscribe(() => tapped++);
-    const element = fixture.nativeElement as HTMLElement;
 
-    element.querySelector<HTMLButtonElement>('button.sign-out')!.click();
-    await vi.waitFor(() => {
-      fixture.detectChanges();
-      expect(element.querySelector('.sign-out-error')?.textContent?.trim()).toBe('Not signed out: the server cannot be reached.');
-    });
+    (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>('button.sign-out')!.click();
+    await vi.waitFor(() => expect(signOut).toHaveBeenCalledTimes(1));
+    await fixture.whenStable();
 
     expect(tapped).toBe(0);
     expect(TestBed.inject(Router).url).toBe('/lenzi/metrics');

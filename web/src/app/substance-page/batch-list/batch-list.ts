@@ -85,8 +85,13 @@ export class BatchList {
   });
 
   protected readonly shareMode = signal<ShareMode>(readShareMode());
-  /** The batches whose recent consumptions are open. */
-  private readonly recentOpen = signal<ReadonlySet<number>>(new Set());
+  /** The batches whose recent consumptions are open. Not part of the rows: opening one leaves the others as they are. */
+  protected readonly recentOpen = signal<ReadonlySet<number>>(new Set());
+  /**
+   * The batches whose recent consumptions were opened once: they stay, hidden when closed, so opening
+   * them again shows them at once, without asking or drawing them again (lenzi, 2026-10-03: "lagga").
+   */
+  protected readonly recentShown = signal<ReadonlySet<number>>(new Set());
 
   private readonly formats = computed(() => ({
     quantity: new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 3 }),
@@ -141,7 +146,6 @@ export class BatchList {
       share: `${this.exact(formats.share, byValue ? batch.shareByValue : batch.shareByQuantity)} ${
         byValue ? 'of the value' : 'of the stock'
       }`,
-      recentOpen: this.recentOpen().has(batch.id),
     }));
   });
 
@@ -152,6 +156,7 @@ export class BatchList {
       if (!next.delete(batchId)) next.add(batchId);
       return next;
     });
+    if (!this.recentShown().has(batchId)) this.recentShown.update((shown) => new Set(shown).add(batchId));
   }
 
   protected chooseShare(mode: ShareMode): void {
@@ -181,7 +186,7 @@ export class BatchList {
   }
 
   /** The batches are asked again (those shown stay until the new ones arrive), and the page is told. */
-  private written(): void {
+  protected written(): void {
     this.batches.reload();
     this.changed.emit();
   }

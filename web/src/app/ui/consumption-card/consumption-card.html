@@ -3,6 +3,22 @@
 <!-- A full card opens its details when tapped (lenzi, 2026-10-01); the ⋮ and the pill keep their own taps. -->
 <mat-card appearance="outlined" [class.tappable]="variant() === 'full'" (click)="variant() === 'full' && details.emit()">
   <mat-card-content>
+    <!-- The same menu in both variants. -->
+    <mat-menu #actions="matMenu" xPosition="before">
+      <button mat-menu-item type="button" (click)="details.emit()">
+        <mat-icon>insights</mat-icon>
+        <span>Details</span>
+      </button>
+      <button mat-menu-item type="button" (click)="edit.emit()">
+        <mat-icon>edit</mat-icon>
+        <span>Edit</span>
+      </button>
+      <button mat-menu-item type="button" (click)="remove.emit()">
+        <mat-icon>delete</mat-icon>
+        <span>Delete</span>
+      </button>
+    </mat-menu>
+
     @switch (variant()) {
       @case ('full') {
         <div class="head">
@@ -21,20 +37,6 @@
             <mat-icon>more_vert</mat-icon>
           </button>
         </div>
-        <mat-menu #actions="matMenu" xPosition="before">
-          <button mat-menu-item type="button" (click)="details.emit()">
-            <mat-icon>insights</mat-icon>
-            <span>Details</span>
-          </button>
-          <button mat-menu-item type="button" (click)="edit.emit()">
-            <mat-icon>edit</mat-icon>
-            <span>Edit</span>
-          </button>
-          <button mat-menu-item type="button" (click)="remove.emit()">
-            <mat-icon>delete</mat-icon>
-            <span>Delete</span>
-          </button>
-        </mat-menu>
 
         <div class="source">
           @if (item.type === 'one_time') {
@@ -55,11 +57,31 @@
         }
       }
       @case ('compact') {
-        <!-- Three columns, the same in every card: the amounts of a list line up, with a pill or without. -->
+        <!-- The same columns in every card: the amounts of a list line up, with a pill or without. -->
         <div class="compact">
           <span class="when">{{ shown.when }}</span>
           <span class="amount">{{ shown.amount }}</span>
           <app-delta-pill class="delta" [consumption]="item" />
+          <span class="actions">
+            <button
+              mat-icon-button
+              type="button"
+              class="open"
+              [attr.aria-label]="'Open the consumption of ' + shown.when + ' in the consumptions page'"
+              (click)="open.emit()"
+            >
+              <mat-icon>open_in_new</mat-icon>
+            </button>
+            <button
+              mat-icon-button
+              type="button"
+              class="more"
+              [attr.aria-label]="'Actions for the consumption of ' + shown.when"
+              [matMenuTriggerFor]="actions"
+            >
+              <mat-icon>more_vert</mat-icon>
+            </button>
+          </span>
         </div>
       }
     }

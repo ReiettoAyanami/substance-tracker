@@ -1,6 +1,16 @@
 <!-- The outlet never moves: hiding the app around a page (bare) must not create the page again. -->
 <mat-sidenav-container class="shell">
-  <mat-sidenav #sidebar class="sidebar" fixedInViewport [fixedTopGap]="8" [fixedBottomGap]="8" mode="over">
+  <!-- Opened, the focus goes to the current page's entry, not to the first one: a focused entry is
+       drawn highlighted, and Consumptions looked selected on every page (lenzi, 2026-10-03). -->
+  <mat-sidenav
+    #sidebar
+    class="sidebar"
+    fixedInViewport
+    [fixedTopGap]="8"
+    [fixedBottomGap]="8"
+    mode="over"
+    autoFocus='[aria-current="page"]'
+  >
     @if (!bare()) {
       <app-sidebar (navigated)="navigated(sidebar)" />
     }

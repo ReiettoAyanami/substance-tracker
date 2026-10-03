@@ -142,6 +142,21 @@ describe('ConsumptionsPage', () => {
     expect(asked).toEqual([['details', consumption(0).id, settings.currency]]);
   });
 
+  it("opened with a consumption in the URL (a card's open button): its details open, and the URL forgets it", async () => {
+    await render(`/consumptions?batchId=6&consumption=${consumption(0).id}`);
+    await vi.waitFor(() => expect(asked).toEqual([['details', consumption(0).id, 'EUR']]));
+
+    const router = TestBed.inject(Router);
+    expect(router.url).toBe('/consumptions?batchId=6');
+    expect(calls.map((c) => c.filter)).toEqual([{ batchId: 6 }]); // the parameter is no filter
+  });
+
+  it('a consumption in the URL that is not in the list: nothing opens, the URL forgets it', async () => {
+    await render('/consumptions?consumption=999');
+    await vi.waitFor(() => expect(TestBed.inject(Router).url).toBe('/consumptions'));
+    expect(asked).toEqual([]);
+  });
+
   it('puts a new filter in the URL, in place of the current entry, and lists what it asks for', async () => {
     await render('/consumptions?from=2026-09-01');
     const entries = history.length;

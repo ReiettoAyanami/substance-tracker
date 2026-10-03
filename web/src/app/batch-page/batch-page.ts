@@ -131,4 +131,10 @@ export class BatchPage {
     if (fromList) this.location.back();
     else void this.router.navigate([this.session.path('/substances'), this.substanceId], { replaceUrl: true, queryParamsHandling: 'preserve' });
   }
+
+  /** A consumption of the batch was changed or deleted from its last consumptions: its numbers too. */
+  protected written(): void {
+    this.batch.reload();
+    this.substance.reload();
+  }
 }

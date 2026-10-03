@@ -77,14 +77,20 @@
           mat-button
           type="button"
           class="recent-toggle"
-          [attr.aria-expanded]="row.recentOpen"
+          [attr.aria-expanded]="recentOpen().has(row.batch.id)"
           (click)="toggleRecent(row.batch.id)"
         >
-          <mat-icon>{{ row.recentOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
+          <mat-icon>{{ recentOpen().has(row.batch.id) ? 'expand_less' : 'expand_more' }}</mat-icon>
           Recent consumptions
         </button>
-        @if (row.recentOpen) {
-          <app-recent-consumptions [batch]="row.batch" [substanceId]="substanceId()" [settings]="settings()" />
+        @if (recentShown().has(row.batch.id)) {
+          <app-recent-consumptions
+            [class.closed]="!recentOpen().has(row.batch.id)"
+            [batch]="row.batch"
+            [substanceId]="substanceId()"
+            [settings]="settings()"
+            (changed)="written()"
+          />
         }
       </li>
     }

@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
+import { By } from '@angular/platform-browser';
 import { Router, provideRouter } from '@angular/router';
 import { Observable, of, throwError } from 'rxjs';
 
@@ -10,6 +11,7 @@ import { Settings } from '../../data/settings';
 import { Batch, SubstanceBatches } from '../../data/substance-batches';
 import { BatchActions } from './batch-actions';
 import { BatchList } from './batch-list';
+import { RecentConsumptions } from './recent-consumptions/recent-consumptions';
 
 /** Where "Details" goes (in the app, the batch's page under the substance's). */
 @Component({ template: '' })
@@ -255,10 +257,41 @@ describe('BatchList', () => {
     // which change they show is chosen on their delta pills: the only toggle of the panel is the share's
     expect(element().querySelectorAll('mat-button-toggle-group').length).toBe(1);
 
+    // closed, it stays out of sight; opened again it is there at once, nothing asked again
     toggles()[1]!.click();
     await fixture.whenStable();
-    expect(element().querySelector('app-recent-consumptions')).toBeNull();
     expect(toggles()[1]!.getAttribute('aria-expanded')).toBe('false');
+    expect(subCards[1]!.querySelector('app-recent-consumptions')!.classList).toContain('closed');
+    toggles()[1]!.click();
+    await fixture.whenStable();
+    expect(subCards[1]!.querySelector('app-recent-consumptions')!.classList).not.toContain('closed');
+    expect(recentAsks).toEqual([6]);
+  });
+
+  it('opening one batch’s recent consumptions leaves the other sub-cards as they are (no new rows)', async () => {
+    await render();
+    await expand();
+    const bars = () => Array.from(element().querySelectorAll('.batch app-stock-bar'));
+    const before = bars();
+    element().querySelectorAll<HTMLButtonElement>('.batch button.recent-toggle')[1]!.click();
+    await fixture.whenStable();
+    // the same elements, not drawn again
+    expect(bars()).toEqual(before);
+    expect(bars().every((bar, i) => bar === before[i])).toBe(true);
+  });
+
+  it('a consumption changed or deleted from the recent ones: the batches are asked again and the page is told', async () => {
+    await render();
+    await expand();
+    element().querySelectorAll<HTMLButtonElement>('.batch button.recent-toggle')[0]!.click();
+    await fixture.whenStable();
+    const asksBefore = asks;
+
+    (fixture.debugElement.query(By.directive(RecentConsumptions)).componentInstance as RecentConsumptions).changed.emit();
+    await fixture.whenStable();
+
+    expect(told).toBe(1);
+    expect(asks).toBe(asksBefore + 1);
   });
 
   it('asks the recent consumptions of an open sub-card again when the batches are (a batch was edited)', async () => {

@@ -9,7 +9,7 @@ p {
 }
 
 /* A destructive action: the theme's error colours. */
-.confirm:not(:disabled) {
+.confirm.destructive:not(:disabled) {
   --mat-button-filled-container-color: var(--mat-sys-error);
   --mat-button-filled-label-text-color: var(--mat-sys-on-error);
 }

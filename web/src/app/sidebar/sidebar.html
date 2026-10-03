@@ -38,9 +38,6 @@
         <span matListItemTitle>Admin</span>
       </a>
     }
-    @if (signOutError(); as message) {
-      <p class="sign-out-error" role="alert">{{ message }}</p>
-    }
     <button mat-list-item type="button" class="sign-out" (click)="signOut()">
       <mat-icon matListItemIcon>logout</mat-icon>
       <span matListItemTitle>Sign out</span>

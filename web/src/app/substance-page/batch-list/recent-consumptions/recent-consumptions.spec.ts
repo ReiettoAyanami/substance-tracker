@@ -1,7 +1,9 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { By } from '@angular/platform-browser';
+import { Router, provideRouter } from '@angular/router';
 import { Observable, of, throwError } from 'rxjs';
 
+import { ConsumptionActions } from '../../../consumptions-page/consumption-actions';
 import { ApiError } from '../../../data/api-error';
 import { Consumption, ConsumptionFilter } from '../../../data/consumption';
 import { HistoryPage } from '../../../data/one-time';
@@ -10,6 +12,7 @@ import { ReportsApi } from '../../../data/reports-api';
 import { Settings } from '../../../data/settings';
 import { Batch } from '../../../data/substance-batches';
 import { Session } from '../../../session/session';
+import { ConsumptionCard } from '../../../ui/consumption-card/consumption-card';
 import { RecentConsumptions } from './recent-consumptions';
 
 const settings: Settings = { timezone: 'Europe/Rome', dayStartsAt: '00:00:00', currency: 'EUR' };
@@ -59,6 +62,8 @@ describe('RecentConsumptions', () => {
   const text = (e: Element | null | undefined) => (e?.textContent ?? '').replace(/\s+/g, ' ').trim();
   const cards = () => Array.from(element().querySelectorAll('app-consumption-card'));
   const all = () => element().querySelector<HTMLAnchorElement>('a.all');
+  /** The component of the n-th card. */
+  const cardOf = (n: number) => fixture.debugElement.queryAll(By.directive(ConsumptionCard))[n]!.componentInstance as ConsumptionCard;
 
   async function render(): Promise<void> {
     fixture = TestBed.createComponent(RecentConsumptions);
@@ -68,14 +73,28 @@ describe('RecentConsumptions', () => {
     await fixture.whenStable();
   }
 
+  /** What the cards asked of the actions, and whether those answer that something was written. */
+  let actionCalls: unknown[][];
+  let actionWrites: boolean;
+
   beforeEach(async () => {
     localStorage.clear(); // the change the pills show is remembered there
     calls = [];
+    actionCalls = [];
+    actionWrites = true;
     answer = () => of([consumption(0), consumption(1), consumption(2)]);
     await TestBed.configureTestingModule({
       imports: [RecentConsumptions],
       providers: [
         provideRouter([]),
+        {
+          provide: ConsumptionActions,
+          useValue: {
+            details: async (c: Consumption, s: Settings) => void actionCalls.push(['details', c.id, s]),
+            edit: async (c: Consumption) => (actionCalls.push(['edit', c.id]), actionWrites),
+            delete: async (c: Consumption) => (actionCalls.push(['delete', c.id]), actionWrites),
+          },
+        },
         // the consumptions page of the signed-in user, under their username
         { provide: AuthApi, useValue: { getSession: () => of({ id: 1, username: 'lenzi', role: 'user', impersonatedBy: null }) } },
         {
@@ -92,7 +111,7 @@ describe('RecentConsumptions', () => {
     await TestBed.inject(Session).load();
   });
 
-  it('asks for the last 5 consumptions of its batch and shows them as compact cards, newest first, with no menu', async () => {
+  it('asks for the last 5 consumptions of its batch and shows them as compact cards, newest first, each with its buttons', async () => {
     await render();
 
     expect(calls).toEqual([{ filter: { batchId: 8 }, page: { limit: 5 } }]);
@@ -103,7 +122,38 @@ describe('RecentConsumptions', () => {
       ['26 Sept 2026, 20:00', '5 sigaretta · €1.55', ''], // the first of the batch
     ]);
     expect(element().querySelector('app-consumption-card .note')).toBeNull();
-    expect(element().querySelector('app-consumption-card button.more')).toBeNull(); // edited and deleted in the consumptions page
+    // open in the consumptions page, and the ⋮ of every card (lenzi, 2026-10-03)
+    expect(element().querySelectorAll('app-consumption-card button.open')).toHaveLength(3);
+    expect(element().querySelectorAll('app-consumption-card button.more')).toHaveLength(3);
+  });
+
+  it("the open button: the consumptions page filtered on the batch, with that consumption's details open", async () => {
+    await render();
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+
+    cardOf(1).open.emit();
+
+    expect(navigate).toHaveBeenCalledWith(['/lenzi'], { queryParams: { substanceId: 2, batchId: 8, consumption: consumption(1).id } });
+  });
+
+  it('the ⋮: details over the page; a change or a deletion asks the list again and tells the parent', async () => {
+    await render();
+    let told = 0;
+    fixture.componentInstance.changed.subscribe(() => told++);
+
+    cardOf(0).details.emit();
+    expect(actionCalls).toEqual([['details', consumption(0).id, settings]]);
+
+    cardOf(0).edit.emit();
+    await vi.waitFor(() => expect(calls).toHaveLength(2));
+    expect(told).toBe(1);
+
+    actionWrites = false; // a dialog closed without writing: nothing again
+    cardOf(2).remove.emit();
+    await fixture.whenStable();
+    expect(actionCalls.map((c) => c[0])).toEqual(['details', 'edit', 'delete']);
+    expect(calls).toHaveLength(2);
+    expect(told).toBe(1);
   });
 
   it('a tap on a pill switches that card only to the change in price', async () => {

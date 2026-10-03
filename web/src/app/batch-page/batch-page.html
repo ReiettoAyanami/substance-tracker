@@ -60,7 +60,12 @@
 
       <section class="recent" aria-label="Last consumptions">
         <h3>Last consumptions</h3>
-        <app-recent-consumptions [batch]="current.batch" [substanceId]="current.substance.id" [settings]="current.settings" />
+        <app-recent-consumptions
+          [batch]="current.batch"
+          [substanceId]="current.substance.id"
+          [settings]="current.settings"
+          (changed)="written()"
+        />
       </section>
     </div>
   } @else if (missing(); as message) {

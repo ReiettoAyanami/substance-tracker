@@ -38,12 +38,6 @@ button[mat-list-item] {
   text-align: start;
 }
 
-.sign-out-error {
-  margin: 0 16px 8px;
-  font: var(--mat-sys-body-medium);
-  color: var(--mat-sys-error);
-}
-
 /* Who is signed in (design-accounts.md: the username is what the app shows). */
 .username {
   margin: 2px 16px 16px;

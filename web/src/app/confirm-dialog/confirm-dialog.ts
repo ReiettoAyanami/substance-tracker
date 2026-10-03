@@ -9,14 +9,17 @@ import { ApiError } from '../data/api-error';
 export interface ConfirmDialogData {
   title: string;
   message: string;
-  /** The label of the button that confirms, e.g. "Delete": a destructive action, in the error colour. */
+  /** The label of the button that confirms, e.g. "Delete". */
   confirm: string;
+  /** A destructive action (the default): the button in the error colour. Signing out is not one. */
+  destructive?: boolean;
   /** What confirming does (a request): the dialog waits for it, closes on success, says why on a failure. */
   action: () => Observable<unknown>;
 }
 
 /**
- * Asks before a destructive action and runs it (design-frontend.md, consumption card: Delete).
+ * Asks before an action and runs it (design-frontend.md, consumption card: Delete; the sidebar's
+ * Sign out, lenzi 2026-10-03).
  * Closes with `true` once the action succeeded, with nothing on Cancel; on an error it stays open
  * and says why (e.g. the API's 409 on a consumption of a finished batch).
  */

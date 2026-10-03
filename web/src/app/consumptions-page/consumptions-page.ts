@@ -1,4 +1,4 @@
-import { Component, computed, inject, linkedSignal, signal } from '@angular/core';
+import { Component, computed, effect, inject, linkedSignal, signal, untracked } from '@angular/core';
 import { rxResource, toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -137,6 +137,26 @@ export class ConsumptionsPage {
   });
 
   protected readonly hasMore = computed(() => this.lastPageFull() && !this.moreFailed());
+
+  /**
+   * `consumption` in the URL (the open button of a compact card, lenzi 2026-10-03: "deve aprire la
+   * pagina della consumption nelle consumptions"): once it is in the list, its details open over the
+   * page. The parameter leaves the URL first, so back and a refresh do not open it again.
+   */
+  private handledFromUrl: string | null = null;
+  private readonly openFromUrl = effect(() => {
+    const raw: unknown = this.query()['consumption'];
+    const list = this.list();
+    if (typeof raw !== 'string' || !ID.test(raw) || !list || raw === this.handledFromUrl) return;
+    this.handledFromUrl = raw;
+    const item = list.items.find((c) => c.type === 'consumption' && c.id === Number(raw)) ?? null;
+    untracked(() => void this.openDetailsFromUrl(item, list.settings));
+  });
+
+  private async openDetailsFromUrl(item: Consumption | null, settings: Settings): Promise<void> {
+    await this.router.navigate([], { relativeTo: this.route, queryParams: { consumption: null }, queryParamsHandling: 'merge', replaceUrl: true });
+    if (item) await this.actions.details(item, settings);
+  }
 
   /** A new filter goes into the URL, which replaces the page's entry: back does not walk through every tweak. */
   protected apply(filter: ConsumptionFilter): void {

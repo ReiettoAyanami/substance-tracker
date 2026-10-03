@@ -1,8 +1,10 @@
 :host {
   display: block;
+  /* The total of the closed panel follows the panel's own width (below). */
+  container-type: inline-size;
 }
 
-/* The title stays on one line; the total wraps if it must. */
+/* The title stays on one line. */
 mat-panel-title {
   flex: none;
 }
@@ -10,6 +12,14 @@ mat-panel-title {
 .total {
   justify-content: flex-end;
   font-variant-numeric: tabular-nums;
+}
+
+/* Too narrow for it (a phone): "1 batch · 11 / 12 bottle" broke over three lines and out of the
+   header (lenzi, 2026-10-03: "su mobile quella info si nasconda"). Open, the panel shows it all. */
+@container (max-width: 26rem) {
+  .total {
+    display: none;
+  }
 }
 
 /* "Add batch" at the top right of the open panel. */
@@ -106,4 +116,9 @@ mat-panel-title {
 .prices {
   flex-basis: 100%;
   color: var(--mat-sys-on-surface-variant);
+}
+
+/* Recent consumptions opened once and closed again: kept, out of sight (batch-list.ts). */
+app-recent-consumptions.closed {
+  display: none;
 }
