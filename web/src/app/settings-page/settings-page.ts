@@ -17,6 +17,7 @@ import { ApiError } from '../data/api-error';
 import { Settings } from '../data/settings';
 import { SettingsApi } from '../data/settings-api';
 import { LOCALE } from '../locale';
+import { Session } from '../session/session';
 import { Appearance } from '../ui/appearance';
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -90,6 +91,7 @@ type Field = 'currency' | 'timezone' | 'dayStartsAt';
 })
 export class SettingsPage {
   private readonly api = inject(SettingsApi);
+  protected readonly session = inject(Session);
   private readonly snackBar = inject(MatSnackBar);
   protected readonly appearance = inject(Appearance);
 

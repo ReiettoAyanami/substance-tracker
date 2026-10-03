@@ -18,6 +18,7 @@ import { ReportsApi } from '../data/reports-api';
 import { SettingsApi } from '../data/settings-api';
 import { ViewsApi } from '../data/views-api';
 import { LOCALE } from '../locale';
+import { Session } from '../session/session';
 import { PageHistoryState } from '../substance-page/substance-page';
 import { keptValue } from '../ui/kept-value';
 import { MetricsTable, isBatch, isConsumption } from '../ui/metrics-table/metrics-table';
@@ -101,6 +102,7 @@ function pageQueryOf(params: ParamMap): PageQuery {
 })
 export class MetricsPage {
   private readonly route = inject(ActivatedRoute);
+  protected readonly session = inject(Session);
   private readonly router = inject(Router);
   private readonly metricsApi = inject(MetricsApi);
   private readonly views = inject(ViewsApi);
@@ -240,7 +242,7 @@ export class MetricsPage {
       return;
     }
     const state: PageHistoryState = { fromList: true };
-    const path = isBatch(row) ? ['/substances', row.substanceId, 'batches', row.id] : ['/substances', row.id];
+    const path = isBatch(row) ? [this.session.path('/substances'), row.substanceId, 'batches', row.id] : [this.session.path('/substances'), row.id];
     void this.router.navigate(path, { state });
   }
 

@@ -15,7 +15,7 @@
     <a
       mat-icon-button
       class="choose"
-      routerLink="/statistics/edit"
+      [routerLink]="session.path('/statistics/edit')"
       [queryParams]="{ section: 'metrics-substance' }"
       aria-label="Choose the columns of this table"
     >

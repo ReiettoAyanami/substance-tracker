@@ -57,6 +57,7 @@ describe('ConfirmDialog', () => {
   it('stays open on a failure, says why, and can try again', async () => {
     const refused: ApiError = {
       status: 409,
+      code: 'batch-deactivated',
       title: 'Conflict',
       detail: 'Batch 8 is deactivated (remaining reached 0)',
       fieldErrors: [],

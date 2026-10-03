@@ -41,7 +41,7 @@ function consumption(n: number, type: Consumption['type'] = 'consumption'): Cons
   };
 }
 
-const serverError: ApiError = { status: 500, title: 'Internal Server Error', detail: '', fieldErrors: [] };
+const serverError: ApiError = { status: 500, code: null, title: 'Internal Server Error', detail: '', fieldErrors: [] };
 
 describe('ConsumptionsPage', () => {
   let harness: RouterTestingHarness;

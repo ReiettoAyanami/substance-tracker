@@ -4,6 +4,8 @@
  */
 export interface ApiError {
   status: number | null;
+  /** The problem's code, the end of its `type` (e.g. `not-found`, `banned-user`); null without one. */
+  code: string | null;
   title: string;
   detail: string;
   fieldErrors: FieldError[];

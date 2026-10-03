@@ -121,6 +121,7 @@ describe('SettingsPage', () => {
       throwError(
         (): ApiError => ({
           status: 400,
+          code: 'validation',
           title: 'Bad Request',
           detail: 'invalid',
           fieldErrors: [{ field: 'timezone', message: 'timezone "Europe/London" is not a valid IANA time zone' }],
@@ -133,7 +134,7 @@ describe('SettingsPage', () => {
     expect(text(element().querySelector('.timezone mat-error'))).toBe('timezone "Europe/London" is not a valid IANA time zone');
     expect(saveButton().disabled).toBe(false);
 
-    answer = () => throwError((): ApiError => ({ status: null, title: 'No connection', detail: '', fieldErrors: [] }));
+    answer = () => throwError((): ApiError => ({ status: null, code: null, title: 'No connection', detail: '', fieldErrors: [] }));
     await type('timezone', 'Europe/Paris'); // a new value clears the API's error
     await save();
     expect(text(element().querySelector('.form-error'))).toBe('Could not save: No connection');

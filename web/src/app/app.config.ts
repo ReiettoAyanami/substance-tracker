@@ -5,13 +5,16 @@ import { provideRouter, withComponentInputBinding } from '@angular/router';
 
 import { routes } from './app.routes';
 import { errorInterceptor } from './data/error-interceptor';
+import { sessionEndedInterceptor } from './session/session-ended-interceptor';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     // Route parameters arrive as component inputs (the substance page's `id`).
     provideRouter(routes, withComponentInputBinding()),
-    provideHttpClient(withFetch(), withInterceptors([errorInterceptor])),
+    // The session check sits nearer the server: it sees the raw 401, then the error interceptor turns
+    // every failure into an ApiError.
+    provideHttpClient(withFetch(), withInterceptors([errorInterceptor, sessionEndedInterceptor])),
     // Windows open and close a little slower than Material's 150 / 75 ms (lenzi, 2026-10-02: "poco
     // più lente"); the closing fade of styles.css ("glass") lasts the same 150 ms.
     {

@@ -11,6 +11,7 @@ import { SeriesDefinition } from '../../data/series';
 import { Settings } from '../../data/settings';
 import { ViewItem } from '../../data/view-item';
 import { ViewsApi } from '../../data/views-api';
+import { Session } from '../../session/session';
 import { PERIODS, PeriodScale, periodLabel } from '../period-scale/period-scale';
 import { readPreference, writePreference } from '../preferences';
 import { Widget } from '../widget/widget';
@@ -44,6 +45,7 @@ export class ChartsPanel {
   readonly refresh = input<unknown>(null);
 
   private readonly api = inject(MetricsApi);
+  protected readonly session = inject(Session);
   private readonly views = inject(ViewsApi);
 
   protected readonly days = signal<number>(readDays());

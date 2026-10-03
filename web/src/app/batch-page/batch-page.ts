@@ -11,6 +11,7 @@ import { CatalogApi } from '../data/catalog-api';
 import { ReportsApi } from '../data/reports-api';
 import { SettingsApi } from '../data/settings-api';
 import { LOCALE } from '../locale';
+import { Session } from '../session/session';
 import { RecentConsumptions } from '../substance-page/batch-list/recent-consumptions/recent-consumptions';
 import { PageHistoryState } from '../substance-page/substance-page';
 import { IdentityColorPipe } from '../ui/identity-color-pipe';
@@ -42,6 +43,7 @@ export class BatchPage {
   readonly batchId = input.required<string>();
 
   private readonly reports = inject(ReportsApi);
+  private readonly session = inject(Session);
   private readonly catalog = inject(CatalogApi);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
@@ -127,6 +129,6 @@ export class BatchPage {
   protected close(): void {
     const { fromList } = (this.location.getState() ?? {}) as PageHistoryState;
     if (fromList) this.location.back();
-    else void this.router.navigate(['/substances', this.substanceId], { replaceUrl: true, queryParamsHandling: 'preserve' });
+    else void this.router.navigate([this.session.path('/substances'), this.substanceId], { replaceUrl: true, queryParamsHandling: 'preserve' });
   }
 }

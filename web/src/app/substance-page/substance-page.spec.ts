@@ -9,6 +9,7 @@ import { RouterTestingHarness } from '@angular/router/testing';
 import { of } from 'rxjs';
 
 import { routes } from '../app.routes';
+import { AuthApi } from '../data/auth-api';
 import { MetricsApi } from '../data/metrics-api';
 import { ReportsApi } from '../data/reports-api';
 import { Substance } from '../data/substance';
@@ -95,6 +96,8 @@ describe('SubstancePage', () => {
         provideHttpClientTesting(),
         provideRouter(routes, withComponentInputBinding()),
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
+        // the pages of a user live under their username
+        { provide: AuthApi, useValue: { getSession: () => of({ id: 1, username: 'lenzi', role: 'user', impersonatedBy: null }) } },
         {
           provide: MetricsApi,
           useValue: {
@@ -116,7 +119,7 @@ describe('SubstancePage', () => {
   });
 
   it('shows the substance of the link over the list, with its position in the list order', async () => {
-    await open('/substances/1');
+    await open('/lenzi/substances/1');
 
     expect(document.querySelectorAll('app-substances-page app-substance-card').length).toBe(4); // 3 in the list + 1 in the page
     expect(text(page()?.querySelector('app-substance-card .name'))).toBe('Caffè');
@@ -124,14 +127,14 @@ describe('SubstancePage', () => {
   });
 
   it('shows the total of the active batches and of the one-time consumptions below the card', async () => {
-    await open('/substances/1');
+    await open('/lenzi/substances/1');
 
     expect(text(page()?.querySelector('app-batch-list .total'))).toBe('1 batch · 4 / 10 g');
     expect(text(page()?.querySelector('app-one-time-list .total'))).toBe('No consumptions');
   });
 
   it('ends with its metrics and its charts, open: they ask for them at once (lenzi, 2026-10-01)', async () => {
-    await open('/substances/1');
+    await open('/lenzi/substances/1');
 
     expect(Array.from(page()!.querySelectorAll('.content > *')).map((e) => e.tagName.toLowerCase())).toEqual([
       'app-substance-card',
@@ -147,7 +150,7 @@ describe('SubstancePage', () => {
   });
 
   it('closes onto the list when its substance is deleted from its card', async () => {
-    await open('/substances/1');
+    await open('/lenzi/substances/1');
     page()!.querySelector<HTMLButtonElement>('app-substance-card button.more')!.click();
     await harness.fixture.whenStable();
     Array.from(document.querySelectorAll<HTMLButtonElement>('.mat-mdc-menu-item'))
@@ -165,20 +168,20 @@ describe('SubstancePage', () => {
       await harness.fixture.whenStable();
     }
 
-    expect(TestBed.inject(Router).url).toBe('/substances');
+    expect(TestBed.inject(Router).url).toBe('/lenzi/substances');
     expect(page()).toBeNull();
     const names = Array.from(document.querySelectorAll('app-substances-page app-substance-card .name')).map(text);
     expect(names).toEqual(['Birra', 'Erba']);
   });
 
   it('goes to the next and previous substance of the list order, replacing the route (back still closes)', async () => {
-    await open('/substances/1');
+    await open('/lenzi/substances/1');
     const button = (label: string) => page()!.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`)!;
     const entries = history.length;
 
     button('Next substance').click();
     await harness.fixture.whenStable();
-    expect(TestBed.inject(Router).url).toBe('/substances/3');
+    expect(TestBed.inject(Router).url).toBe('/lenzi/substances/3');
     expect(text(page()?.querySelector('app-substance-card .name'))).toBe('Erba');
     expect(text(page()?.querySelector('.position'))).toBe('3 / 3');
     expect(button('Next substance').disabled).toBe(true);
@@ -187,35 +190,35 @@ describe('SubstancePage', () => {
     await harness.fixture.whenStable();
     button('Previous substance').click();
     await harness.fixture.whenStable();
-    expect(TestBed.inject(Router).url).toBe('/substances/4');
+    expect(TestBed.inject(Router).url).toBe('/lenzi/substances/4');
     expect(button('Previous substance').disabled).toBe(true);
     expect(history.length).toBe(entries);
   });
 
   it('from a direct link, X and a tap on the backdrop close it onto the list', async () => {
-    await open('/substances/1');
+    await open('/lenzi/substances/1');
     const back = vi.spyOn(TestBed.inject(Location), 'back');
 
     page()!.querySelector<HTMLButtonElement>('button[aria-label="Close"]')!.click();
     await harness.fixture.whenStable();
-    expect(TestBed.inject(Router).url).toBe('/substances');
+    expect(TestBed.inject(Router).url).toBe('/lenzi/substances');
     expect(page()).toBeNull();
 
-    await harness.navigateByUrl('/substances/3');
+    await harness.navigateByUrl('/lenzi/substances/3');
     page()!.querySelector<HTMLElement>('.backdrop')!.click();
     await harness.fixture.whenStable();
-    expect(TestBed.inject(Router).url).toBe('/substances');
+    expect(TestBed.inject(Router).url).toBe('/lenzi/substances');
     expect(back).not.toHaveBeenCalled();
   });
 
   it('opens from a card of the list; closing then goes back in history, also after prev/next', async () => {
-    await open('/substances');
+    await open('/lenzi/substances');
     const erba = Array.from(document.querySelectorAll<HTMLElement>('app-substances-page app-substance-card')).find(
       (card) => text(card.querySelector('.name')) === 'Erba',
     )!;
     erba.querySelector<HTMLElement>('.last-purchase')!.click();
     await harness.fixture.whenStable();
-    expect(TestBed.inject(Router).url).toBe('/substances/3');
+    expect(TestBed.inject(Router).url).toBe('/lenzi/substances/3');
     expect(text(page()?.querySelector('app-substance-card .name'))).toBe('Erba');
 
     const back = vi.spyOn(TestBed.inject(Location), 'back');
@@ -226,7 +229,7 @@ describe('SubstancePage', () => {
   });
 
   it('asks its substance again when a batch was written in its batch list: the card changes here and in the list underneath', async () => {
-    await open('/substances/1');
+    await open('/lenzi/substances/1');
     const bars = () => document.querySelectorAll('app-substances-page app-substance-card .segment').length;
     expect(bars()).toBe(0);
 
@@ -243,11 +246,11 @@ describe('SubstancePage', () => {
     await harness.fixture.whenStable();
 
     expect(bars()).toBe(2); // the card of the page and the one in the list
-    expect(TestBed.inject(Router).url).toBe('/substances/1');
+    expect(TestBed.inject(Router).url).toBe('/lenzi/substances/1');
   });
 
   it('asks its substance again also when a one-time consumption was added in its one-time list', async () => {
-    await open('/substances/1');
+    await open('/lenzi/substances/1');
 
     const oneTimeList = harness.fixture.debugElement.query(By.directive(OneTimeList)).componentInstance as OneTimeList;
     oneTimeList.changed.emit();
@@ -258,7 +261,7 @@ describe('SubstancePage', () => {
   });
 
   it('closes on Esc, unless something open over it (a dialog, a menu) already took the key', async () => {
-    await open('/substances/1');
+    await open('/lenzi/substances/1');
 
     const taken = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
     taken.preventDefault(); // as the dialog or the menu on top does when it closes itself
@@ -269,11 +272,11 @@ describe('SubstancePage', () => {
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
     await harness.fixture.whenStable();
     expect(page()).toBeNull();
-    expect(TestBed.inject(Router).url).toBe('/substances');
+    expect(TestBed.inject(Router).url).toBe('/lenzi/substances');
   });
 
   it('keeps the search of the URL: over the list it found, through prev/next, and when it closes', async () => {
-    harness = await RouterTestingHarness.create('/substances/1?q=a');
+    harness = await RouterTestingHarness.create('/lenzi/substances/1?q=a');
     const backend = TestBed.inject(HttpTestingController);
     backend.expectOne('/api/settings').flush(settings);
     backend.expectOne('/api/substances?q=a').flush([substance(1, 'Caffè'), substance(3, 'Erba')]);
@@ -282,16 +285,16 @@ describe('SubstancePage', () => {
 
     page()!.querySelector<HTMLButtonElement>('button[aria-label="Next substance"]')!.click();
     await harness.fixture.whenStable();
-    expect(TestBed.inject(Router).url).toBe('/substances/3?q=a');
+    expect(TestBed.inject(Router).url).toBe('/lenzi/substances/3?q=a');
 
     page()!.querySelector<HTMLButtonElement>('button[aria-label="Close"]')!.click();
     await harness.fixture.whenStable();
-    expect(TestBed.inject(Router).url).toBe('/substances?q=a');
+    expect(TestBed.inject(Router).url).toBe('/lenzi/substances?q=a');
     backend.verify(); // the list was not asked again: the search did not change
   });
 
   it('says so when the substance is not in the list (an old link, an archived substance)', async () => {
-    await open('/substances/99');
+    await open('/lenzi/substances/99');
 
     expect(text(page()?.querySelector('.missing'))).toBe('Substance not found');
     expect(page()?.querySelector('app-substance-card')).toBeNull();

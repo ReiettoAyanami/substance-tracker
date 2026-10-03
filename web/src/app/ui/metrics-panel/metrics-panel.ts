@@ -10,6 +10,7 @@ import { MetricDefinition, MetricScope, TIME_SCALES, TimeScale } from '../../dat
 import { MetricsApi } from '../../data/metrics-api';
 import { Settings } from '../../data/settings';
 import { ViewsApi } from '../../data/views-api';
+import { Session } from '../../session/session';
 import { keptValue } from '../kept-value';
 import { MetricReading, MetricValuePipe } from '../metric-value-pipe';
 import { PERIODS, PeriodScale, periodLabel } from '../period-scale/period-scale';
@@ -57,6 +58,7 @@ export class MetricsPanel {
   readonly refresh = input<unknown>(null);
 
   private readonly api = inject(MetricsApi);
+  protected readonly session = inject(Session);
   private readonly views = inject(ViewsApi);
 
   protected readonly per = signal<TimeScale>(readPer());

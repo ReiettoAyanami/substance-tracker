@@ -1,15 +1,20 @@
+<!-- The outlet never moves: hiding the app around a page (bare) must not create the page again. -->
 <mat-sidenav-container class="shell">
   <mat-sidenav #sidebar class="sidebar" fixedInViewport [fixedTopGap]="8" [fixedBottomGap]="8" mode="over">
-    <app-sidebar (navigated)="navigated(sidebar)" />
+    @if (!bare()) {
+      <app-sidebar (navigated)="navigated(sidebar)" />
+    }
   </mat-sidenav>
 
   <mat-sidenav-content>
-    <mat-toolbar>
-      <button mat-icon-button type="button" class="menu" aria-label="Menu" (click)="openSidebar(sidebar, $event)">
-        <mat-icon>menu</mat-icon>
-      </button>
-      <span class="title">{{ title() }}</span>
-    </mat-toolbar>
+    @if (!bare()) {
+      <mat-toolbar>
+        <button mat-icon-button type="button" class="menu" aria-label="Menu" (click)="openSidebar(sidebar, $event)">
+          <mat-icon>menu</mat-icon>
+        </button>
+        <span class="title">{{ title() }}</span>
+      </mat-toolbar>
+    }
 
     <router-outlet />
   </mat-sidenav-content>

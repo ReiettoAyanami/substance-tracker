@@ -18,7 +18,7 @@
   </nav>
 
   <mat-tab-nav-panel #panel class="panel">
-    <p class="intro">{{ tab().intro }} Over time: <a routerLink="/statistics">Statistics</a>.</p>
+    <p class="intro">{{ tab().intro }} Over time: <a [routerLink]="session.path('/statistics')">Statistics</a>.</p>
 
     <div class="choices">
       <app-period-scale
@@ -41,7 +41,7 @@
       <a
         mat-icon-button
         class="choose"
-        routerLink="/statistics/edit"
+        [routerLink]="session.path('/statistics/edit')"
         [queryParams]="{ section: 'metrics-' + query().table }"
         aria-label="Choose the columns of this table"
       >

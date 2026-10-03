@@ -8,6 +8,7 @@ import { MatInputModule } from '@angular/material/input';
 import { ActivatedRoute, Router, RouterOutlet } from '@angular/router';
 import { Subject, debounceTime, map } from 'rxjs';
 
+import { Session } from '../session/session';
 import { PageHistoryState } from '../substance-page/substance-page';
 import { AddButton } from '../ui/add-button/add-button';
 import { ChartsPanel } from '../ui/charts-panel/charts-panel';
@@ -54,6 +55,7 @@ export const OVERVIEW_AT_THE_SIDE = '(min-width: 1200px)';
 })
 export class SubstancesPage {
   protected readonly list = inject(SubstanceList);
+  private readonly session = inject(Session);
   protected readonly actions = inject(SubstanceActions);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
@@ -100,7 +102,7 @@ export class SubstancesPage {
 
   /** A tapped card opens its substance page over the list, which stays as it was searched. */
   protected open(substanceId: number): void {
-    void this.router.navigate(['/substances', substanceId], {
+    void this.router.navigate([this.session.path('/substances'), substanceId], {
       state: { fromList: true } satisfies PageHistoryState,
       queryParamsHandling: 'preserve',
     });

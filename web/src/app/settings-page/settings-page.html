@@ -55,7 +55,7 @@
     </form>
 
     <mat-nav-list class="links">
-      <a mat-list-item routerLink="/statistics/edit">
+      <a mat-list-item [routerLink]="session.path('/statistics/edit')">
         <mat-icon matListItemIcon>tune</mat-icon>
         <span matListItemTitle>What the pages show</span>
         <span matListItemLine>The metrics and the charts of each page</span>

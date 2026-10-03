@@ -12,6 +12,7 @@ import { MetricDefinition, MetricsRow, MetricsTable as TableData, TIME_SCALES, T
 import { MetricsApi } from '../../data/metrics-api';
 import { Settings } from '../../data/settings';
 import { ViewsApi } from '../../data/views-api';
+import { Session } from '../../session/session';
 import { keptValue } from '../../ui/kept-value';
 import { MetricsTable } from '../../ui/metrics-table/metrics-table';
 import { PERIODS, PeriodScale, periodLabel } from '../../ui/period-scale/period-scale';
@@ -47,6 +48,7 @@ export class SubstancesMetricsPanel {
   readonly opened = output<number>();
 
   private readonly api = inject(MetricsApi);
+  protected readonly session = inject(Session);
   private readonly views = inject(ViewsApi);
 
   protected readonly per = signal<TimeScale>(readPer());

@@ -5,9 +5,11 @@ import { Observable, of, throwError } from 'rxjs';
 import { ApiError } from '../../../data/api-error';
 import { Consumption, ConsumptionFilter } from '../../../data/consumption';
 import { HistoryPage } from '../../../data/one-time';
+import { AuthApi } from '../../../data/auth-api';
 import { ReportsApi } from '../../../data/reports-api';
 import { Settings } from '../../../data/settings';
 import { Batch } from '../../../data/substance-batches';
+import { Session } from '../../../session/session';
 import { RecentConsumptions } from './recent-consumptions';
 
 const settings: Settings = { timezone: 'Europe/Rome', dayStartsAt: '00:00:00', currency: 'EUR' };
@@ -74,6 +76,8 @@ describe('RecentConsumptions', () => {
       imports: [RecentConsumptions],
       providers: [
         provideRouter([]),
+        // the consumptions page of the signed-in user, under their username
+        { provide: AuthApi, useValue: { getSession: () => of({ id: 1, username: 'lenzi', role: 'user', impersonatedBy: null }) } },
         {
           provide: ReportsApi,
           useValue: {
@@ -85,6 +89,7 @@ describe('RecentConsumptions', () => {
         },
       ],
     }).compileComponents();
+    await TestBed.inject(Session).load();
   });
 
   it('asks for the last 5 consumptions of its batch and shows them as compact cards, newest first, with no menu', async () => {
@@ -116,7 +121,7 @@ describe('RecentConsumptions', () => {
     await render();
 
     expect(all()!.getAttribute('aria-label')).toBe('All the consumptions of this batch');
-    expect(all()!.getAttribute('href')).toBe('/consumptions?substanceId=2&batchId=8');
+    expect(all()!.getAttribute('href')).toBe('/lenzi?substanceId=2&batchId=8');
     // after the cards: the sixth item when there are five of them
     const last = cards().at(-1)!;
     expect((last.compareDocumentPosition(all()!) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0).toBe(true);
@@ -140,7 +145,7 @@ describe('RecentConsumptions', () => {
   });
 
   it('says why when they cannot be loaded', async () => {
-    answer = () => throwError(() => ({ status: 500, title: 'Internal Server Error', detail: '', fieldErrors: [] }) as ApiError);
+    answer = () => throwError(() => ({ status: 500, code: null, title: 'Internal Server Error', detail: '', fieldErrors: [] }) as ApiError);
     await render();
 
     expect(text(element().querySelector('.error'))).toBe('Could not load the consumptions (500)');

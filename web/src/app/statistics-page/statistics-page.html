@@ -1,9 +1,9 @@
 <main class="statistics-page">
-  <p class="intro">Charts over time. To compare the entities today, see <a routerLink="/metrics">Metrics</a>.</p>
+  <p class="intro">Charts over time. To compare the entities today, see <a [routerLink]="session.path('/metrics')">Metrics</a>.</p>
 
   <div class="choices">
     <app-period-scale [days]="days()" (daysChange)="chooseDays($event)" />
-    <a mat-icon-button class="choose" routerLink="/statistics/edit" [queryParams]="{ section: 'statistics' }" aria-label="Choose the charts">
+    <a mat-icon-button class="choose" [routerLink]="session.path('/statistics/edit')" [queryParams]="{ section: 'statistics' }" aria-label="Choose the charts">
       <mat-icon>tune</mat-icon>
     </a>
   </div>
@@ -23,7 +23,7 @@
         </div>
       </section>
     } @empty {
-      <p class="message">No chart is chosen: <a routerLink="/statistics/edit" [queryParams]="{ section: 'statistics' }">choose them</a>.</p>
+      <p class="message">No chart is chosen: <a [routerLink]="session.path('/statistics/edit')" [queryParams]="{ section: 'statistics' }">choose them</a>.</p>
     }
   } @else {
     <p class="message">…</p>

@@ -45,6 +45,7 @@ describe('errorInterceptor', () => {
 
     expect(error).toEqual({
       status: 400,
+      code: 'validation',
       title: 'Bad Request',
       detail: 'body/name must NOT have fewer than 1 characters',
       fieldErrors: [{ field: 'name', message: 'must NOT have fewer than 1 characters' }],
@@ -56,7 +57,7 @@ describe('errorInterceptor', () => {
       backend.expectOne(url).flush(null, { status: 500, statusText: 'Internal Server Error' }),
     );
 
-    expect(error).toEqual({ status: 500, title: 'Internal Server Error', detail: '', fieldErrors: [] });
+    expect(error).toEqual({ status: 500, code: null, title: 'Internal Server Error', detail: '', fieldErrors: [] });
   });
 
   it('turns a network failure into an ApiError with no status', async () => {
@@ -64,6 +65,7 @@ describe('errorInterceptor', () => {
 
     expect(error).toEqual({
       status: null,
+      code: null,
       title: 'Network error',
       detail: 'The API could not be reached.',
       fieldErrors: [],

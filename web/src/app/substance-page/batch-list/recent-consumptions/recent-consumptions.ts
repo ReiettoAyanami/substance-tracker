@@ -8,6 +8,7 @@ import { ApiError } from '../../../data/api-error';
 import { ReportsApi } from '../../../data/reports-api';
 import { Settings } from '../../../data/settings';
 import { Batch } from '../../../data/substance-batches';
+import { Session } from '../../../session/session';
 import { ConsumptionCard } from '../../../ui/consumption-card/consumption-card';
 
 /** How many consumptions are shown under a batch. */
@@ -36,6 +37,7 @@ export class RecentConsumptions {
   readonly settings = input.required<Settings>();
 
   private readonly reports = inject(ReportsApi);
+  protected readonly session = inject(Session);
   private readonly consumptions = rxResource({
     params: () => this.batch(),
     stream: ({ params }) => this.reports.listConsumptions({ batchId: params.id }, { limit: RECENT }),

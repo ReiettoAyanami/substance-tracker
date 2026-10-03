@@ -11,6 +11,7 @@ import { SeriesDefinition } from '../data/series';
 import { SettingsApi } from '../data/settings-api';
 import { ViewItem } from '../data/view-item';
 import { ViewsApi } from '../data/views-api';
+import { Session } from '../session/session';
 import { PERIODS, PeriodScale } from '../ui/period-scale/period-scale';
 import { Widget } from '../ui/widget/widget';
 import { Section, sectionsOf } from './sections';
@@ -33,6 +34,7 @@ const DEFAULT_DAYS = 90;
 })
 export class StatisticsPage {
   private readonly route = inject(ActivatedRoute);
+  protected readonly session = inject(Session);
   private readonly router = inject(Router);
   private readonly metricsApi = inject(MetricsApi);
   private readonly views = inject(ViewsApi);

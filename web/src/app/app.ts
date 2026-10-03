@@ -7,6 +7,7 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRouteSnapshot, NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter, map } from 'rxjs';
 
+import { Session } from './session/session';
 import { Sidebar } from './sidebar/sidebar';
 import { Appearance } from './ui/appearance';
 import { VersionLabel } from './ui/version-label/version-label';
@@ -18,11 +19,20 @@ function routeTitle(route: ActivatedRouteSnapshot): string {
   return title;
 }
 
+/** Does the active route ask to be shown alone, without the app around it (the sign-in page)? */
+function routeIsBare(route: ActivatedRouteSnapshot): boolean {
+  for (let current: ActivatedRouteSnapshot | null = route; current; current = current.firstChild) {
+    if (current.data['bare'] === true) return true;
+  }
+  return false;
+}
+
 /**
  * App shell (design-frontend.md): the sidebar with the pages, the top bar with the current route's
  * title, and the routes. The sidebar is a drawer on every screen, as on a phone (lenzi, 2026-10-02:
  * "la barra di fianco si apra con un tasto come la versione android"): opened from the top bar,
- * closed after a tap on a link.
+ * closed after a tap on a link. Without a signed-in user (the sign-in page, a 404 seen signed out)
+ * the page stands alone: there are no pages to link to.
  */
 @Component({
   selector: 'app-root',
@@ -32,16 +42,24 @@ function routeTitle(route: ActivatedRouteSnapshot): string {
 })
 export class App {
   private readonly router = inject(Router);
+  private readonly session = inject(Session);
 
   /** The look this browser chose (Reduce transparency), applied from the first page, not only in /settings. */
   private readonly appearance = inject(Appearance);
 
-  protected readonly title = toSignal(
-    this.router.events.pipe(
-      filter((event) => event instanceof NavigationEnd),
-      map(() => routeTitle(this.router.routerState.snapshot.root)),
-    ),
-    { initialValue: '' },
+  private readonly navigated$ = this.router.events.pipe(filter((event) => event instanceof NavigationEnd));
+
+  protected readonly title = toSignal(this.navigated$.pipe(map(() => routeTitle(this.router.routerState.snapshot.root))), {
+    initialValue: '',
+  });
+
+  /**
+   * Decided when a navigation ends, not as soon as the session changes: signing out keeps the app
+   * around the page until the sign-in page is there.
+   */
+  protected readonly bare = toSignal(
+    this.navigated$.pipe(map(() => routeIsBare(this.router.routerState.snapshot.root) || this.session.user() === null)),
+    { initialValue: true },
   );
 
   /**

@@ -1,4 +1,4 @@
-/* The whole height of the drawer: the settings sit at its bottom. */
+/* The whole height of the drawer: sign out and the settings sit at its bottom. */
 :host {
   display: block;
   height: 100%;
@@ -20,13 +20,34 @@ nav {
 
 /* A little air between the entries (lenzi, 2026-10-03: "distanzia leggermente di più i bottoni nel
    menu laterale in altezza"). */
-a[mat-list-item] + a[mat-list-item] {
+[mat-list-item] + [mat-list-item] {
   margin-top: 6px;
 }
 
 .app-name {
-  margin: 12px 16px 16px;
+  margin: 12px 16px 0;
   /* A little bigger than the pages' entries (lenzi, 2026-10-01). */
   font: var(--mat-sys-title-large);
   color: var(--mat-sys-on-surface);
+}
+
+/* "Sign out" is a button among links: without the browser's button look (a border, the text in
+   the middle), like the other entries. */
+button[mat-list-item] {
+  border: 0;
+  text-align: start;
+}
+
+.sign-out-error {
+  margin: 0 16px 8px;
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-error);
+}
+
+/* Who is signed in (design-accounts.md: the username is what the app shows). */
+.username {
+  margin: 2px 16px 16px;
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+  overflow-wrap: anywhere;
 }

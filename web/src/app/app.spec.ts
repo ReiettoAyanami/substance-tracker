@@ -9,6 +9,7 @@ import { of } from 'rxjs';
 
 import { App } from './app';
 import { routes } from './app.routes';
+import { AuthApi, type SessionUser } from './data/auth-api';
 import { CatalogApi } from './data/catalog-api';
 import { MetricsApi } from './data/metrics-api';
 import { ReportsApi } from './data/reports-api';
@@ -16,36 +17,47 @@ import { SettingsApi } from './data/settings-api';
 import { VersionApi } from './data/version-api';
 import { ViewsApi } from './data/views-api';
 
+const lenzi: SessionUser = { id: 1, username: 'lenzi', role: 'admin', impersonatedBy: null };
+
 /** The pages' data: the shell is tested here, not what the pages show. */
-const pageData = [
-  {
-    provide: ReportsApi,
-    useValue: {
-      listConsumptions: () => of([]),
-      listBatches: () => of([]),
-      getConsumptionBounds: () => of({ minCost: null, maxCost: null, minQuantity: null, maxQuantity: null }),
+function pageData(listConsumptions: () => unknown) {
+  return [
+    {
+      provide: ReportsApi,
+      useValue: {
+        listConsumptions,
+        listBatches: () => of([]),
+        getConsumptionBounds: () => of({ minCost: null, maxCost: null, minQuantity: null, maxQuantity: null }),
+      },
     },
-  },
-  { provide: CatalogApi, useValue: { listSubstances: () => of([]) } },
-  // the statistics of the substances page, open on a wide screen
-  {
-    provide: MetricsApi,
-    useValue: {
-      getCatalog: () => of([]),
-      getTable: () => of({ scope: 'substance', per: 'day', from: null, to: null, keys: [], rows: [] }),
+    { provide: CatalogApi, useValue: { listSubstances: () => of([]) } },
+    // the statistics of the substances page, open on a wide screen
+    {
+      provide: MetricsApi,
+      useValue: {
+        getCatalog: () => of([]),
+        getTable: () => of({ scope: 'substance', per: 'day', from: null, to: null, keys: [], rows: [] }),
+      },
     },
-  },
-  { provide: ViewsApi, useValue: { list: () => of([]) } },
-  {
-    provide: SettingsApi,
-    useValue: { getSettings: () => of({ timezone: 'Europe/Rome', dayStartsAt: '00:00:00', currency: 'EUR' }) },
-  },
-  // the shell's own: the version in the corner
-  { provide: VersionApi, useValue: { getVersion: () => of('dev26.0.0') } },
-];
+    { provide: ViewsApi, useValue: { list: () => of([]) } },
+    {
+      provide: SettingsApi,
+      useValue: { getSettings: () => of({ timezone: 'Europe/Rome', dayStartsAt: '00:00:00', currency: 'EUR' }) },
+    },
+    // the shell's own: the version in the corner
+    { provide: VersionApi, useValue: { getVersion: () => of('dev26.0.0') } },
+  ];
+}
 
 describe('App', () => {
-  async function start(url = '/') {
+  /** The app at `url`, with `user` signed in (null: nobody). */
+  async function start(url = '/', user: SessionUser | null = lenzi) {
+    let session = user;
+    const listConsumptions = vi.fn(() => of([]));
+    const signOut = vi.fn(() => {
+      session = null;
+      return of(undefined);
+    });
     TestBed.configureTestingModule({
       imports: [App],
       providers: [
@@ -54,30 +66,41 @@ describe('App', () => {
         provideRouter(routes),
         // jsdom has no animation events: the drawer opens and closes at once
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
-        ...pageData,
+        { provide: AuthApi, useValue: { getSession: () => of(session), signOut } },
+        ...pageData(listConsumptions),
       ],
     });
     const fixture = TestBed.createComponent(App);
-    await TestBed.inject(Router).navigateByUrl(url);
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl(url);
     await fixture.whenStable();
     const element = fixture.nativeElement as HTMLElement;
     return {
       fixture,
       element,
+      router,
+      listConsumptions,
+      signOut,
+      go: async (to: string) => {
+        await router.navigateByUrl(to);
+        await fixture.whenStable();
+      },
       sidebar: fixture.debugElement.query(By.directive(MatSidenav)).componentInstance as MatSidenav,
       title: () => element.querySelector('mat-toolbar .title')?.textContent?.trim(),
       menuButton: () => element.querySelector<HTMLButtonElement>('mat-toolbar button[aria-label="Menu"]'),
       link: (label: string) =>
-        Array.from(element.querySelectorAll<HTMLAnchorElement>('app-sidebar a')).find((a) => a.textContent?.includes(label))!,
+        Array.from(element.querySelectorAll<HTMLElement>('app-sidebar [mat-list-item]')).find((a) => a.textContent?.includes(label))!,
     };
   }
 
-  it('opens on Consumptions, with its title in the top bar', async () => {
+  it("opens on the signed-in user's consumptions, under their username, with its title in the top bar", async () => {
     const app = await start();
 
-    expect(TestBed.inject(Router).url).toBe('/consumptions');
+    expect(app.router.url).toBe('/lenzi');
     expect(app.title()).toBe('Consumptions');
     expect(app.element.querySelector('app-consumptions-page')).not.toBeNull();
+    // the page is made once: hiding or showing the app around it does not make it again
+    expect(app.listConsumptions).toHaveBeenCalledTimes(1);
     // the instance's version, in the corner
     app.fixture.detectChanges();
     expect(app.element.querySelector('app-version-label')?.textContent?.trim()).toBe('dev26.0.0');
@@ -93,14 +116,39 @@ describe('App', () => {
     document.documentElement.classList.remove('reduce-transparency');
   });
 
-  it('shows the substances page under /substances, and sends an unknown URL to Consumptions', async () => {
-    const app = await start('/substances');
+  it('shows the pages under the username; an unknown page, an old address, another user all get the same 404', async () => {
+    const app = await start('/lenzi/substances');
     expect(app.title()).toBe('Substances');
     expect(app.element.querySelector('app-substances-page')).not.toBeNull();
 
-    await TestBed.inject(Router).navigateByUrl('/no-such-page');
-    await app.fixture.whenStable();
-    expect(TestBed.inject(Router).url).toBe('/consumptions');
+    for (const url of ['/lenzi/no-such-page', '/consumptions', '/substances/5', '/other-user', '/other-user/substances']) {
+      await app.go(url);
+      expect(app.router.url).toBe(url);
+      expect(app.element.querySelector('app-not-found-page')).not.toBeNull();
+      expect(app.title()).toBe('Not found');
+      // the way out: one's own start page
+      expect(app.element.querySelector('app-not-found-page a')?.getAttribute('href')).toBe('/lenzi');
+    }
+  });
+
+  it('signed out, a page asks to sign in first and keeps the address; the sign-in page stands alone', async () => {
+    const app = await start('/lenzi/metrics', null);
+
+    expect(app.router.url).toBe('/login?next=%2Flenzi%2Fmetrics');
+    expect(app.element.querySelector('app-login-page')).not.toBeNull();
+    expect(app.element.querySelector('mat-toolbar')).toBeNull();
+    expect(app.element.querySelector('app-sidebar')).toBeNull();
+
+    // whatever the username: nothing tells whether it exists
+    await app.go('/other-user');
+    expect(app.router.url).toBe('/login?next=%2Fother-user');
+    await app.go('/');
+    expect(app.router.url).toBe('/login');
+  });
+
+  it('signed in, the sign-in page sends the user to their own pages', async () => {
+    const app = await start('/login');
+    expect(app.router.url).toBe('/lenzi');
   });
 
   it('the sidebar is a drawer on every screen, as on a phone: opened from the top bar, closed after a tap on a link', async () => {
@@ -114,8 +162,23 @@ describe('App', () => {
 
     app.link('Substances').click();
     await app.fixture.whenStable();
-    expect(TestBed.inject(Router).url).toBe('/substances');
+    expect(app.router.url).toBe('/lenzi/substances');
     expect(app.title()).toBe('Substances');
     expect(app.sidebar.opened).toBe(false);
+  });
+
+  it('signs out from the sidebar: the session ends and the sign-in page stands alone', async () => {
+    const app = await start('/lenzi/metrics');
+    app.menuButton()!.click();
+    await app.fixture.whenStable();
+
+    app.link('Sign out').click();
+    await app.fixture.whenStable();
+
+    expect(app.signOut).toHaveBeenCalledTimes(1);
+    expect(app.router.url).toBe('/login');
+    expect(app.sidebar.opened).toBe(false);
+    expect(app.element.querySelector('app-login-page')).not.toBeNull();
+    expect(app.element.querySelector('mat-toolbar')).toBeNull();
   });
 });

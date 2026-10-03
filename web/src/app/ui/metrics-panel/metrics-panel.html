@@ -24,7 +24,7 @@
     <a
       mat-icon-button
       class="choose"
-      routerLink="/statistics/edit"
+      [routerLink]="session.path('/statistics/edit')"
       [queryParams]="{ section: scope() }"
       aria-label="Choose what this panel shows"
     >
@@ -35,7 +35,7 @@
   @if (failure(); as failure) {
     <p class="message">{{ failure }}</p>
   } @else if (empty()) {
-    <p class="message">No metric is chosen for this page: <a routerLink="/statistics/edit" [queryParams]="{ section: scope() }">choose them</a>.</p>
+    <p class="message">No metric is chosen for this page: <a [routerLink]="session.path('/statistics/edit')" [queryParams]="{ section: scope() }">choose them</a>.</p>
   } @else if (values(); as values) {
     <!-- A definition list, not a Material list: a description can take the lines it needs. -->
     <dl class="metrics">

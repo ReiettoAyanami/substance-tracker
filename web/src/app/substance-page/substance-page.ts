@@ -6,6 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { ActivatedRoute, Router, RouterOutlet } from '@angular/router';
 
 import { Substance } from '../data/substance';
+import { Session } from '../session/session';
 import { SubstanceActions } from '../substances-page/substance-actions';
 import { SubstanceList } from '../substances-page/substance-list';
 import { ChartsPanel } from '../ui/charts-panel/charts-panel';
@@ -40,6 +41,7 @@ export class SubstancePage {
   /** The `:id` of the route. */
   readonly id = input.required<string>();
   private readonly list = inject(SubstanceList);
+  private readonly session = inject(Session);
   protected readonly actions = inject(SubstanceActions);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
@@ -96,7 +98,7 @@ export class SubstancePage {
    * search of the URL stays: the list underneath, and the order followed, are those it found.
    */
   protected go(id: number): void {
-    void this.router.navigate(['/substances', id], {
+    void this.router.navigate([this.session.path('/substances'), id], {
       replaceUrl: true,
       state: this.historyState(),
       queryParamsHandling: 'preserve',
@@ -109,7 +111,7 @@ export class SubstancePage {
    */
   protected close(): void {
     if (this.historyState().fromList) this.location.back();
-    else void this.router.navigate(['/substances'], { replaceUrl: true, queryParamsHandling: 'preserve' });
+    else void this.router.navigate([this.session.path('/substances')], { replaceUrl: true, queryParamsHandling: 'preserve' });
   }
 
   private historyState(): PageHistoryState {

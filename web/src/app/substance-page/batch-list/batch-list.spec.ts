@@ -281,7 +281,7 @@ describe('BatchList', () => {
   });
 
   it('says why when the batches cannot be loaded', async () => {
-    answer = () => throwError(() => ({ status: 500, title: 'Internal Server Error', detail: '', fieldErrors: [] }) as ApiError);
+    answer = () => throwError(() => ({ status: 500, code: null, title: 'Internal Server Error', detail: '', fieldErrors: [] }) as ApiError);
     await render();
 
     expect(text(element().querySelector('.total'))).toBe('Could not load the batches (500)');
