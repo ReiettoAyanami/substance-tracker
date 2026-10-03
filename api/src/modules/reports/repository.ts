@@ -1,10 +1,15 @@
 import type { RowDataPacket } from 'mysql2/promise';
 import type { Queryable } from '../../db/pool.js';
+import type { Owner } from '../../shared/owner.js';
 
 /**
  * Read-only queries for Reports. Soft-deleted rows are always excluded; deactivated batches
- * are included (they count in every statistic).
+ * are included (they count in every statistic). Every query is for one owner: another user's
+ * substances, batches and movements are never loaded (design-accounts.md, "The domain, per owner").
  */
+
+/** The owner's substances, for a condition on a substance_id column. */
+const OWNED_SUBSTANCE_IDS = 'SELECT os.id FROM substances os WHERE os.user_id = ?';
 
 export interface BatchStatRow {
   id: number;
@@ -76,10 +81,10 @@ function isEmptyScope(scope: LedgerScope): boolean {
     (scope.batchIds !== undefined && scope.batchIds.length === 0);
 }
 
-/** WHERE fragments on the batches alias `b`. */
-function batchFilter(scope: LedgerScope): [string, unknown[]] {
-  const where: string[] = ['b.deleted_at IS NULL'];
-  const values: unknown[] = [];
+/** WHERE fragments on the batches alias `b`: the owner's batches in scope. */
+function batchFilter(owner: Owner, scope: LedgerScope): [string, unknown[]] {
+  const where: string[] = ['b.deleted_at IS NULL', `b.substance_id IN (${OWNED_SUBSTANCE_IDS})`];
+  const values: unknown[] = [owner.userId];
   if (scope.substanceIds !== undefined) {
     where.push('b.substance_id IN (?)');
     values.push(scope.substanceIds);
@@ -93,9 +98,9 @@ function batchFilter(scope: LedgerScope): [string, unknown[]] {
 }
 
 /** Batches with their consumed / adjusted sums (the Appendix A remaining query), oldest first. */
-export async function loadBatches(db: Queryable, scope: LedgerScope): Promise<BatchStatRow[]> {
+export async function loadBatches(db: Queryable, owner: Owner, scope: LedgerScope): Promise<BatchStatRow[]> {
   if (isEmptyScope(scope)) return [];
-  const [where, values] = batchFilter(scope);
+  const [where, values] = batchFilter(owner, scope);
   const [rows] = await db.query<RowDataPacket[]>(
     `SELECT b.id, b.substance_id, b.name, b.quantity, b.total_price, b.occurred_at, b.note, b.client_ref,
             b.deactivated_at, b.deactivated_by_consumption_id, b.deactivated_by_adjustment_id, b.created_at,
@@ -128,9 +133,9 @@ export async function loadBatches(db: Queryable, scope: LedgerScope): Promise<Ba
 }
 
 /** Non-deleted consumptions of non-deleted batches in scope, oldest first. */
-export async function loadConsumptions(db: Queryable, scope: LedgerScope): Promise<ConsumptionStatRow[]> {
+export async function loadConsumptions(db: Queryable, owner: Owner, scope: LedgerScope): Promise<ConsumptionStatRow[]> {
   if (isEmptyScope(scope)) return [];
-  const [where, values] = batchFilter({ ...scope, activeOnly: false });
+  const [where, values] = batchFilter(owner, { ...scope, activeOnly: false });
   const [rows] = await db.query<RowDataPacket[]>(
     `SELECT c.id, c.batch_id, b.substance_id, c.quantity, c.occurred_at, c.note, c.client_ref, c.created_at
        FROM consumptions c JOIN batches b ON b.id = c.batch_id
@@ -151,9 +156,9 @@ export async function loadConsumptions(db: Queryable, scope: LedgerScope): Promi
 }
 
 /** Non-deleted adjustments of non-deleted batches in scope, oldest first. */
-export async function loadAdjustments(db: Queryable, scope: LedgerScope): Promise<AdjustmentStatRow[]> {
+export async function loadAdjustments(db: Queryable, owner: Owner, scope: LedgerScope): Promise<AdjustmentStatRow[]> {
   if (isEmptyScope(scope)) return [];
-  const [where, values] = batchFilter({ ...scope, activeOnly: false });
+  const [where, values] = batchFilter(owner, { ...scope, activeOnly: false });
   const [rows] = await db.query<RowDataPacket[]>(
     `SELECT a.id, a.batch_id, b.substance_id, a.delta, a.reason, a.occurred_at, a.client_ref, a.created_at
        FROM adjustments a JOIN batches b ON b.id = a.batch_id
@@ -188,10 +193,10 @@ function toOneTime(r: RowDataPacket): OneTimeStatRow {
 }
 
 /** Non-deleted one-time consumptions of the substances in scope, oldest first. */
-export async function loadOneTimes(db: Queryable, scope: { substanceIds?: number[] }): Promise<OneTimeStatRow[]> {
+export async function loadOneTimes(db: Queryable, owner: Owner, scope: { substanceIds?: number[] }): Promise<OneTimeStatRow[]> {
   if (scope.substanceIds !== undefined && scope.substanceIds.length === 0) return [];
-  const where = ['deleted_at IS NULL'];
-  const values: unknown[] = [];
+  const where = ['deleted_at IS NULL', `substance_id IN (${OWNED_SUBSTANCE_IDS})`];
+  const values: unknown[] = [owner.userId];
   if (scope.substanceIds !== undefined) {
     where.push('substance_id IN (?)');
     values.push(scope.substanceIds);
@@ -213,10 +218,11 @@ export async function loadOneTimes(db: Queryable, scope: { substanceIds?: number
  */
 export async function pageOneTimes(
   db: Queryable,
+  owner: Owner,
   substanceId: number,
   page: { limit: number; before: string | null },
 ): Promise<OneTimeStatRow[]> {
-  const values: unknown[] = [substanceId];
+  const values: unknown[] = [substanceId, owner.userId];
   let beforeClause = '';
   if (page.before !== null) {
     beforeClause = ' AND occurred_at < ?';
@@ -227,7 +233,8 @@ export async function pageOneTimes(
     `SELECT id, substance_id, name, quantity, total_price, occurred_at, note, client_ref, created_at
        FROM (SELECT o.*, RANK() OVER (ORDER BY o.occurred_at DESC) AS rk
                FROM one_time_consumptions o
-              WHERE o.substance_id = ? AND o.deleted_at IS NULL${beforeClause}) r
+              WHERE o.substance_id = ? AND o.substance_id IN (${OWNED_SUBSTANCE_IDS})
+                AND o.deleted_at IS NULL${beforeClause}) r
       WHERE rk <= ?
       ORDER BY occurred_at DESC, id DESC`,
     values,
@@ -248,8 +255,8 @@ export interface BatchListRow {
  * Every non-deleted batch, finished ones too, of one substance or of all: by substance (name,
  * then id, like the substance list), newest first inside each.
  */
-export async function listBatches(db: Queryable, filter: { substanceId?: number | undefined }): Promise<BatchListRow[]> {
-  const values: unknown[] = [];
+export async function listBatches(db: Queryable, owner: Owner, filter: { substanceId?: number | undefined }): Promise<BatchListRow[]> {
+  const values: unknown[] = [owner.userId];
   let substanceClause = '';
   if (filter.substanceId !== undefined) {
     substanceClause = ' AND b.substance_id = ?';
@@ -258,7 +265,7 @@ export async function listBatches(db: Queryable, filter: { substanceId?: number 
   const [rows] = await db.query<RowDataPacket[]>(
     `SELECT b.id, b.substance_id, s.name AS substance_name, b.name, b.occurred_at, b.deactivated_at
        FROM batches b JOIN substances s ON s.id = b.substance_id
-      WHERE b.deleted_at IS NULL${substanceClause}
+      WHERE s.user_id = ? AND b.deleted_at IS NULL${substanceClause}
       ORDER BY s.name, s.id, b.occurred_at DESC, b.id DESC`,
     values,
   );
@@ -272,11 +279,12 @@ export async function listBatches(db: Queryable, filter: { substanceId?: number 
   }));
 }
 
-/** The batch (non-deleted) exists? Used for 404s on batch reports. */
-export async function batchExists(db: Queryable, batchId: number): Promise<boolean> {
-  const [rows] = await db.query<RowDataPacket[]>('SELECT id FROM batches WHERE id = ? AND deleted_at IS NULL', [
-    batchId,
-  ]);
+/** The owner's batch (non-deleted) exists? Used for 404s on batch reports. */
+export async function batchExists(db: Queryable, owner: Owner, batchId: number): Promise<boolean> {
+  const [rows] = await db.query<RowDataPacket[]>(
+    `SELECT id FROM batches WHERE id = ? AND deleted_at IS NULL AND substance_id IN (${OWNED_SUBSTANCE_IDS})`,
+    [batchId, owner.userId],
+  );
   return rows.length > 0;
 }
 
@@ -318,9 +326,9 @@ export interface MovementRow {
   client_ref: string | null;
 }
 
-function timeConditions(column: string, filter: MovementFilter): [string, unknown[]] {
-  const where: string[] = [];
-  const values: unknown[] = [];
+function timeConditions(owner: Owner, column: string, filter: MovementFilter): [string, unknown[]] {
+  const where: string[] = ['s.user_id = ?'];
+  const values: unknown[] = [owner.userId];
   if (filter.substanceId !== undefined) {
     where.push('s.id = ?');
     values.push(filter.substanceId);
@@ -386,12 +394,12 @@ function branch(type: MovementType, alias: string, from: string, cols: BranchCol
       WHERE ${where}`;
 }
 
-export async function listMovements(db: Queryable, filter: MovementFilter): Promise<MovementRow[]> {
+export async function listMovements(db: Queryable, owner: Owner, filter: MovementFilter): Promise<MovementRow[]> {
   const branches: string[] = [];
   const values: unknown[] = [];
 
   if (filter.types.includes('batch')) {
-    const [cond, v] = timeConditions('b.occurred_at', filter);
+    const [cond, v] = timeConditions(owner, 'b.occurred_at', filter);
     branches.push(
       branch(
         'batch',
@@ -417,7 +425,7 @@ export async function listMovements(db: Queryable, filter: MovementFilter): Prom
     values.push(...v);
   }
   if (filter.types.includes('consumption')) {
-    const [cond, v] = timeConditions('c.occurred_at', filter);
+    const [cond, v] = timeConditions(owner, 'c.occurred_at', filter);
     branches.push(
       branch(
         'consumption',
@@ -443,7 +451,7 @@ export async function listMovements(db: Queryable, filter: MovementFilter): Prom
     values.push(...v);
   }
   if (filter.types.includes('one_time')) {
-    const [cond, v] = timeConditions('o.occurred_at', filter);
+    const [cond, v] = timeConditions(owner, 'o.occurred_at', filter);
     branches.push(
       branch(
         'one_time',
@@ -469,7 +477,7 @@ export async function listMovements(db: Queryable, filter: MovementFilter): Prom
     values.push(...v);
   }
   if (filter.types.includes('adjustment')) {
-    const [cond, v] = timeConditions('a.occurred_at', filter);
+    const [cond, v] = timeConditions(owner, 'a.occurred_at', filter);
     branches.push(
       branch(
         'adjustment',

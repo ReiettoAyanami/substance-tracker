@@ -18,33 +18,33 @@ export function metricsRoutes(app: FastifyInstance, deps: { metrics: MetricsServ
 
   app.get('/api/metrics', async () => CATALOG);
 
-  app.get<{ Querystring: SeriesQueryString }>('/api/series', { schema: seriesSchema }, async (req) => metrics.series(req.query));
+  app.get<{ Querystring: SeriesQueryString }>('/api/series', { schema: seriesSchema }, async (req) => metrics.series(req.owner, req.query));
 
   app.get<{ Querystring: MetricsTableQuery }>('/api/metrics/table', { schema: metricsTableSchema }, async (req) =>
-    metrics.table(req.query),
+    metrics.table(req.owner, req.query),
   );
 
   app.get<{ Params: IdParams; Querystring: SubstanceMetricsQuery }>(
     '/api/substances/:id/metrics',
     { schema: substanceMetricsSchema },
-    async (req) => metrics.substanceMetrics(req.params.id, req.query),
+    async (req) => metrics.substanceMetrics(req.owner, req.params.id, req.query),
   );
 
   app.get<{ Params: IdParams; Querystring: ScaleQuery }>(
     '/api/consumptions/:id/metrics',
     { schema: scaleOnlyMetricsSchema },
-    async (req) => metrics.consumptionMetrics('consumption', req.params.id, req.query.per),
+    async (req) => metrics.consumptionMetrics(req.owner, 'consumption', req.params.id, req.query.per),
   );
 
   app.get<{ Params: IdParams; Querystring: ScaleQuery }>(
     '/api/one-time-consumptions/:id/metrics',
     { schema: scaleOnlyMetricsSchema },
-    async (req) => metrics.consumptionMetrics('one_time', req.params.id, req.query.per),
+    async (req) => metrics.consumptionMetrics(req.owner, 'one_time', req.params.id, req.query.per),
   );
 
   app.get<{ Params: IdParams; Querystring: ScaleQuery }>(
     '/api/batches/:id/metrics',
     { schema: scaleOnlyMetricsSchema },
-    async (req) => metrics.batchMetrics(req.params.id, req.query.per),
+    async (req) => metrics.batchMetrics(req.owner, req.params.id, req.query.per),
   );
 }

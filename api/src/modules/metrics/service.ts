@@ -27,6 +27,7 @@ import { findMetric, findSeries, metricsOf, type MetricScope, type SeriesScale }
 import { inPeriod, resolvePeriod, type PeriodQuery } from './period.js';
 import * as repo from './repository.js';
 import { HOURS, lineOf, partsOf, type SeriesLine } from './series.js';
+import type { Owner } from '../../shared/owner.js';
 
 /** The metrics of one entity, with the scale and the period they were computed in. */
 export interface MetricsResult {
@@ -144,65 +145,65 @@ export class MetricsService {
     private readonly clock: Clock,
   ) {}
 
-  private async context(per: TimeScale | undefined): Promise<MetricContext> {
-    const day = await this.settings.get();
+  private async context(owner: Owner, per: TimeScale | undefined): Promise<MetricContext> {
+    const day = await this.settings.get(owner);
     return { scale: per ?? 'day', day, now: this.clock() };
   }
 
   /** The ledgers of several substances, read once. */
-  private async substanceLedgersOf(ids: number[]) {
+  private async substanceLedgersOf(owner: Owner, ids: number[]) {
     const scope = { substanceIds: ids };
     const [batches, consumptions, adjustments, oneTimes] = await Promise.all([
-      reportsRepo.loadBatches(this.pool, scope),
-      reportsRepo.loadConsumptions(this.pool, scope),
-      reportsRepo.loadAdjustments(this.pool, scope),
-      reportsRepo.loadOneTimes(this.pool, scope),
+      reportsRepo.loadBatches(this.pool, owner, scope),
+      reportsRepo.loadConsumptions(this.pool, owner, scope),
+      reportsRepo.loadAdjustments(this.pool, owner, scope),
+      reportsRepo.loadOneTimes(this.pool, owner, scope),
     ]);
     return substanceLedgers(ids, { batches, consumptions, adjustments, oneTimes });
   }
 
   /** The substances of a table: the one asked (archived or not), or every one not archived, by name. */
-  private async substancesOf(substanceId: number | undefined): Promise<SubstanceDto[]> {
-    return substanceId === undefined ? this.catalog.list({ includeArchived: false }) : [await this.catalog.get(substanceId)];
+  private async substancesOf(owner: Owner, substanceId: number | undefined): Promise<SubstanceDto[]> {
+    return substanceId === undefined ? this.catalog.list(owner, { includeArchived: false }) : [await this.catalog.get(owner, substanceId)];
   }
 
   /** Everything that counts of one substance (nothing deleted), oldest first. */
-  private async substanceLedger(substanceId: number) {
+  private async substanceLedger(owner: Owner, substanceId: number) {
     const scope = { substanceIds: [substanceId] };
     const [batches, consumptions, adjustments, oneTimes] = await Promise.all([
-      reportsRepo.loadBatches(this.pool, scope),
-      reportsRepo.loadConsumptions(this.pool, scope),
-      reportsRepo.loadAdjustments(this.pool, scope),
-      reportsRepo.loadOneTimes(this.pool, scope),
+      reportsRepo.loadBatches(this.pool, owner, scope),
+      reportsRepo.loadConsumptions(this.pool, owner, scope),
+      reportsRepo.loadAdjustments(this.pool, owner, scope),
+      reportsRepo.loadOneTimes(this.pool, owner, scope),
     ]);
     return substanceLedgerOf({ batches, consumptions, adjustments, oneTimes });
   }
 
-  async substanceMetrics(substanceId: number, query: MetricsQuery): Promise<MetricsResult> {
-    await this.catalog.get(substanceId);
-    const ctx = await this.context(query.per);
+  async substanceMetrics(owner: Owner, substanceId: number, query: MetricsQuery): Promise<MetricsResult> {
+    await this.catalog.get(owner, substanceId);
+    const ctx = await this.context(owner, query.per);
     const period = resolvePeriod(query, ctx.day, ctx.now);
-    const ledger = await this.substanceLedger(substanceId);
+    const ledger = await this.substanceLedger(owner, substanceId);
     return { per: ctx.scale, from: period.from, to: period.to, values: substanceValues(ledger, period, ctx) };
   }
 
   /** A consumption's metrics, of either kind, over all time: no period. 404 when it does not count. */
-  async consumptionMetrics(type: ConsumptionType, id: number, per: TimeScale | undefined): Promise<MetricsResult> {
+  async consumptionMetrics(owner: Owner, type: ConsumptionType, id: number, per: TimeScale | undefined): Promise<MetricsResult> {
     const substanceId =
-      type === 'consumption' ? await repo.findConsumptionSubstance(this.pool, id) : await repo.findOneTimeSubstance(this.pool, id);
+      type === 'consumption' ? await repo.findConsumptionSubstance(this.pool, owner, id) : await repo.findOneTimeSubstance(this.pool, owner, id);
     if (substanceId === null) throw notFound(type === 'consumption' ? 'Consumption' : 'One-time consumption', id);
-    const ctx = await this.context(per);
-    const ledger = await this.substanceLedger(substanceId);
+    const ctx = await this.context(owner, per);
+    const ledger = await this.substanceLedger(owner, substanceId);
     const entry = ledger.entries.find((e) => e.type === type && e.id === id)!;
     return { per: ctx.scale, from: null, to: null, values: consumptionValues(entry, ledger, ctx) };
   }
 
   /** A batch's metrics, over its life: no period. 404 when it does not exist or is deleted. */
-  async batchMetrics(batchId: number, per: TimeScale | undefined): Promise<MetricsResult> {
-    const [found] = await reportsRepo.loadBatches(this.pool, { batchIds: [batchId] });
+  async batchMetrics(owner: Owner, batchId: number, per: TimeScale | undefined): Promise<MetricsResult> {
+    const [found] = await reportsRepo.loadBatches(this.pool, owner, { batchIds: [batchId] });
     if (!found) throw notFound('Batch', batchId);
-    const ctx = await this.context(per);
-    const ledger = await this.substanceLedger(found.substance_id);
+    const ctx = await this.context(owner, per);
+    const ledger = await this.substanceLedger(owner, found.substance_id);
     const batch = ledger.batches.find((b) => b.id === batchId)!;
     return { per: ctx.scale, from: null, to: null, values: batchValues(batch, ledger, ctx) };
   }
@@ -213,24 +214,24 @@ export class MetricsService {
    * not archived (or the one asked), their numbers in the period. Batches: those bought in the
    * period, by substance and newest first, their numbers over their life.
    */
-  async table(query: TableQuery): Promise<MetricsTable> {
+  async table(owner: Owner, query: TableQuery): Promise<MetricsTable> {
     const keys = this.keysOf(query.scope, query.keys);
     if (query.scope !== 'consumption' && query.batchId !== undefined) {
       throw badRequest('batchId narrows the consumptions table only', 'batchId');
     }
-    const ctx = await this.context(query.per);
+    const ctx = await this.context(owner, query.per);
     const period = resolvePeriod(query, ctx.day, ctx.now);
     let substanceId = query.substanceId;
     if (query.batchId !== undefined) {
-      const [batch] = await reportsRepo.loadBatches(this.pool, { batchIds: [query.batchId] });
+      const [batch] = await reportsRepo.loadBatches(this.pool, owner, { batchIds: [query.batchId] });
       if (!batch) throw notFound('Batch', query.batchId);
       if (substanceId !== undefined && batch.substance_id !== substanceId) {
         return { scope: query.scope, per: ctx.scale, from: period.from, to: period.to, keys, rows: [] };
       }
       substanceId = batch.substance_id;
     }
-    const substances = await this.substancesOf(substanceId);
-    const ledgers = await this.substanceLedgersOf(substances.map((s) => s.id));
+    const substances = await this.substancesOf(owner, substanceId);
+    const ledgers = await this.substanceLedgersOf(owner, substances.map((s) => s.id));
     const head = { scope: query.scope, per: ctx.scale, from: period.from, to: period.to, keys };
 
     if (query.scope === 'batch') {
@@ -302,13 +303,13 @@ export class MetricsService {
    * nothing in the period is left out. Without a period: from the first thing recorded of those
    * substances to today.
    */
-  async series(query: SeriesQuery): Promise<SeriesResult> {
+  async series(owner: Owner, query: SeriesQuery): Promise<SeriesResult> {
     const definition = findSeries(query.metric);
     if (!definition) throw badRequest(`"${query.metric}" is not a series of the catalog`, 'metric');
-    const ctx = await this.context(undefined);
+    const ctx = await this.context(owner, undefined);
     const asked = resolvePeriod(query, ctx.day, ctx.now);
-    const substances = await this.seriesSubstances(query.substanceIds);
-    const ledgers = await this.substanceLedgersOf(substances.map((s) => s.id));
+    const substances = await this.seriesSubstances(owner, query.substanceIds);
+    const ledgers = await this.substanceLedgersOf(owner, substances.map((s) => s.id));
 
     const today = logicalDate(ctx.now, ctx.day);
     const instants = [...ledgers.values()].flatMap((l) => [
@@ -331,10 +332,10 @@ export class MetricsService {
   }
 
   /** The substances of a series: those asked (archived or not, 404 when one is unknown), or every one not archived; by name. */
-  private async seriesSubstances(raw: string | undefined): Promise<SubstanceDto[]> {
-    if (raw === undefined) return this.catalog.list({ includeArchived: false });
+  private async seriesSubstances(owner: Owner, raw: string | undefined): Promise<SubstanceDto[]> {
+    if (raw === undefined) return this.catalog.list(owner, { includeArchived: false });
     const ids = [...new Set(raw.split(',').map(Number))];
-    const all = await this.catalog.list({ includeArchived: true });
+    const all = await this.catalog.list(owner, { includeArchived: true });
     const found = all.filter((s) => ids.includes(s.id));
     const missing = ids.find((id) => !found.some((s) => s.id === id));
     if (missing !== undefined) throw notFound('Substance', missing);

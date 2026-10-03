@@ -19,30 +19,30 @@ export function viewsRoutes(app: FastifyInstance, deps: { views: ViewsService })
   const { views } = deps;
 
   app.get<{ Querystring: ListViewItemsQuery }>('/api/view-items', { schema: listViewItemsSchema }, async (req) =>
-    views.list(req.query.surface),
+    views.list(req.owner, req.query.surface),
   );
 
   app.post<{ Body: CreateViewItemBody }>('/api/view-items', { schema: createViewItemSchema }, async (req, reply) =>
-    reply.code(201).send(await views.add(req.body)),
+    reply.code(201).send(await views.add(req.owner, req.body)),
   );
 
   app.put<{ Body: OrderViewItemsBody }>('/api/view-items/order', { schema: orderViewItemsSchema }, async (req) =>
-    views.reorder(req.body.surface, req.body.ids),
+    views.reorder(req.owner, req.body.surface, req.body.ids),
   );
 
   // A path of its own: the router tries it before `:id`.
   app.patch<{ Body: RenameSectionBody }>('/api/view-items/sections', { schema: renameSectionSchema }, async (req) =>
-    views.renameSection(req.body.from, req.body.to),
+    views.renameSection(req.owner, req.body.from, req.body.to),
   );
 
   app.patch<{ Params: IdParams; Body: PatchViewItemBody }>(
     '/api/view-items/:id',
     { schema: patchViewItemSchema },
-    async (req) => views.changeChart(req.params.id, req.body),
+    async (req) => views.changeChart(req.owner, req.params.id, req.body),
   );
 
   app.delete<{ Params: IdParams }>('/api/view-items/:id', { schema: deleteViewItemSchema }, async (req, reply) => {
-    await views.remove(req.params.id);
+    await views.remove(req.owner, req.params.id);
     return reply.code(204).send();
   });
 }

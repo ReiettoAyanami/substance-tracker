@@ -3,6 +3,7 @@ import { badRequest, conflict, notFound } from '../../shared/errors.js';
 import { toDbDateTime, toIso, truncateToSecond, type Clock } from '../../shared/time.js';
 import { findMetric, findSeries, type SeriesDefinition } from '../metrics/catalog.js';
 import * as repo from './repository.js';
+import type { Owner } from '../../shared/owner.js';
 
 /** One thing a page shows (design-statistics.md, "view_items"). */
 export interface ViewItemDto {
@@ -64,12 +65,12 @@ export class ViewsService {
     private readonly clock: Clock,
   ) {}
 
-  async list(surface: repo.Surface): Promise<ViewItemDto[]> {
-    return (await repo.listViewItems(this.pool, surface)).map(toDto);
+  async list(owner: Owner, surface: repo.Surface): Promise<ViewItemDto[]> {
+    return (await repo.listViewItems(this.pool, owner, surface)).map(toDto);
   }
 
-  async add(input: NewViewItemInput): Promise<ViewItemDto> {
-    if (input.surface === 'statistics' || input.surface === 'substances' || findSeries(input.metric)) return this.addChart(input);
+  async add(owner: Owner, input: NewViewItemInput): Promise<ViewItemDto> {
+    if (input.surface === 'statistics' || input.surface === 'substances' || findSeries(input.metric)) return this.addChart(owner, input);
     const metric = findMetric(input.metric);
     if (!metric) throw badRequest(`metric "${input.metric}" is not in the catalog (GET /api/metrics)`, 'metric');
     if (input.surface !== 'metrics' && metric.scope !== input.surface) {
@@ -81,28 +82,28 @@ export class ViewsService {
       }
     }
     const id = await withTransaction(this.pool, async (conn) => {
-      const items = await repo.listViewItems(conn, input.surface, { forUpdate: true });
+      const items = await repo.listViewItems(conn, owner, input.surface, { forUpdate: true });
       if (items.some((i) => i.metric === input.metric)) {
         throw conflict('duplicate', `the ${input.surface} page already shows ${input.metric}`);
       }
-      return repo.insertViewItem(conn, {
+      return repo.insertViewItem(conn, owner, {
         surface: input.surface,
         section: null,
-        position: (await repo.lastPosition(conn, input.surface)) + 1,
+        position: (await repo.lastPosition(conn, owner, input.surface)) + 1,
         metric: input.metric,
         chart: null,
         scale: null,
         created_at: toDbDateTime(truncateToSecond(this.clock())),
       });
     });
-    return toDto((await repo.findViewItem(this.pool, id))!);
+    return toDto((await repo.findViewItem(this.pool, owner, id))!);
   }
 
   /**
    * A chart: a series, one of the charts that draw it, its interval; on the statistics page a
    * section, on the substance page none (it is drawn for the substance, under its metrics).
    */
-  private async addChart(input: NewViewItemInput): Promise<ViewItemDto> {
+  private async addChart(owner: Owner, input: NewViewItemInput): Promise<ViewItemDto> {
     if (!CHART_SURFACES.includes(input.surface)) {
       throw badRequest(`the ${input.surface} page draws no charts: the statistics, the substance and the substances pages do`, 'surface');
     }
@@ -112,22 +113,22 @@ export class ViewsService {
     const chart = checkChart(series, { chart: input.chart, scale: input.scale ?? null });
     const section = sectionFor(input.surface, input.section);
     const id = await withTransaction(this.pool, async (conn) =>
-      repo.insertViewItem(conn, {
+      repo.insertViewItem(conn, owner, {
         surface: input.surface,
         section,
-        position: (await repo.lastPosition(conn, input.surface)) + 1,
+        position: (await repo.lastPosition(conn, owner, input.surface)) + 1,
         metric: series.key,
         chart: chart.chart,
         scale: chart.scale,
         created_at: toDbDateTime(truncateToSecond(this.clock())),
       }),
     );
-    return toDto((await repo.findViewItem(this.pool, id))!);
+    return toDto((await repo.findViewItem(this.pool, owner, id))!);
   }
 
   /** Changes a chart: its chart, its interval, its section (the statistics page's). */
-  async changeChart(id: number, patch: ChartPatch): Promise<ViewItemDto> {
-    const row = await repo.findViewItem(this.pool, id);
+  async changeChart(owner: Owner, id: number, patch: ChartPatch): Promise<ViewItemDto> {
+    const row = await repo.findViewItem(this.pool, owner, id);
     if (!row || row.deleted_at) throw notFound('View item', id);
     if (row.chart === null) throw badRequest('only charts change: this is a metric of a panel or of the metrics page', 'id');
     const series = findSeries(row.metric);
@@ -136,51 +137,51 @@ export class ViewsService {
       chart: patch.chart ?? row.chart,
       scale: patch.scale === undefined ? row.scale : patch.scale,
     });
-    await repo.updateChart(this.pool, id, {
+    await repo.updateChart(this.pool, owner, id, {
       ...(patch.chart !== undefined ? { chart: chart.chart } : {}),
       ...(patch.scale !== undefined ? { scale: chart.scale } : {}),
       ...(patch.section !== undefined ? { section: sectionFor(row.surface, patch.section) } : {}),
     });
-    return toDto((await repo.findViewItem(this.pool, id))!);
+    return toDto((await repo.findViewItem(this.pool, owner, id))!);
   }
 
   /**
    * Renames a section of the statistics page: every chart in `from` (null: those without one) takes
    * `to` (blank: no section), keeping its place; a name another section has merges the two.
    */
-  async renameSection(from: string | null, to: string | null): Promise<ViewItemDto[]> {
+  async renameSection(owner: Owner, from: string | null, to: string | null): Promise<ViewItemDto[]> {
     const source = sectionOf(from);
     const target = sectionOf(to);
     await withTransaction(this.pool, async (conn) => {
-      const moved = (await repo.listViewItems(conn, 'statistics', { forUpdate: true })).filter((i) => i.section === source);
+      const moved = (await repo.listViewItems(conn, owner, 'statistics', { forUpdate: true })).filter((i) => i.section === source);
       if (moved.length === 0) {
         throw badRequest(
           source === null ? 'every chart of the statistics page has a section' : `no chart of the statistics page is in "${source}"`,
           'from',
         );
       }
-      for (const item of moved) await repo.updateChart(conn, item.id, { section: target });
+      for (const item of moved) await repo.updateChart(conn, owner, item.id, { section: target });
     });
-    return this.list('statistics');
+    return this.list(owner, 'statistics');
   }
 
-  async remove(id: number): Promise<void> {
-    const row = await repo.findViewItem(this.pool, id);
+  async remove(owner: Owner, id: number): Promise<void> {
+    const row = await repo.findViewItem(this.pool, owner, id);
     if (!row || row.deleted_at) throw notFound('View item', id);
-    await repo.softDeleteViewItem(this.pool, id, toDbDateTime(truncateToSecond(this.clock())));
+    await repo.softDeleteViewItem(this.pool, owner, id, toDbDateTime(truncateToSecond(this.clock())));
   }
 
   /** Puts the surface in the order of `ids`: every item of it, each once. */
-  async reorder(surface: repo.Surface, ids: number[]): Promise<ViewItemDto[]> {
+  async reorder(owner: Owner, surface: repo.Surface, ids: number[]): Promise<ViewItemDto[]> {
     await withTransaction(this.pool, async (conn) => {
-      const items = await repo.listViewItems(conn, surface, { forUpdate: true });
+      const items = await repo.listViewItems(conn, owner, surface, { forUpdate: true });
       const known = new Set(items.map((i) => i.id));
       if (new Set(ids).size !== ids.length || ids.length !== items.length || !ids.every((id) => known.has(id))) {
         throw badRequest(`ids must be every item of the ${surface} page, each once`, 'ids');
       }
-      for (const [index, id] of ids.entries()) await repo.setPosition(conn, id, index + 1);
+      for (const [index, id] of ids.entries()) await repo.setPosition(conn, owner, id, index + 1);
     });
-    return this.list(surface);
+    return this.list(owner, surface);
   }
 }
 

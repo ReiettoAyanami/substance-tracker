@@ -2,6 +2,7 @@ import { withTransaction, type Pool } from '../../db/pool.js';
 import { notFound } from '../../shared/errors.js';
 import { fromDb, fmt, LIMITS, parseDecimal } from '../../shared/decimal.js';
 import { requiredText } from '../../shared/input.js';
+import type { Owner } from '../../shared/owner.js';
 import { toDbDateTime, toIso, toIsoOrNull, truncateToSecond, type Clock } from '../../shared/time.js';
 import * as repo from './repository.js';
 
@@ -48,7 +49,8 @@ function parseRefillQuantity(raw: string | number | null): string | null {
 
 /**
  * Catalog: owns substances (name, unit, refill quantity, archive). A substance stores no price:
- * its unit price is computed from its batches (Reports, card summary).
+ * its unit price is computed from its batches (Reports, card summary). Every operation is for one
+ * owner: another user's substance is not found.
  *
  * Knows nothing about stock, money or history, except that deleting a substance also
  * soft-deletes everything recorded for it.
@@ -63,59 +65,59 @@ export class CatalogService {
     return toDbDateTime(truncateToSecond(this.clock()));
   }
 
-  async create(input: CreateSubstanceInput): Promise<SubstanceDto> {
-    const id = await repo.insertSubstance(this.pool, {
+  async create(owner: Owner, input: CreateSubstanceInput): Promise<SubstanceDto> {
+    const id = await repo.insertSubstance(this.pool, owner, {
       name: requiredText(input.name, 'name'),
       unit: requiredText(input.unit, 'unit'),
       refill_quantity: parseRefillQuantity(input.refillQuantity ?? null),
     });
-    return this.get(id);
+    return this.get(owner, id);
   }
 
-  /** 404 when the substance does not exist or is soft-deleted. Archived ones are returned. */
-  async get(id: number): Promise<SubstanceDto> {
-    const row = await repo.findSubstance(this.pool, id);
+  /** 404 when the substance does not exist, is soft-deleted or is another user's. Archived ones are returned. */
+  async get(owner: Owner, id: number): Promise<SubstanceDto> {
+    const row = await repo.findSubstance(this.pool, owner, id);
     if (!row || row.deleted_at) throw notFound('Substance', id);
     return toSubstanceDto(row);
   }
 
   /**
-   * The substances, by name then id. `search` keeps those with the text in their name or in the
-   * name of one of their batches (case and accents ignored); blank, it keeps them all.
+   * The owner's substances, by name then id. `search` keeps those with the text in their name or in
+   * the name of one of their batches (case and accents ignored); blank, it keeps them all.
    */
-  async list(opts: { includeArchived: boolean; search?: string }): Promise<SubstanceDto[]> {
+  async list(owner: Owner, opts: { includeArchived: boolean; search?: string }): Promise<SubstanceDto[]> {
     const search = opts.search?.trim() || null;
-    const rows = await repo.listSubstances(this.pool, { includeArchived: opts.includeArchived, search });
+    const rows = await repo.listSubstances(this.pool, owner, { includeArchived: opts.includeArchived, search });
     return rows.map(toSubstanceDto);
   }
 
-  async update(id: number, input: UpdateSubstanceInput): Promise<SubstanceDto> {
+  async update(owner: Owner, id: number, input: UpdateSubstanceInput): Promise<SubstanceDto> {
     const update: repo.SubstanceUpdate = {};
     if (input.name !== undefined) update.name = requiredText(input.name, 'name');
     if (input.unit !== undefined) update.unit = requiredText(input.unit, 'unit');
     if (input.refillQuantity !== undefined) update.refill_quantity = parseRefillQuantity(input.refillQuantity);
 
     await withTransaction(this.pool, async (conn) => {
-      const row = await repo.findSubstance(conn, id, { forUpdate: true });
+      const row = await repo.findSubstance(conn, owner, id, { forUpdate: true });
       if (!row || row.deleted_at) throw notFound('Substance', id);
       if (input.archived === true && row.archived_at === null) update.archived_at = this.now();
       if (input.archived === false) update.archived_at = null;
-      await repo.updateSubstance(conn, id, update);
+      await repo.updateSubstance(conn, owner, id, update);
     });
-    return this.get(id);
+    return this.get(owner, id);
   }
 
   /**
    * Soft delete of the substance and, at the same instant, of its batches, their consumptions and
    * adjustments, and its one-time consumptions (lenzi, 2026-09-29: delete always, never 409).
    */
-  async remove(id: number): Promise<void> {
+  async remove(owner: Owner, id: number): Promise<void> {
     await withTransaction(this.pool, async (conn) => {
-      const row = await repo.findSubstance(conn, id, { forUpdate: true });
+      const row = await repo.findSubstance(conn, owner, id, { forUpdate: true });
       if (!row || row.deleted_at) throw notFound('Substance', id);
       const at = this.now();
-      await repo.softDeleteMovementsOf(conn, id, at);
-      await repo.softDeleteSubstance(conn, id, at);
+      await repo.softDeleteMovementsOf(conn, owner, id, at);
+      await repo.softDeleteSubstance(conn, owner, id, at);
     });
   }
 }

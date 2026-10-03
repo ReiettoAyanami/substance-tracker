@@ -9,7 +9,6 @@ import {
   resolveMigrationsDir,
   runMigrations,
 } from '../../src/db/migrate.js';
-import { METRICS, SERIES } from '../../src/modules/metrics/catalog.js';
 import { rawRows, testDbConfig } from '../support/db.js';
 
 /** Runs one migration file again on the test database, as the runner would. */
@@ -38,16 +37,13 @@ describe('migrations', () => {
     expect(await runMigrations(testDbConfig())).toEqual([]);
   });
 
-  it('001_init.sql is safe to re-run', async () => {
+  it('001_init.sql is written to be safe to re-run', async () => {
+    // Its tables have changed since (009), so it is checked as written, not run again on them.
     const sql = await readFile(join(DEFAULT_MIGRATIONS_DIR, '001_init.sql'), 'utf8');
-    expect(sql).not.toMatch(/^\s*USE\s/im);
-    const conn = await mysql.createConnection({ ...testDbConfig(), multipleStatements: true });
-    try {
-      await conn.query(sql);
-    } finally {
-      await conn.end();
-    }
-    expect(await rawRows('SELECT id FROM settings')).toHaveLength(1);
+    const code = sql.replace(/--[^\n]*/g, '');
+    expect(code).not.toMatch(/^\s*USE\s/im);
+    expect(code.match(/CREATE TABLE(?! IF NOT EXISTS)/g)).toBeNull();
+    expect(code.match(/INSERT INTO/g)).toBeNull(); // only INSERT IGNORE
   });
 
   it("creates the tables; UNIQUE keys only on client_ref, a user's username and email, two technical keys", async () => {
@@ -85,6 +81,7 @@ describe('migrations', () => {
       'one_time_consumptions.client_ref',
       'rate_limits.key',
       'sessions.token',
+      'settings.user_id', // one settings row per user
       'users.email',
       'users.username',
     ]);
@@ -103,6 +100,9 @@ describe('migrations', () => {
       'password_history.user_id->users',
       'sessions.impersonated_by->users',
       'sessions.user_id->users',
+      'settings.user_id->users',
+      'substances.user_id->users',
+      'view_items.user_id->users',
     ]);
     const deletedAt = await rawRows(
       `SELECT TABLE_NAME AS t FROM information_schema.COLUMNS
@@ -126,7 +126,7 @@ describe('migrations', () => {
             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'substances' ORDER BY ORDINAL_POSITION`,
         )
       ).map((r) => r.c);
-    const expected = ['id', 'name', 'unit', 'refill_quantity', 'archived_at', 'created_at', 'deleted_at'];
+    const expected = ['id', 'user_id', 'name', 'unit', 'refill_quantity', 'archived_at', 'created_at', 'deleted_at'];
     expect(await columns()).toEqual(expected);
 
     const sql = await readFile(join(DEFAULT_MIGRATIONS_DIR, '002_drop_default_unit_price.sql'), 'utf8');
@@ -139,106 +139,36 @@ describe('migrations', () => {
     expect(await columns()).toEqual(expected);
   });
 
-  it('003 puts on every page what it shows by default, only into an empty table, with metrics of the catalog', async () => {
-    // The tests empty every table before each test: here the table is as a new database has it.
-    await rerun('003_view_items.sql');
-    const rows = await rawRows('SELECT surface, position, metric, section, chart, scale FROM view_items ORDER BY surface, position');
-    const of = (surface: string) => rows.filter((r) => r.surface === surface);
-    const keys = (scope: string) => METRICS.filter((m) => m.scope === scope).map((m) => m.key);
+  // 003-006 put the starting layout in once, for everybody; since 009 it is code, copied for each
+  // new user (accounts/defaults.ts, tested in test/accounts). Their tables have changed since, so
+  // the files are not run again here.
 
-    // every panel: every metric of its entity, in the catalog's order
-    expect(of('substance').map((r) => r.metric)).toEqual(keys('substance'));
-    expect(of('batch').map((r) => r.metric)).toEqual(keys('batch'));
-    expect(of('consumption').map((r) => r.metric)).toEqual(keys('consumption'));
-    // the metrics page: a few columns per table
-    expect(of('metrics').map((r) => r.metric)).toEqual([
-      'substance.consumed',
-      'substance.pace',
-      'substance.cost',
-      'substance.spend',
-      'substance.sinceLast',
-      'substance.stockTime',
-      'batch.used',
-      'batch.unitPriceVsAverage',
-      'batch.pace',
-      'batch.timeToFinish',
-      'batch.valueConsumed',
-      'consumption.deltaQuantity',
-      'consumption.quantityVsSubstanceAverage',
-      'consumption.unitPriceVsBatches',
-      'consumption.sincePrevious',
-      'consumption.rankInDay',
-    ]);
-    for (const surface of ['substance', 'batch', 'consumption', 'metrics']) {
-      expect(of(surface).map((r) => r.position)).toEqual(of(surface).map((_, i) => i + 1));
-    }
-    expect(rows.every((r) => r.section === null && r.chart === null && r.scale === null)).toBe(true);
-
-    // run again (or after lenzi's own choices): nothing is added
-    await rawRows('UPDATE view_items SET deleted_at = UTC_TIMESTAMP() WHERE surface = ?', ['substance']);
-    await rerun('003_view_items.sql');
-    expect(await rawRows('SELECT id FROM view_items')).toHaveLength(rows.length);
-  });
-
-  it('004 puts charts on the statistics page, only while it has none, each a series it can draw', async () => {
-    await rerun('004_statistics_widgets.sql');
-    const rows = await rawRows(
-      "SELECT section, position, metric, chart, scale FROM view_items WHERE surface = 'statistics' ORDER BY position",
+  it('009 gives every row an owner, and running it again changes nothing', async () => {
+    await rawRows("INSERT INTO users (username, email) VALUES ('owner-a', 'owner-a@test.invalid')");
+    const [user] = await rawRows("SELECT id FROM users WHERE username = 'owner-a'");
+    const userId = Number(user?.id);
+    await rawRows("INSERT INTO substances (user_id, name, unit) VALUES (?, 'beer', 'beer')", [userId]);
+    await rawRows("INSERT INTO settings (user_id, timezone, day_starts_at, currency) VALUES (?, 'Europe/London', '05:00:00', 'GBP')", [userId]);
+    await rawRows(
+      "INSERT INTO view_items (user_id, surface, position, metric, created_at) VALUES (?, 'substance', 1, 'substance.pace', UTC_TIMESTAMP())",
+      [userId],
     );
-    expect(rows.map((r) => [r.section, r.metric, r.chart, r.scale])).toEqual([
-      ['Consumption', 'series.consumed', 'line', 'week'],
-      ['Consumption', 'series.consumptions', 'bar', 'week'],
-      ['Money', 'series.cost', 'bar', 'month'],
-      ['Money', 'series.cost', 'donut', 'month'],
-      ['Money', 'series.spend', 'bar', 'month'],
-      ['Prices', 'series.unitPrice', 'line', 'month'],
-      ['Habits', 'series.hourOfDay', 'bar', null],
-    ]);
-    for (const r of rows) {
-      const series = SERIES.find((s) => s.key === r.metric)!;
-      expect(series.charts).toContain(r.chart);
-      expect(r.scale === null ? series.scales.length === 0 : series.scales.includes(r.scale)).toBe(true);
-    }
-    await rawRows("UPDATE view_items SET deleted_at = UTC_TIMESTAMP() WHERE surface = 'statistics'");
-    await rerun('004_statistics_widgets.sql');
-    expect(await rawRows("SELECT id FROM view_items WHERE surface = 'statistics'")).toHaveLength(rows.length);
-  });
-
-  it('005 puts a chart on the substance page, after its metrics, only while it has none', async () => {
-    await rerun('003_view_items.sql');
-    await rerun('005_substance_chart.sql');
-    const rows = await rawRows("SELECT position, metric, chart, scale, section FROM view_items WHERE surface = 'substance' ORDER BY position");
-    expect(rows.filter((r) => r.chart !== null).map((r) => [r.position, r.metric, r.chart, r.scale, r.section])).toEqual([
-      [rows.length, 'series.consumed', 'bar', 'week', null],
-    ]);
-    const series = SERIES.find((s) => s.key === 'series.consumed')!;
-    expect(series.charts).toContain('bar');
-    expect(series.scales).toContain('week');
-
-    // run again, or after lenzi removed it: nothing is added
-    await rawRows("UPDATE view_items SET deleted_at = UTC_TIMESTAMP() WHERE surface = 'substance' AND chart IS NOT NULL");
-    await rerun('005_substance_chart.sql');
-    expect(await rawRows("SELECT id FROM view_items WHERE surface = 'substance'")).toHaveLength(rows.length);
-  });
-
-  it('006 puts charts on the substances page, only while it has none, each a series it can draw', async () => {
-    await rerun('006_substances_charts.sql');
-    const rows = await rawRows("SELECT position, metric, chart, scale, section FROM view_items WHERE surface = 'substances' ORDER BY position");
-    expect(rows.map((r) => [r.position, r.metric, r.chart, r.scale, r.section])).toEqual([
-      [1, 'series.consumed', 'bar', 'week', null],
-      [2, 'series.spend', 'bar', 'month', null],
-      [3, 'series.cost', 'donut', 'month', null],
-    ]);
-    for (const row of rows) {
-      const series = SERIES.find((s) => s.key === row.metric)!;
-      expect(series.charts).toContain(row.chart);
-      expect(series.scales).toContain(row.scale);
-    }
-
-    // run again, or after lenzi removed them: nothing is added
-    await rawRows("UPDATE view_items SET deleted_at = UTC_TIMESTAMP() WHERE surface = 'substances'");
-    await rerun('006_substances_charts.sql');
-    expect(await rawRows("SELECT id FROM view_items WHERE surface = 'substances'")).toHaveLength(rows.length);
+    const snapshot = async () => ({
+      users: await rawRows('SELECT id, username, role FROM users ORDER BY id'),
+      substances: await rawRows('SELECT id, user_id, name FROM substances ORDER BY id'),
+      settings: await rawRows('SELECT user_id, timezone, day_starts_at, currency FROM settings ORDER BY id'),
+      viewItems: await rawRows('SELECT user_id, surface, metric FROM view_items ORDER BY id'),
+    });
+    const before = await snapshot();
+    await rerun('009_owners.sql');
+    expect(await snapshot()).toEqual(before);
+    // the owner columns are required
+    const nullable = await rawRows(
+      `SELECT TABLE_NAME AS t FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND COLUMN_NAME = 'user_id' AND IS_NULLABLE = 'YES'
+          AND TABLE_NAME IN ('substances', 'settings', 'view_items')`,
+    );
+    expect(nullable).toEqual([]);
   });
 
   it('007 lets a chart be a treemap or a radar, and is safe to re-run', async () => {

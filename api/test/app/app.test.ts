@@ -6,6 +6,7 @@ import { buildApp } from '../../src/app.js';
 import { createPool } from '../../src/db/pool.js';
 import { Api, expectProblem, fixedClock, makeApi } from '../support/api.js';
 import { testDbConfig } from '../support/db.js';
+import { TESTER, cookieOf } from '../support/session.js';
 import { VERSION, VERSION_FORMAT } from '../../src/version.js';
 
 let api: Api;
@@ -27,7 +28,7 @@ describe('GET /api/health', () => {
     const deadPool = createPool({ ...testDbConfig(), host: '127.0.0.1', port: 1 });
     const app = await buildApp({ pool: deadPool, clock: fixedClock });
     try {
-      const res = await new Api(app).get('/api/health');
+      const res = await new Api(app, null).get('/api/health'); // public: no user needed
       expectProblem(res, 503, 'database-unavailable');
       expect(res.body.db).toBe('error');
     } finally {
@@ -77,7 +78,7 @@ describe('Problem Details', () => {
     const res = await api.app.inject({
       method: 'POST',
       url: '/api/substances',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', cookie: await cookieOf(api.app, TESTER) },
       payload: '{"name": ',
     });
     expect(res.statusCode).toBe(400);
@@ -88,7 +89,7 @@ describe('Problem Details', () => {
     const res = await api.app.inject({
       method: 'POST',
       url: '/api/substances',
-      headers: { 'content-type': 'application/xml' },
+      headers: { 'content-type': 'application/xml', cookie: await cookieOf(api.app, TESTER) },
       payload: '<substance/>',
     });
     expect(res.statusCode).toBe(415);

@@ -117,11 +117,26 @@ describe('source rules', () => {
     return out;
   }
 
-  it('there is no SQL DELETE (or TRUNCATE) anywhere in src/', async () => {
+  it('there is no SQL DELETE (or TRUNCATE) anywhere in src/, except where users are deleted', async () => {
     for (const file of await sources(srcDir)) {
+      // Deleting a user is a real deletion of everything that is theirs (lenzi, 2026-10-01): the one
+      // exception to the soft delete, kept in the accounts module.
+      if (file.replace(/\\/g, '/').includes('/src/modules/accounts/')) continue;
       const text = await readFile(file, 'utf8');
       expect(text, file).not.toMatch(/\bDELETE\s+FROM\b/i);
       expect(text, file).not.toMatch(/\bTRUNCATE\b/i);
+    }
+  });
+
+  it('an Owner is made only by the request hook and the account lifecycle', async () => {
+    // The owner of a request is always its session's user (design-accounts.md, "owner"): nothing
+    // else may make one, or a domain call could work for whoever a URL or a body names.
+    const allowed = ['/src/shared/owner.ts', '/src/modules/identity/hook.ts', '/src/modules/accounts/service.ts'];
+    for (const file of await sources(srcDir)) {
+      const normalized = file.replace(/\\/g, '/');
+      if (allowed.some((end) => normalized.endsWith(end))) continue;
+      const text = await readFile(file, 'utf8');
+      expect(text, file).not.toMatch(/\bownerOf\s*\(/);
     }
   });
 

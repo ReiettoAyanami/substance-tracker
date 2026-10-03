@@ -35,6 +35,7 @@ import {
 import type { CatalogService } from '../catalog/service.js';
 import type { SettingsService } from '../settings/service.js';
 import * as repo from './repository.js';
+import type { Owner } from '../../shared/owner.js';
 
 // ---------------------------------------------------------------------------------------------
 // Pure calculations (exported for unit tests)
@@ -477,14 +478,14 @@ export class ReportsService {
     private readonly clock: Clock,
   ) {}
 
-  private async loadLedger(scope: repo.LedgerScope): Promise<Ledger> {
+  private async loadLedger(owner: Owner, scope: repo.LedgerScope): Promise<Ledger> {
     const [batches, consumptions, adjustments, oneTimes] = await Promise.all([
-      repo.loadBatches(this.pool, scope),
-      repo.loadConsumptions(this.pool, scope),
-      repo.loadAdjustments(this.pool, scope),
+      repo.loadBatches(this.pool, owner, scope),
+      repo.loadConsumptions(this.pool, owner, scope),
+      repo.loadAdjustments(this.pool, owner, scope),
       scope.batchIds !== undefined
         ? Promise.resolve([])
-        : repo.loadOneTimes(this.pool, scope.substanceIds !== undefined ? { substanceIds: scope.substanceIds } : {}),
+        : repo.loadOneTimes(this.pool, owner, scope.substanceIds !== undefined ? { substanceIds: scope.substanceIds } : {}),
     ]);
     return { batches, consumptions, adjustments, oneTimes };
   }
@@ -493,12 +494,12 @@ export class ReportsService {
   // Card summaries (home cards, substance page)
   // -------------------------------------------------------------------------------------------
 
-  async summaries(substanceIds: number[]): Promise<Map<number, CardSummary>> {
+  async summaries(owner: Owner, substanceIds: number[]): Promise<Map<number, CardSummary>> {
     const result = new Map<number, CardSummary>();
     if (substanceIds.length === 0) return result;
-    const settings = await this.settings.get();
+    const settings = await this.settings.get(owner);
     const month = logicalMonthRange(this.clock(), settings);
-    const ledger = await this.loadLedger({ substanceIds });
+    const ledger = await this.loadLedger(owner, { substanceIds });
     const costs = consumptionCosts(ledger.batches, ledger.consumptions);
 
     const batchesBy = groupBySubstance(ledger.batches);
@@ -572,8 +573,8 @@ export class ReportsService {
     return result;
   }
 
-  async summary(substanceId: number): Promise<CardSummary> {
-    const map = await this.summaries([substanceId]);
+  async summary(owner: Owner, substanceId: number): Promise<CardSummary> {
+    const map = await this.summaries(owner, [substanceId]);
     return map.get(substanceId) as CardSummary;
   }
 
@@ -581,9 +582,9 @@ export class ReportsService {
   // Stock bar and sub-cards
   // -------------------------------------------------------------------------------------------
 
-  async stockBar(substanceId: number, includeDeactivated: boolean): Promise<StockBar> {
-    await this.catalog.get(substanceId);
-    const batches = await repo.loadBatches(this.pool, { substanceIds: [substanceId] });
+  async stockBar(owner: Owner, substanceId: number, includeDeactivated: boolean): Promise<StockBar> {
+    await this.catalog.get(owner, substanceId);
+    const batches = await repo.loadBatches(this.pool, owner, { substanceIds: [substanceId] });
     const active = batches.filter((b) => !b.deactivated_at);
     const stock = sum(active.map(remainingOf));
     const stockBarMax = sum(active.map((b) => fromDb(b.quantity)));
@@ -619,9 +620,9 @@ export class ReportsService {
   // Batch list (every batch, for the batch filter)
   // -------------------------------------------------------------------------------------------
 
-  async batchList(filter: { substanceId?: number | undefined }): Promise<BatchListItem[]> {
-    if (filter.substanceId !== undefined) await this.catalog.get(filter.substanceId);
-    const rows = await repo.listBatches(this.pool, filter);
+  async batchList(owner: Owner, filter: { substanceId?: number | undefined }): Promise<BatchListItem[]> {
+    if (filter.substanceId !== undefined) await this.catalog.get(owner, filter.substanceId);
+    const rows = await repo.listBatches(this.pool, owner, filter);
     return rows.map((b) => ({
       id: b.id,
       substanceId: b.substance_id,
@@ -636,15 +637,15 @@ export class ReportsService {
   // Batch page
   // -------------------------------------------------------------------------------------------
 
-  private async loadBatchLedger(batchId: number): Promise<{ batch: repo.BatchStatRow; ledger: Ledger }> {
-    const ledger = await this.loadLedger({ batchIds: [batchId] });
+  private async loadBatchLedger(owner: Owner, batchId: number): Promise<{ batch: repo.BatchStatRow; ledger: Ledger }> {
+    const ledger = await this.loadLedger(owner, { batchIds: [batchId] });
     const batch = ledger.batches[0];
     if (!batch) throw notFound('Batch', batchId);
     return { batch, ledger };
   }
 
-  async batchPage(batchId: number) {
-    const { batch, ledger } = await this.loadBatchLedger(batchId);
+  async batchPage(owner: Owner, batchId: number) {
+    const { batch, ledger } = await this.loadBatchLedger(owner, batchId);
     const costs = consumptionCosts([batch], ledger.consumptions);
     const stats = perConsumptionStats(
       ledger.consumptions.map((c) => ({ quantity: fromDb(c.quantity), cost: costs.get(c.id) ?? ZERO })),
@@ -675,8 +676,8 @@ export class ReportsService {
   }
 
   /** Consumptions (with cost) and adjustments (cost null) of the batch, newest first. */
-  async batchMovements(batchId: number, page: Page) {
-    const { batch, ledger } = await this.loadBatchLedger(batchId);
+  async batchMovements(owner: Owner, batchId: number, page: Page) {
+    const { batch, ledger } = await this.loadBatchLedger(owner, batchId);
     const costs = consumptionCosts([batch], ledger.consumptions);
     const before = pageBefore(page);
     const rows = [
@@ -723,9 +724,9 @@ export class ReportsService {
   // One-time batch
   // -------------------------------------------------------------------------------------------
 
-  async oneTimeStats(substanceId: number) {
-    await this.catalog.get(substanceId);
-    const rows = await repo.loadOneTimes(this.pool, { substanceIds: [substanceId] });
+  async oneTimeStats(owner: Owner, substanceId: number) {
+    await this.catalog.get(owner, substanceId);
+    const rows = await repo.loadOneTimes(this.pool, owner, { substanceIds: [substanceId] });
     const items = rows.map((o) => ({ quantity: fromDb(o.quantity), cost: fromDb(o.total_price) }));
     const stats = perConsumptionStats(items);
     const totalQuantity = sum(items.map((i) => i.quantity));
@@ -750,15 +751,15 @@ export class ReportsService {
    * consumption before it of the substance, from a batch or one-time (it has no batch to be
    * compared within): the numbers the consumptions list gives it, whatever the page leaves out.
    */
-  async oneTimeConsumptions(substanceId: number, page: Page) {
-    await this.catalog.get(substanceId);
+  async oneTimeConsumptions(owner: Owner, substanceId: number, page: Page) {
+    await this.catalog.get(owner, substanceId);
     const before = pageBefore(page);
     const [rows, history] = await Promise.all([
-      repo.pageOneTimes(this.pool, substanceId, {
+      repo.pageOneTimes(this.pool, owner, substanceId, {
         limit: pageLimit(page),
         before: before ? toDbDateTime(before) : null,
       }),
-      this.consumptionEntries(substanceId),
+      this.consumptionEntries(owner, substanceId),
     ]);
     compareWithPrevious(history, ofItsSubstance);
     const compared = new Map(history.filter((e) => e.type === 'one_time').map((e) => [e.id, e]));
@@ -787,7 +788,7 @@ export class ReportsService {
   // Movements (history)
   // -------------------------------------------------------------------------------------------
 
-  async movements(filter: {
+  async movements(owner: Owner, filter: {
     substanceId?: number | undefined;
     type?: repo.MovementType | undefined;
     from?: string | undefined;
@@ -795,10 +796,10 @@ export class ReportsService {
     limit?: number | undefined;
     before?: string | undefined;
   }) {
-    if (filter.substanceId !== undefined) await this.catalog.get(filter.substanceId);
-    const days = await this.logicalDays(filter.from, filter.to);
+    if (filter.substanceId !== undefined) await this.catalog.get(owner, filter.substanceId);
+    const days = await this.logicalDays(owner, filter.from, filter.to);
     const before = pageBefore(filter);
-    const rows = await repo.listMovements(this.pool, {
+    const rows = await repo.listMovements(this.pool, owner, {
       substanceId: filter.substanceId,
       types: filter.type ? [filter.type] : ['batch', 'consumption', 'one_time', 'adjustment'],
       fromInstant: days.start ? toDbDateTime(days.start) : undefined,
@@ -812,8 +813,8 @@ export class ReportsService {
     let costs = new Map<number, Dec>();
     if (batchIds.length > 0) {
       const [batches, consumptions] = await Promise.all([
-        repo.loadBatches(this.pool, { batchIds }),
-        repo.loadConsumptions(this.pool, { batchIds }),
+        repo.loadBatches(this.pool, owner, { batchIds }),
+        repo.loadConsumptions(this.pool, owner, { batchIds }),
       ]);
       costs = consumptionCosts(batches, consumptions);
     }
@@ -874,13 +875,13 @@ export class ReportsService {
   // -------------------------------------------------------------------------------------------
 
   /** Batch and one-time consumptions, newest first, filtered, paginated like the histories. */
-  async consumptionList(filter: ConsumptionFilter, page: Page): Promise<ConsumptionItem[]> {
+  async consumptionList(owner: Owner, filter: ConsumptionFilter, page: Page): Promise<ConsumptionItem[]> {
     const cost = decimalRange(filter.minCost, filter.maxCost, 'minCost', 'maxCost');
     const quantity = decimalRange(filter.minQuantity, filter.maxQuantity, 'minQuantity', 'maxQuantity');
     const before = pageBefore(page);
     const [entries, substances] = await Promise.all([
-      this.scopedConsumptions(filter),
-      this.catalog.list({ includeArchived: true }),
+      this.scopedConsumptions(owner, filter),
+      this.catalog.list(owner, { includeArchived: true }),
     ]);
     const substanceById = new Map(substances.map((s) => [s.id, s]));
     const newestFirst = entries
@@ -915,8 +916,8 @@ export class ReportsService {
   }
 
   /** The ends of the price and quantity sliders over the consumptions in scope; nulls with none. */
-  async consumptionBounds(scope: ConsumptionScope): Promise<ConsumptionBounds> {
-    const entries = await this.scopedConsumptions(scope);
+  async consumptionBounds(owner: Owner, scope: ConsumptionScope): Promise<ConsumptionBounds> {
+    const entries = await this.scopedConsumptions(owner, scope);
     if (entries.length === 0) return { minCost: null, maxCost: null, minQuantity: null, maxQuantity: null };
     const costs = entries.map((e) => e.cost);
     const quantities = entries.map((e) => e.quantity);
@@ -936,20 +937,20 @@ export class ReportsService {
    * previous one, whatever the days hide. Only the one-time ones (`oneTime`): they keep the rule of
    * their substance, so they are picked after the deltas.
    */
-  private async scopedConsumptions(scope: ConsumptionScope): Promise<ConsumptionEntry[]> {
+  private async scopedConsumptions(owner: Owner, scope: ConsumptionScope): Promise<ConsumptionEntry[]> {
     if (scope.oneTime && scope.batchId !== undefined) {
       throw badRequest('a one-time consumption has no batch: choose one or the other', 'oneTime');
     }
-    const days = await this.logicalDays(scope.from, scope.to);
+    const days = await this.logicalDays(owner, scope.from, scope.to);
     let substanceId = scope.substanceId;
-    if (substanceId !== undefined) await this.catalog.get(substanceId);
+    if (substanceId !== undefined) await this.catalog.get(owner, substanceId);
     if (scope.batchId !== undefined) {
-      const [batch] = await repo.loadBatches(this.pool, { batchIds: [scope.batchId] });
+      const [batch] = await repo.loadBatches(this.pool, owner, { batchIds: [scope.batchId] });
       if (!batch) throw notFound('Batch', scope.batchId);
       if (substanceId !== undefined && batch.substance_id !== substanceId) return [];
       substanceId = batch.substance_id;
     }
-    const all = await this.consumptionEntries(substanceId);
+    const all = await this.consumptionEntries(owner, substanceId);
     const entries = scope.batchId === undefined ? all : all.filter((e) => e.batch_id === scope.batchId);
     compareWithPrevious(entries, scope.batchId === undefined ? ofItsSubstance : () => scope.batchId!);
     return entries.filter(
@@ -962,6 +963,7 @@ export class ReportsService {
 
   /** [start, end) of the logical days from..to; either end may be open. 400 when invalid. */
   private async logicalDays(
+    owner: Owner,
     from: string | undefined,
     to: string | undefined,
   ): Promise<{ start: Date | null; end: Date | null }> {
@@ -969,7 +971,7 @@ export class ReportsService {
     if (from !== undefined && !isValidIsoDate(from)) throw badRequest('from must be a date YYYY-MM-DD', 'from');
     if (to !== undefined && !isValidIsoDate(to)) throw badRequest('to must be a date YYYY-MM-DD', 'to');
     if (from !== undefined && to !== undefined && from > to) throw badRequest('from must not be after to', 'from');
-    const settings = await this.settings.get();
+    const settings = await this.settings.get(owner);
     return {
       start: from === undefined ? null : logicalDayStart(from, settings),
       end: to === undefined ? null : logicalDayStart(addDays(to, 1), settings),
@@ -980,12 +982,12 @@ export class ReportsService {
    * Every non-deleted consumption of either kind (of one substance, or of all), oldest first,
    * with its unit price and its cost; the deltas are set by whoever knows the series.
    */
-  private async consumptionEntries(substanceId: number | undefined): Promise<ConsumptionEntry[]> {
+  private async consumptionEntries(owner: Owner, substanceId: number | undefined): Promise<ConsumptionEntry[]> {
     const scope = substanceId === undefined ? {} : { substanceIds: [substanceId] };
     const [batches, consumptions, oneTimes] = await Promise.all([
-      repo.loadBatches(this.pool, scope),
-      repo.loadConsumptions(this.pool, scope),
-      repo.loadOneTimes(this.pool, scope),
+      repo.loadBatches(this.pool, owner, scope),
+      repo.loadConsumptions(this.pool, owner, scope),
+      repo.loadOneTimes(this.pool, owner, scope),
     ]);
     return consumptionEntriesOf(batches, consumptions, oneTimes);
   }
@@ -999,16 +1001,16 @@ export class ReportsService {
    * from..to (inclusive), zero-filled. consumed and cost include batch and one-time
    * consumptions; spend = batch purchases + one-time prices in the period.
    */
-  async stats(query: { from: string; to: string; groupBy: GroupBy; substanceId?: number | undefined }): Promise<StatsPoint[]> {
+  async stats(owner: Owner, query: { from: string; to: string; groupBy: GroupBy; substanceId?: number | undefined }): Promise<StatsPoint[]> {
     if (!isValidIsoDate(query.from)) throw badRequest('from must be a date YYYY-MM-DD', 'from');
     if (!isValidIsoDate(query.to)) throw badRequest('to must be a date YYYY-MM-DD', 'to');
     if (query.from > query.to) throw badRequest('from must not be after to', 'from');
-    if (query.substanceId !== undefined) await this.catalog.get(query.substanceId);
+    if (query.substanceId !== undefined) await this.catalog.get(owner, query.substanceId);
 
-    const settings = await this.settings.get();
+    const settings = await this.settings.get(owner);
     const periods = periodsBetween(query.from, query.to, query.groupBy, 5000);
     const range = logicalRange(query.from, query.to, settings);
-    const ledger = await this.loadLedger(query.substanceId !== undefined ? { substanceIds: [query.substanceId] } : {});
+    const ledger = await this.loadLedger(owner, query.substanceId !== undefined ? { substanceIds: [query.substanceId] } : {});
     const costs = consumptionCosts(ledger.batches, ledger.consumptions);
 
     const buckets = new Map<string, { consumed: Dec; cost: Dec; spend: Dec }>();

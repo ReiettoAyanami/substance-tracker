@@ -31,8 +31,9 @@ export async function closeTestPool(): Promise<void> {
 }
 
 /**
- * Empties every table except schema_migrations and puts the settings row back to its
- * defaults. Truncating the test database is fine; the app itself never deletes a row.
+ * Empties every table except schema_migrations (users and their settings included: each test makes
+ * the users it needs, see session.ts). Emptying the test database is fine; the app itself never
+ * deletes a row of the domain.
  * Only the tables written to since their last reset are emptied (their AUTO_INCREMENT moved), with
  * DELETE and the counter set back to 1: ~30 ms a table against ~90 for a TRUNCATE (measured
  * 2026-10-03). Every table still starts empty, its ids from 1.
@@ -60,10 +61,6 @@ export async function resetDatabase(): Promise<void> {
     } finally {
       await conn.query('SET FOREIGN_KEY_CHECKS = 1');
     }
-    await conn.query(
-      `INSERT INTO settings (id, timezone, day_starts_at, currency) VALUES (1, 'Europe/Rome', '00:00:00', 'EUR')
-       ON DUPLICATE KEY UPDATE timezone = 'Europe/Rome', day_starts_at = '00:00:00', currency = 'EUR'`,
-    );
   } finally {
     conn.release();
   }

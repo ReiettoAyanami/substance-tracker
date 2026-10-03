@@ -2,6 +2,7 @@ import { isDuplicateKeyError, withTransaction, type Pool, type PoolConnection, t
 import { badRequest, conflict, notFound } from '../../shared/errors.js';
 import { fmtMoney, fmtQty, fromDb, LIMITS, parseDecimal, round2, type Dec } from '../../shared/decimal.js';
 import { clientRef as normalizeClientRef, optionalText, requiredText } from '../../shared/input.js';
+import type { Owner } from '../../shared/owner.js';
 import { parseInstant, toDbDateTime, toIso, toIsoOrNull, truncateToSecond, type Clock } from '../../shared/time.js';
 import * as repo from './repository.js';
 import type {
@@ -247,33 +248,38 @@ export class LedgerService {
   /** remaining = quantity − Σ consumptions + Σ adjustments (non-deleted), optionally without one row. */
   private async remaining(
     conn: Queryable,
+    owner: Owner,
     batch: repo.BatchRow,
     exclude: { consumptionId?: number; adjustmentId?: number } = {},
   ): Promise<Dec> {
-    const sums = await repo.batchMovementSums(conn, batch.id, exclude);
+    const sums = await repo.batchMovementSums(conn, owner, batch.id, exclude);
     return fromDb(batch.quantity).minus(fromDb(sums.consumed)).plus(fromDb(sums.adjusted));
   }
 
   /**
-   * Create with clientRef dedup: the same clientRef on the same table returns the existing row
-   * (created = false) and writes nothing. `work` re-checks after taking its lock, and a
-   * concurrent duplicate that slips through is caught by the UNIQUE key.
+   * Create with clientRef dedup: the same clientRef on the same table returns the owner's existing
+   * row (created = false) and writes nothing. `work` re-checks after taking its lock, and a
+   * concurrent duplicate that slips through is caught by the UNIQUE key. A clientRef stays unique
+   * on the whole table (a UUID): one already used by another user is refused (409), never answered
+   * with that user's row (design-accounts.md, "The domain, per owner").
    */
   private async createDeduped<R>(
+    owner: Owner,
     ref: string | null,
-    findByRef: (db: Queryable, ref: string) => Promise<R | null>,
+    findByRef: (db: Queryable, owner: Owner, ref: string) => Promise<R | null>,
     work: (conn: PoolConnection) => Promise<Created<R>>,
   ): Promise<Created<R>> {
     if (ref) {
-      const existing = await findByRef(this.pool, ref);
+      const existing = await findByRef(this.pool, owner, ref);
       if (existing) return { row: existing, created: false };
     }
     try {
       return await withTransaction(this.pool, work);
     } catch (err) {
       if (ref && isDuplicateKeyError(err)) {
-        const existing = await findByRef(this.pool, ref);
+        const existing = await findByRef(this.pool, owner, ref);
         if (existing) return { row: existing, created: false };
+        throw conflict('client-ref-used', 'This clientRef was already used: send a new one');
       }
       throw err;
     }
@@ -283,7 +289,7 @@ export class LedgerService {
   // Batches
   // -------------------------------------------------------------------------------------------
 
-  async createBatch(substanceId: number, body: CreateBatchBody): Promise<Created<BatchDto>> {
+  async createBatch(owner: Owner, substanceId: number, body: CreateBatchBody): Promise<Created<BatchDto>> {
     const hasQuantity = body.quantity !== undefined;
     const hasRefills = body.refills !== undefined;
     if (hasQuantity === hasRefills) {
@@ -298,11 +304,11 @@ export class LedgerService {
     const note = optionalText(body.note) ?? null;
     const ref = normalizeClientRef(body.clientRef);
 
-    const result = await this.createDeduped(ref, repo.findBatchByClientRef, async (conn) => {
-      const substance = await repo.lockSubstance(conn, substanceId);
+    const result = await this.createDeduped(owner, ref, repo.findBatchByClientRef, async (conn) => {
+      const substance = await repo.lockSubstance(conn, owner, substanceId);
       if (!substance || substance.deleted_at) throw notFound('Substance', substanceId);
       if (ref) {
-        const existing = await repo.findBatchByClientRef(conn, ref);
+        const existing = await repo.findBatchByClientRef(conn, owner, ref);
         if (existing) return { row: existing, created: false };
       }
       if (substance.archived_at) throw substanceArchived(substanceId);
@@ -322,7 +328,7 @@ export class LedgerService {
       }
       const totalPrice = resolveTotalPrice(totalPriceIn, unitPriceIn, quantity);
 
-      const id = await repo.insertBatch(conn, {
+      const id = await repo.insertBatch(conn, owner, {
         substance_id: substanceId,
         name,
         quantity: quantity.toFixed(3),
@@ -331,14 +337,14 @@ export class LedgerService {
         note,
         client_ref: ref,
       });
-      const row = await repo.findBatch(conn, id);
+      const row = await repo.findBatch(conn, owner, id);
       return { row: row as repo.BatchRow, created: true };
     });
     return { row: toBatchDto(result.row), created: result.created };
   }
 
   /** Correct an active batch: name, note, occurredAt, quantity, totalPrice. */
-  async updateBatch(batchId: number, body: PatchBatchBody): Promise<BatchDto> {
+  async updateBatch(owner: Owner, batchId: number, body: PatchBatchBody): Promise<BatchDto> {
     const update: repo.BatchUpdate = {};
     const name = optionalText(body.name);
     if (name !== undefined) update.name = name;
@@ -351,11 +357,11 @@ export class LedgerService {
     if (totalPrice) update.total_price = storedTotalPrice(totalPrice, 'totalPrice');
 
     await withTransaction(this.pool, async (conn) => {
-      const batch = await repo.lockBatch(conn, batchId);
+      const batch = await repo.lockBatch(conn, owner, batchId);
       assertBatchWritable(batch, batchId);
       if (batch.deactivated_at) throw batchDeactivated(batchId);
       if (quantity) {
-        const sums = await repo.batchMovementSums(conn, batchId);
+        const sums = await repo.batchMovementSums(conn, owner, batchId);
         const used = fromDb(sums.consumed).minus(fromDb(sums.adjusted));
         if (!quantity.gt(used)) {
           throw conflict(
@@ -365,9 +371,9 @@ export class LedgerService {
           );
         }
       }
-      await repo.updateBatch(conn, batchId, update);
+      await repo.updateBatch(conn, owner, batchId, update);
     });
-    const row = await repo.findBatch(this.pool, batchId);
+    const row = await repo.findBatch(this.pool, owner, batchId);
     return toBatchDto(row as repo.BatchRow);
   }
 
@@ -376,14 +382,14 @@ export class LedgerService {
    * (lenzi, 2026-09-30): what is deleted counts nowhere, so the statistics are computed without
    * them. A deactivated batch is not deleted: it was used up, and it keeps counting.
    */
-  async deleteBatch(batchId: number): Promise<void> {
+  async deleteBatch(owner: Owner, batchId: number): Promise<void> {
     await withTransaction(this.pool, async (conn) => {
-      const batch = await repo.lockBatch(conn, batchId);
+      const batch = await repo.lockBatch(conn, owner, batchId);
       assertBatchWritable(batch, batchId);
       if (batch.deactivated_at) throw batchDeactivated(batchId);
       const at = this.nowDb();
-      await repo.softDeleteMovementsOfBatch(conn, batchId, at);
-      await repo.softDeleteBatch(conn, batchId, at);
+      await repo.softDeleteMovementsOfBatch(conn, owner, batchId, at);
+      await repo.softDeleteBatch(conn, owner, batchId, at);
     });
   }
 
@@ -391,26 +397,26 @@ export class LedgerService {
   // Consumptions
   // -------------------------------------------------------------------------------------------
 
-  async createConsumption(batchId: number, body: CreateConsumptionBody): Promise<Created<ConsumptionDto>> {
+  async createConsumption(owner: Owner, batchId: number, body: CreateConsumptionBody): Promise<Created<ConsumptionDto>> {
     const quantity = parseQuantity(body.quantity);
     const occurredAt = this.occurredAt(body.occurredAt);
     const note = optionalText(body.note) ?? null;
     const ref = normalizeClientRef(body.clientRef);
 
-    const result = await this.createDeduped(ref, repo.findConsumptionByClientRef, async (conn) => {
-      const batch = await repo.lockBatch(conn, batchId);
+    const result = await this.createDeduped(owner, ref, repo.findConsumptionByClientRef, async (conn) => {
+      const batch = await repo.lockBatch(conn, owner, batchId);
       if (!batch || batch.deleted_at || batch.substance_deleted_at) throw notFound('Batch', batchId);
       if (ref) {
-        const existing = await repo.findConsumptionByClientRef(conn, ref);
+        const existing = await repo.findConsumptionByClientRef(conn, owner, ref);
         if (existing) return { row: existing, created: false };
       }
       assertBatchWritable(batch, batchId);
       if (batch.deactivated_at) throw batchDeactivated(batchId);
 
-      const remaining = await this.remaining(conn, batch);
+      const remaining = await this.remaining(conn, owner, batch);
       if (quantity.gt(remaining)) throw exceedsRemaining(quantity, remaining);
 
-      const id = await repo.insertConsumption(conn, {
+      const id = await repo.insertConsumption(conn, owner, {
         batch_id: batchId,
         quantity: quantity.toFixed(3),
         occurred_at: occurredAt,
@@ -418,15 +424,15 @@ export class LedgerService {
         client_ref: ref,
       });
       if (remaining.minus(quantity).isZero()) {
-        await repo.deactivateBatch(conn, batchId, this.nowDb(), { consumptionId: id });
+        await repo.deactivateBatch(conn, owner, batchId, this.nowDb(), { consumptionId: id });
       }
-      const row = await repo.findConsumption(conn, id);
+      const row = await repo.findConsumption(conn, owner, id);
       return { row: row as repo.ConsumptionRow, created: true };
     });
     return { row: toConsumptionDto(result.row), created: result.created };
   }
 
-  async updateConsumption(id: number, body: PatchConsumptionBody): Promise<ConsumptionDto> {
+  async updateConsumption(owner: Owner, id: number, body: PatchConsumptionBody): Promise<ConsumptionDto> {
     const quantity = body.quantity !== undefined ? parseQuantity(body.quantity) : null;
     const update: repo.ConsumptionUpdate = {};
     if (quantity) update.quantity = quantity.toFixed(3);
@@ -435,26 +441,26 @@ export class LedgerService {
     if (note !== undefined) update.note = note;
 
     await withTransaction(this.pool, async (conn) => {
-      const before = await repo.findConsumption(conn, id);
+      const before = await repo.findConsumption(conn, owner, id);
       if (!before || before.deleted_at) throw notFound('Consumption', id);
-      const batch = await repo.lockBatch(conn, before.batch_id);
-      const current = await repo.findConsumption(conn, id);
+      const batch = await repo.lockBatch(conn, owner, before.batch_id);
+      const current = await repo.findConsumption(conn, owner, id);
       if (!current || current.deleted_at) throw notFound('Consumption', id);
       assertBatchWritable(batch, current.batch_id);
       if (batch.deactivated_at) throw batchDeactivated(batch.id);
 
       let emptiesBatch = false;
       if (quantity) {
-        const remainingWithout = await this.remaining(conn, batch, { consumptionId: id });
+        const remainingWithout = await this.remaining(conn, owner, batch, { consumptionId: id });
         const after = remainingWithout.minus(quantity);
         if (after.lt(0)) throw exceedsRemaining(quantity, remainingWithout);
         if (after.gt(fromDb(batch.quantity))) throw aboveQuantity(after, fromDb(batch.quantity));
         emptiesBatch = after.isZero();
       }
-      await repo.updateConsumption(conn, id, update);
-      if (emptiesBatch) await repo.deactivateBatch(conn, batch.id, this.nowDb(), { consumptionId: id });
+      await repo.updateConsumption(conn, owner, id, update);
+      if (emptiesBatch) await repo.deactivateBatch(conn, owner, batch.id, this.nowDb(), { consumptionId: id });
     });
-    const row = await repo.findConsumption(this.pool, id);
+    const row = await repo.findConsumption(this.pool, owner, id);
     return toConsumptionDto(row as repo.ConsumptionRow);
   }
 
@@ -462,24 +468,24 @@ export class LedgerService {
    * Cancel (soft delete). On a deactivated batch only the consumption that emptied it can be
    * cancelled, and cancelling it reopens the batch.
    */
-  async deleteConsumption(id: number): Promise<void> {
+  async deleteConsumption(owner: Owner, id: number): Promise<void> {
     await withTransaction(this.pool, async (conn) => {
-      const before = await repo.findConsumption(conn, id);
+      const before = await repo.findConsumption(conn, owner, id);
       if (!before || before.deleted_at) throw notFound('Consumption', id);
-      const batch = await repo.lockBatch(conn, before.batch_id);
-      const current = await repo.findConsumption(conn, id);
+      const batch = await repo.lockBatch(conn, owner, before.batch_id);
+      const current = await repo.findConsumption(conn, owner, id);
       if (!current || current.deleted_at) throw notFound('Consumption', id);
       assertBatchWritable(batch, current.batch_id);
 
       if (batch.deactivated_at) {
         if (batch.deactivated_by_consumption_id !== id) throw batchDeactivated(batch.id);
-        await repo.softDeleteConsumption(conn, id, this.nowDb());
-        await repo.reopenBatch(conn, batch.id);
+        await repo.softDeleteConsumption(conn, owner, id, this.nowDb());
+        await repo.reopenBatch(conn, owner, batch.id);
         return;
       }
-      const after = (await this.remaining(conn, batch)).plus(fromDb(current.quantity));
+      const after = (await this.remaining(conn, owner, batch)).plus(fromDb(current.quantity));
       if (after.gt(fromDb(batch.quantity))) throw aboveQuantity(after, fromDb(batch.quantity));
-      await repo.softDeleteConsumption(conn, id, this.nowDb());
+      await repo.softDeleteConsumption(conn, owner, id, this.nowDb());
     });
   }
 
@@ -487,41 +493,41 @@ export class LedgerService {
   // Adjustments
   // -------------------------------------------------------------------------------------------
 
-  async createAdjustment(batchId: number, body: CreateAdjustmentBody): Promise<Created<AdjustmentDto>> {
+  async createAdjustment(owner: Owner, batchId: number, body: CreateAdjustmentBody): Promise<Created<AdjustmentDto>> {
     const delta = parseDelta(body.delta);
     const reason = requiredText(body.reason, 'reason');
     const occurredAt = this.occurredAt(body.occurredAt);
     const ref = normalizeClientRef(body.clientRef);
 
-    const result = await this.createDeduped(ref, repo.findAdjustmentByClientRef, async (conn) => {
-      const batch = await repo.lockBatch(conn, batchId);
+    const result = await this.createDeduped(owner, ref, repo.findAdjustmentByClientRef, async (conn) => {
+      const batch = await repo.lockBatch(conn, owner, batchId);
       if (!batch || batch.deleted_at || batch.substance_deleted_at) throw notFound('Batch', batchId);
       if (ref) {
-        const existing = await repo.findAdjustmentByClientRef(conn, ref);
+        const existing = await repo.findAdjustmentByClientRef(conn, owner, ref);
         if (existing) return { row: existing, created: false };
       }
       assertBatchWritable(batch, batchId);
       if (batch.deactivated_at) throw batchDeactivated(batchId);
 
-      const after = (await this.remaining(conn, batch)).plus(delta);
+      const after = (await this.remaining(conn, owner, batch)).plus(delta);
       if (after.lt(0)) throw belowZero(after);
       if (after.gt(fromDb(batch.quantity))) throw aboveQuantity(after, fromDb(batch.quantity));
 
-      const id = await repo.insertAdjustment(conn, {
+      const id = await repo.insertAdjustment(conn, owner, {
         batch_id: batchId,
         delta: delta.toFixed(3),
         reason,
         occurred_at: occurredAt,
         client_ref: ref,
       });
-      if (after.isZero()) await repo.deactivateBatch(conn, batchId, this.nowDb(), { adjustmentId: id });
-      const row = await repo.findAdjustment(conn, id);
+      if (after.isZero()) await repo.deactivateBatch(conn, owner, batchId, this.nowDb(), { adjustmentId: id });
+      const row = await repo.findAdjustment(conn, owner, id);
       return { row: row as repo.AdjustmentRow, created: true };
     });
     return { row: toAdjustmentDto(result.row), created: result.created };
   }
 
-  async updateAdjustment(id: number, body: PatchAdjustmentBody): Promise<AdjustmentDto> {
+  async updateAdjustment(owner: Owner, id: number, body: PatchAdjustmentBody): Promise<AdjustmentDto> {
     const delta = body.delta !== undefined ? parseDelta(body.delta) : null;
     const update: repo.AdjustmentUpdate = {};
     if (delta) update.delta = delta.toFixed(3);
@@ -529,44 +535,44 @@ export class LedgerService {
     if (body.occurredAt !== undefined) update.occurred_at = this.occurredAt(body.occurredAt);
 
     await withTransaction(this.pool, async (conn) => {
-      const before = await repo.findAdjustment(conn, id);
+      const before = await repo.findAdjustment(conn, owner, id);
       if (!before || before.deleted_at) throw notFound('Adjustment', id);
-      const batch = await repo.lockBatch(conn, before.batch_id);
-      const current = await repo.findAdjustment(conn, id);
+      const batch = await repo.lockBatch(conn, owner, before.batch_id);
+      const current = await repo.findAdjustment(conn, owner, id);
       if (!current || current.deleted_at) throw notFound('Adjustment', id);
       assertBatchWritable(batch, current.batch_id);
       if (batch.deactivated_at) throw batchDeactivated(batch.id);
 
       let emptiesBatch = false;
       if (delta) {
-        const after = (await this.remaining(conn, batch, { adjustmentId: id })).plus(delta);
+        const after = (await this.remaining(conn, owner, batch, { adjustmentId: id })).plus(delta);
         if (after.lt(0)) throw belowZero(after);
         if (after.gt(fromDb(batch.quantity))) throw aboveQuantity(after, fromDb(batch.quantity));
         emptiesBatch = after.isZero();
       }
-      await repo.updateAdjustment(conn, id, update);
-      if (emptiesBatch) await repo.deactivateBatch(conn, batch.id, this.nowDb(), { adjustmentId: id });
+      await repo.updateAdjustment(conn, owner, id, update);
+      if (emptiesBatch) await repo.deactivateBatch(conn, owner, batch.id, this.nowDb(), { adjustmentId: id });
     });
-    const row = await repo.findAdjustment(this.pool, id);
+    const row = await repo.findAdjustment(this.pool, owner, id);
     return toAdjustmentDto(row as repo.AdjustmentRow);
   }
 
-  async deleteAdjustment(id: number): Promise<void> {
+  async deleteAdjustment(owner: Owner, id: number): Promise<void> {
     await withTransaction(this.pool, async (conn) => {
-      const before = await repo.findAdjustment(conn, id);
+      const before = await repo.findAdjustment(conn, owner, id);
       if (!before || before.deleted_at) throw notFound('Adjustment', id);
-      const batch = await repo.lockBatch(conn, before.batch_id);
-      const current = await repo.findAdjustment(conn, id);
+      const batch = await repo.lockBatch(conn, owner, before.batch_id);
+      const current = await repo.findAdjustment(conn, owner, id);
       if (!current || current.deleted_at) throw notFound('Adjustment', id);
       assertBatchWritable(batch, current.batch_id);
 
       if (batch.deactivated_at) {
         if (batch.deactivated_by_adjustment_id !== id) throw batchDeactivated(batch.id);
-        await repo.softDeleteAdjustment(conn, id, this.nowDb());
-        await repo.reopenBatch(conn, batch.id);
+        await repo.softDeleteAdjustment(conn, owner, id, this.nowDb());
+        await repo.reopenBatch(conn, owner, batch.id);
         return;
       }
-      const after = (await this.remaining(conn, batch)).minus(fromDb(current.delta));
+      const after = (await this.remaining(conn, owner, batch)).minus(fromDb(current.delta));
       if (after.lt(0)) throw belowZero(after);
       if (after.isZero()) {
         throw conflict(
@@ -575,7 +581,7 @@ export class LedgerService {
         );
       }
       if (after.gt(fromDb(batch.quantity))) throw aboveQuantity(after, fromDb(batch.quantity));
-      await repo.softDeleteAdjustment(conn, id, this.nowDb());
+      await repo.softDeleteAdjustment(conn, owner, id, this.nowDb());
     });
   }
 
@@ -583,7 +589,7 @@ export class LedgerService {
   // One-time consumptions
   // -------------------------------------------------------------------------------------------
 
-  async createOneTime(substanceId: number, body: CreateOneTimeBody): Promise<Created<OneTimeDto>> {
+  async createOneTime(owner: Owner, substanceId: number, body: CreateOneTimeBody): Promise<Created<OneTimeDto>> {
     const quantity = parseQuantity(body.quantity);
     const totalPriceIn = parsePrice(body.totalPrice, 'totalPrice');
     const unitPriceIn = parsePrice(body.unitPrice, 'unitPrice');
@@ -592,16 +598,16 @@ export class LedgerService {
     const note = optionalText(body.note) ?? null;
     const ref = normalizeClientRef(body.clientRef);
 
-    const result = await this.createDeduped(ref, repo.findOneTimeByClientRef, async (conn) => {
-      const substance = await repo.lockSubstance(conn, substanceId);
+    const result = await this.createDeduped(owner, ref, repo.findOneTimeByClientRef, async (conn) => {
+      const substance = await repo.lockSubstance(conn, owner, substanceId);
       if (!substance || substance.deleted_at) throw notFound('Substance', substanceId);
       if (ref) {
-        const existing = await repo.findOneTimeByClientRef(conn, ref);
+        const existing = await repo.findOneTimeByClientRef(conn, owner, ref);
         if (existing) return { row: existing, created: false };
       }
       if (substance.archived_at) throw substanceArchived(substanceId);
       const totalPrice = resolveTotalPrice(totalPriceIn, unitPriceIn, quantity);
-      const id = await repo.insertOneTime(conn, {
+      const id = await repo.insertOneTime(conn, owner, {
         substance_id: substanceId,
         name,
         quantity: quantity.toFixed(3),
@@ -610,13 +616,13 @@ export class LedgerService {
         note,
         client_ref: ref,
       });
-      const row = await repo.findOneTime(conn, id);
+      const row = await repo.findOneTime(conn, owner, id);
       return { row: row as repo.OneTimeRow, created: true };
     });
     return { row: toOneTimeDto(result.row), created: result.created };
   }
 
-  async updateOneTime(id: number, body: PatchOneTimeBody): Promise<OneTimeDto> {
+  async updateOneTime(owner: Owner, id: number, body: PatchOneTimeBody): Promise<OneTimeDto> {
     const quantity = body.quantity !== undefined ? parseQuantity(body.quantity) : null;
     const totalPriceIn = parsePrice(body.totalPrice, 'totalPrice');
     const unitPriceIn = parsePrice(body.unitPrice, 'unitPrice');
@@ -629,9 +635,9 @@ export class LedgerService {
     if (body.occurredAt !== undefined) update.occurred_at = this.occurredAt(body.occurredAt);
 
     await withTransaction(this.pool, async (conn) => {
-      const current = await repo.lockOneTime(conn, id);
+      const current = await repo.lockOneTime(conn, owner, id);
       if (!current || current.deleted_at) throw notFound('One-time consumption', id);
-      const substance = await repo.findSubstanceState(conn, current.substance_id);
+      const substance = await repo.findSubstanceState(conn, owner, current.substance_id);
       if (!substance || substance.deleted_at) throw notFound('One-time consumption', id);
       if (substance.archived_at) throw substanceArchived(current.substance_id);
       // Price: totalPrice, else unitPrice × (new or current) quantity; otherwise unchanged.
@@ -639,19 +645,19 @@ export class LedgerService {
       else if (unitPriceIn) {
         update.total_price = storedTotalPrice(unitPriceIn.times(quantity ?? fromDb(current.quantity)), 'unitPrice');
       }
-      await repo.updateOneTime(conn, id, update);
+      await repo.updateOneTime(conn, owner, id, update);
     });
-    const row = await repo.findOneTime(this.pool, id);
+    const row = await repo.findOneTime(this.pool, owner, id);
     return toOneTimeDto(row as repo.OneTimeRow);
   }
 
-  async deleteOneTime(id: number): Promise<void> {
+  async deleteOneTime(owner: Owner, id: number): Promise<void> {
     await withTransaction(this.pool, async (conn) => {
-      const current = await repo.lockOneTime(conn, id);
+      const current = await repo.lockOneTime(conn, owner, id);
       if (!current || current.deleted_at) throw notFound('One-time consumption', id);
-      const substance = await repo.findSubstanceState(conn, current.substance_id);
+      const substance = await repo.findSubstanceState(conn, owner, current.substance_id);
       if (substance?.archived_at) throw substanceArchived(current.substance_id);
-      await repo.softDeleteOneTime(conn, id, this.nowDb());
+      await repo.softDeleteOneTime(conn, owner, id, this.nowDb());
     });
   }
 }

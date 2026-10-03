@@ -2,9 +2,11 @@ import fastifyStatic from '@fastify/static';
 import Fastify, { type FastifyError, type FastifyInstance, type FastifyReply, type FastifyServerOptions } from 'fastify';
 import { loadConfig, type AuthConfig } from './config.js';
 import { createPool, pingDatabase, type Pool } from './db/pool.js';
+import { AccountLifecycle } from './modules/accounts/service.js';
 import { catalogRoutes } from './modules/catalog/routes.js';
 import { CatalogService } from './modules/catalog/service.js';
 import { createAuth } from './modules/identity/auth.js';
+import { requestUserHook } from './modules/identity/hook.js';
 import { Identity } from './modules/identity/identity.js';
 import { authDatabase } from './modules/identity/insert-memory.js';
 import { identityRoutes } from './modules/identity/routes.js';
@@ -45,6 +47,10 @@ declare module 'fastify' {
   interface FastifyInstance {
     /** Who is asking, and the users' credentials (modules/identity). */
     identity: Identity;
+    /** Creating users ready to use (modules/accounts). */
+    accounts: AccountLifecycle;
+    /** Every route of the API, as registered (the cross-user tests cover each one). */
+    apiRoutes: ReadonlyArray<{ method: string; url: string }>;
   }
 }
 
@@ -125,7 +131,17 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
   const identity = new Identity(auth, pool);
   app.decorate('identity', identity);
 
+  // Every /api request needs a session, except sign-in, health and version: before any route.
+  requestUserHook(app, identity);
+  const apiRoutes: Array<{ method: string; url: string }> = [];
+  app.decorate('apiRoutes', apiRoutes);
+  app.addHook('onRoute', (route) => {
+    if (!route.url.startsWith('/api')) return;
+    for (const method of [route.method].flat()) if (method !== 'HEAD') apiRoutes.push({ method, url: route.url });
+  });
+
   const settings = new SettingsService(pool);
+  app.decorate('accounts', new AccountLifecycle(pool, identity, settings, clock));
   const catalog = new CatalogService(pool, clock);
   const reports = new ReportsService(pool, catalog, settings, clock);
   const ledger = new LedgerService(pool, clock);

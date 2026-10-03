@@ -3,6 +3,7 @@ import { expect } from 'vitest';
 import { buildApp } from '../../src/app.js';
 import type { Clock } from '../../src/shared/time.js';
 import { testPool } from './db.js';
+import { TESTER, cookieOf, type TestUser } from './session.js';
 
 /** Fixed "now" for the tests: 2026-09-29 12:00 in Rome. */
 export const NOW = new Date('2026-09-29T10:00:00Z');
@@ -16,14 +17,27 @@ export interface Res<T = any> {
 
 type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD';
 
-/** Thin HTTP client over app.inject(), plus helpers to build a ledger quickly. */
+/**
+ * Thin HTTP client over app.inject(), plus helpers to build a ledger quickly. It works as a signed-in
+ * user (the tester unless told otherwise, see session.ts), or signed out with `as(null)`.
+ */
 export class Api {
-  constructor(readonly app: FastifyInstance) {}
+  constructor(
+    readonly app: FastifyInstance,
+    readonly user: TestUser | null = TESTER,
+  ) {}
+
+  /** The same app as another user, or signed out (null). */
+  as(user: TestUser | null): Api {
+    return new Api(this.app, user);
+  }
 
   async req<T = any>(method: Method, url: string, payload?: unknown): Promise<Res<T>> {
+    const cookie = this.user ? await cookieOf(this.app, this.user) : null;
     const res = await this.app.inject({
       method,
       url,
+      ...(cookie ? { headers: { cookie } } : {}),
       ...(payload === undefined ? {} : { payload: payload as object }),
     });
     const type = String(res.headers['content-type'] ?? '');
@@ -72,7 +86,8 @@ export class Api {
 }
 
 export async function makeApi(opts: { clock?: Clock; webDist?: string } = {}): Promise<Api> {
-  const app = await buildApp({ pool: testPool(), clock: opts.clock ?? fixedClock, webDist: opts.webDist });
+  // The sign-in counters are tested on their own (identity/routes.test.ts).
+  const app = await buildApp({ pool: testPool(), clock: opts.clock ?? fixedClock, webDist: opts.webDist, auth: { rateLimit: false } });
   await app.ready();
   return new Api(app);
 }

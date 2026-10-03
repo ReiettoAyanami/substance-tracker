@@ -29,12 +29,13 @@ afterAll(async () => {
 describe('concurrent sign-ins on a small pool', () => {
   it('each cookie holds its own user session', async () => {
     const users = ['ann', 'bob', 'cid', 'dee', 'eve', 'fay'];
+    const ids: number[] = [];
     for (const name of users) {
-      await app.identity.createUser({ username: name, email: `${name}@dev.invalid`, password: 'Racer-pass-0001', role: 'user' });
+      ids.push(await app.identity.createUser({ username: name, email: `${name}@dev.invalid`, password: 'Racer-pass-0001', role: 'user' }));
     }
     const noise = async () => {
       for (let i = 0; i < 150; i++) {
-        await pool.query("INSERT INTO substances (name, unit) VALUES ('noise', 'g')");
+        await pool.query("INSERT INTO substances (user_id, name, unit) VALUES (?, 'noise', 'g')", [ids[0]]);
       }
     };
     let wrong = 0;
