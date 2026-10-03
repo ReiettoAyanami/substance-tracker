@@ -3,6 +3,7 @@ import { buildApp } from './app.js';
 import { loadConfig, type AppConfig } from './config.js';
 import { runMigrations } from './db/migrate.js';
 import { createPool } from './db/pool.js';
+import { ensureFirstAdmin } from './modules/accounts/first-admin.js';
 
 /** Connection errors worth waiting for while MySQL is still starting. */
 const RETRYABLE = new Set([
@@ -41,6 +42,8 @@ async function main(): Promise<void> {
 
   try {
     await migrateWithRetry(config, app.log);
+    // The first administrator, while there is none (design-accounts.md, "first account").
+    await ensureFirstAdmin({ pool, accounts: app.accounts, log: app.log }, config.firstAdmin);
     await app.listen({ host: config.host, port: config.port });
     if (config.webDist) app.log.info(`serving the web build from ${config.webDist}`);
   } catch (err) {

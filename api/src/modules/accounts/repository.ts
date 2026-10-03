@@ -1,6 +1,13 @@
+import type { RowDataPacket } from 'mysql2/promise';
 import type { Queryable } from '../../db/pool.js';
 import type { Owner } from '../../shared/owner.js';
 import type { DefaultViewItem } from './defaults.js';
+
+/** Is there at least one administrator? (None: the first one is created at startup.) */
+export async function hasAdministrator(db: Queryable): Promise<boolean> {
+  const [rows] = await db.query<RowDataPacket[]>("SELECT 1 FROM users WHERE role = 'admin' LIMIT 1");
+  return rows.length > 0;
+}
 
 export interface StartingSettings {
   timezone: string;

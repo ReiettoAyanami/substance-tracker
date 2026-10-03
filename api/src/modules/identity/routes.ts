@@ -91,7 +91,25 @@ async function send(reply: FastifyReply, response: Response): Promise<FastifyRep
     return reply.type(PROBLEM_CONTENT_TYPE).send(problemBody(response.status, code, detail));
   }
   reply.type(response.headers.get('content-type') ?? 'application/json; charset=utf-8');
-  return reply.send(text);
+  return reply.send(withoutTokens(text));
+}
+
+/**
+ * Better Auth also puts the session token in the bodies (sign-in, the session): the cookie carries
+ * it, HttpOnly so that no script reads it, and the web app never needs it. Out of every body.
+ */
+function withoutTokens(text: string): string {
+  let body: unknown;
+  try {
+    body = JSON.parse(text);
+  } catch {
+    return text;
+  }
+  if (body === null || typeof body !== 'object') return text;
+  const record = body as { token?: unknown; session?: { token?: unknown } | null };
+  delete record.token;
+  if (record.session && typeof record.session === 'object') delete record.session.token;
+  return JSON.stringify(record);
 }
 
 export function identityRoutes(app: FastifyInstance, deps: IdentityRoutesDeps): void {

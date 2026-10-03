@@ -104,6 +104,10 @@ describe('the session, sign out, the other devices', () => {
     const res = await signIn(app, 'lenzi', 'Lenzi-pass-0001');
     const mine = await app.inject({ method: 'GET', url: '/api/auth/get-session', headers: { cookie: res.cookie } });
     expect(mine.json().user).toMatchObject({ username: 'lenzi' });
+    // the token lives in the HttpOnly cookie only: never in a body a script could read
+    expect(mine.json().session.token).toBeUndefined();
+    expect(res.body.token).toBeUndefined();
+    expect(JSON.stringify(mine.json())).not.toContain(decodeURIComponent(res.cookie.split('=')[1] ?? '').split('.')[0]);
     const none = await app.inject({ method: 'GET', url: '/api/auth/get-session' });
     expect(none.statusCode).toBe(200);
     expect(none.json()).toBeNull();

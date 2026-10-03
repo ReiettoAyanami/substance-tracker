@@ -20,9 +20,20 @@ export interface AuthConfig {
   clientIpHeader: string | undefined;
 }
 
+/** The instance's first administrator, created at startup when there is none (design-accounts.md, "first account"). */
+export interface FirstAdminConfig {
+  /** ADMIN_USERNAME: permanent, it lives in every URL; unset, no administrator is created. */
+  username: string | undefined;
+  /** ADMIN_EMAIL (a fake address for now: lenzi, 2026-10-03). */
+  email: string;
+  /** FIRST_ADMIN_PASSWORD_FILE: where its password is written (the project root, mounted). */
+  passwordFile: string;
+}
+
 export interface AppConfig {
   db: DbConfig;
   auth: AuthConfig;
+  firstAdmin: FirstAdminConfig;
   /** Name of the test database (dev only), `${DB_NAME}_test` when TEST_DB_NAME is unset. */
   testDbName: string;
   host: string;
@@ -91,6 +102,11 @@ export function loadConfig(env: Env = process.env): AppConfig {
   const database = str(env, 'DB_NAME', 'substance_tracker');
   return {
     auth: authConfig(env),
+    firstAdmin: {
+      username: env.ADMIN_USERNAME?.trim().toLowerCase() || undefined,
+      email: str(env, 'ADMIN_EMAIL', 'admin@example.invalid'),
+      passwordFile: str(env, 'FIRST_ADMIN_PASSWORD_FILE', '/project/to_delete.password.txt'),
+    },
     db: {
       host: str(env, 'DB_HOST', 'localhost'),
       port: int(env, 'DB_PORT', 3306),

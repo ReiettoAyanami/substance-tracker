@@ -13,3 +13,6 @@ dist/
 
 # Local database dumps (never committed)
 db/backup/
+
+# The first administrator's password, written at the first start (delete it after reading)
+to_delete.password.txt

@@ -50,6 +50,12 @@ services:
       # differs from production's: on one machine localhost:4200 and :8080 share their cookies.
       APP_URL: ${DEV_APP_URL:-http://localhost:4200}
       COOKIE_PREFIX: substance-tracker-dev
+      # The first administrator (design-accounts.md, "first account"): created at startup while the
+      # database has none, its password written to to_delete.password.txt at the project root
+      # (gitignored; delete it after reading).
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-lenzi}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-lenzi@dev.invalid}
+      FIRST_ADMIN_PASSWORD_FILE: /project/to_delete.password.txt
       # The bind mount comes from Windows: file events do not reach the container,
       # so tsx watch (chokidar) polls instead.
       CHOKIDAR_USEPOLLING: "true"
@@ -58,6 +64,8 @@ services:
       - ./api:/app
       # Linux node_modules live in a named volume, never on the Windows host.
       - api-node-modules:/app/node_modules
+      # The project root, where the first administrator's password file is written.
+      - .:/project
     ports:
       - "${API_HOST_PORT:-3001}:3000"
     depends_on:

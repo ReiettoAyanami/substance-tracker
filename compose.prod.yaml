@@ -43,7 +43,17 @@ services:
       APP_URL: ${APP_URL:?APP_URL must be set in .env - the address the instance is opened at}
       AUTH_SECRET: ${AUTH_SECRET:?AUTH_SECRET must be set in .env - openssl rand -base64 32}
       CLIENT_IP_HEADER: ${CLIENT_IP_HEADER:-}
+      # The first administrator: created at the first start, its password written to
+      # to_delete.password.txt next to this file (delete it after reading). The username is
+      # permanent: it is the address of the administrator's pages.
+      ADMIN_USERNAME: ${ADMIN_USERNAME:?ADMIN_USERNAME must be set in .env - the first administrator, permanent}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.invalid}
+      FIRST_ADMIN_PASSWORD_FILE: /project/to_delete.password.txt
       # WEB_DIST=/app/public is set in the Dockerfile.
+    volumes:
+      # This folder, for the first administrator's password file only. Known risk (design-accounts.md,
+      # "first account"): a compromised app could rewrite the files here; a narrower mount fixes it.
+      - .:/project
     ports:
       - "${APP_PORT:-8080}:3000"
     healthcheck:

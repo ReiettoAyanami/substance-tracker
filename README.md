@@ -39,6 +39,7 @@ Note:
   `docker compose -f compose.dev.yaml exec db bash /docker-entrypoint-initdb.d/01-test-db.sh`
 - `docker compose -f compose.dev.yaml down -v` cancella anche il database di sviluppo e i `node_modules`: usalo solo se vuoi ripartire da zero.
 - In dev Angular chiama l'API con percorsi relativi (`/api/...`): `ng serve` li inoltra al servizio `api` tramite `web/proxy.conf.json`. Quindi anche `http://localhost:4200/api/health` risponde.
+- Utenti: ogni pagina e ogni chiamata a `/api` vuole un utente collegato. Quando il database non ha ancora un amministratore, l'API lo crea all'avvio: `lenzi` (`ADMIN_USERNAME`, `ADMIN_EMAIL` per cambiarli), con una password generata scritta in `to_delete.password.txt` nella root del progetto (ignorato da git). Accedi, poi cancella il file.
 
 ### Database demo
 
@@ -79,8 +80,9 @@ Lo schema vive in `api/migrations/` (`001_init.sql`, `002_…`). L'API applica a
 ## Produzione
 
 ```sh
-# 1. .env con segreti veri (password lunghe, solo lettere e numeri).
-#    Senza MYSQL_ROOT_PASSWORD e DB_PASSWORD compose si rifiuta di partire.
+# 1. .env con segreti veri (password lunghe, solo lettere e numeri), l'indirizzo dell'istanza
+#    (APP_URL), il segreto delle sessioni (AUTH_SECRET) e il primo amministratore (ADMIN_USERNAME).
+#    Senza uno di questi compose si rifiuta di partire.
 cp .env.example .env    # poi modifica .env
 
 # 2. Build dell'immagine (Angular + API) e avvio
@@ -97,7 +99,13 @@ docker compose -f compose.prod.yaml up -d --build
 docker compose -f compose.prod.yaml down
 ```
 
-L'app risponde su `http://localhost:8080` (`APP_PORT`).
+L'app risponde su `http://localhost:8080` (`APP_PORT`), e si apre da `APP_URL`: da un altro indirizzo l'accesso viene rifiutato.
+
+### Primo avvio: l'amministratore
+
+Al primo avvio, quando il database non ha amministratori, l'API crea `ADMIN_USERNAME` (permanente: è l'indirizzo delle sue pagine) con l'email `ADMIN_EMAIL` e una password generata, scritta in `to_delete.password.txt` accanto a `compose.prod.yaml`. Accedi con quelle credenziali, poi cancella il file: la password si cambia da Settings. Il log (`docker compose -f compose.prod.yaml logs app`) dice dove l'ha scritta, mai la password.
+
+Se il file non si può scrivere (su Linux la cartella deve essere scrivibile dall'utente 1000 del container), l'amministratore c'è comunque e il log lo dice: gli si dà una password con `docker compose -f compose.prod.yaml exec app node dist/cli.js reset-password <username>`, che la stampa una volta sola.
 
 > **Mai `docker compose -f compose.prod.yaml down -v` con dati veri**: `-v` cancella il volume del database. Prima di qualsiasi operazione rischiosa, fai un backup.
 
