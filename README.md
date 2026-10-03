@@ -52,13 +52,18 @@ docker compose -f compose.dev.yaml up -d api
 # Ricrea il database demo da zero e lo riempie tramite l'API (Git Bash)
 bash db/demo/reset-demo.sh
 
-# Lo stesso, ma lo lascia vuoto (per vedere la home vuota)
+# Lo stesso, ma senza dati: solo l'amministratore (per vedere la home vuota)
 bash db/demo/reset-demo.sh --empty
+
+# Un altro database demo (il nome comincia con substance_tracker_demo), per provare lo script
+# senza toccare quello di tutti i giorni: l'API deve puntare lì (API_DB_NAME)
+bash db/demo/reset-demo.sh --db substance_tracker_demo_prova
 ```
 
-- Lo script fa `DROP DATABASE substance_tracker_demo` a ogni esecuzione. Non tocca mai `substance_tracker` né `substance_tracker_test`: se l'API non punta al database demo si ferma senza fare nulla.
+- Lo script fa `DROP DATABASE` del database demo a ogni esecuzione. Non tocca mai `substance_tracker` né `substance_tracker_test` (accetta solo nomi che cominciano con `substance_tracker_demo`): se l'API non punta a quel database si ferma senza fare nulla.
+- Gli utenti: all'avvio sul database nuovo l'API crea l'amministratore `lenzi` e scrive la sua password in `to_delete.password.txt` (riscritto a ogni reset); lo script crea poi `test-user` (password `Test-user-pass-1`), che ha tutti i dati qui sotto, e `other-user` (`Other-user-pass-1`) con due sostanze sue, per provare insieme l'accesso, l'isolamento (le cose dell'altro non esistono) e l'impersonazione. Password demo, solo sviluppo: un'istanza di produzione non ha utenti demo né dati.
 - Lanciato due volte dà gli stessi dati con gli stessi id: le date sono fisse e il database è nuovo. Cambiano solo i timbri di registrazione (`createdAt`, `deactivatedAt`, `archivedAt`).
-- I dati sono in `db/demo/fill-demo.mjs`: 7 sostanze, una per ogni caso da vedere sulla card (molti lotti, segmenti minuscoli, ultimo lotto finito, decimali, scorta 0 con consumi one-time, nessun lotto, nome e prezzo enormi, sostanza archiviata). In fondo, i consumi per la pagina consumi (43 in tutto): oltre 20 per le Sigarette (quattro pacchetti a luglio, finiti), una one-time a 0 €, un consumo annullato, qualche nota.
+- I dati di `test-user` sono in `db/demo/fill-demo.mjs`: 7 sostanze, una per ogni caso da vedere sulla card (molti lotti, segmenti minuscoli, ultimo lotto finito, decimali, scorta 0 con consumi one-time, nessun lotto, nome e prezzo enormi, sostanza archiviata). In fondo, i consumi per la pagina consumi (43 in tutto): oltre 20 per le Sigarette (quattro pacchetti a luglio, finiti), una one-time a 0 €, un consumo annullato, qualche nota.
 - Per tornare al database di sviluppo: togli `API_DB_NAME` dal `.env` e `docker compose -f compose.dev.yaml up -d api`.
 
 ## Porte
