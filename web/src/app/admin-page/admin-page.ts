@@ -37,9 +37,11 @@ export class AdminPage {
   /** The signed-in administrator: its own card has no actions. */
   protected readonly selfId = computed(() => this.session.user()?.id ?? null);
 
-  protected error(): ApiError | null {
-    return (this.users.error() as ApiError | undefined) ?? null;
-  }
+  /** Why the list could not be loaded. The interceptor's ApiError is not an Error: the resource wraps it, as its cause. */
+  protected readonly error = computed(() => {
+    const failure = this.users.error();
+    return failure ? ((failure.cause ?? failure) as Partial<ApiError>) : null;
+  });
 
   protected async add(): Promise<void> {
     const result = await this.dialogs.open<EntityDialog, EntityDialogData, EntityDialogResult>(

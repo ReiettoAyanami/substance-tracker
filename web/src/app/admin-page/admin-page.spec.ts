@@ -123,6 +123,14 @@ describe('AdminPage', () => {
     expect(TestBed.inject(Session).user()).toEqual({ id: 7, username: 'friend', role: 'user', impersonatedBy: 1 });
   });
 
+  it('a list that cannot be loaded says why', async () => {
+    TestBed.overrideProvider(AdminApi, {
+      useValue: { listUsers: () => throwError(() => ({ status: 500, code: null, title: 'Internal Server Error', detail: '', fieldErrors: [] })) },
+    });
+    const page = await render();
+    expect(page.element.querySelector('.error')?.textContent?.replace(/\s+/g, ' ').trim()).toBe('Could not load the users: Internal Server Error (500)');
+  });
+
   it('an impersonation refused says why and stays here', async () => {
     const page = await render();
     impersonate = () => throwError(() => ({ status: 409, code: 'user-blocked', title: 'Conflict', detail: 'A blocked user cannot be impersonated: unblock it first', fieldErrors: [] }));
