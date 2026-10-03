@@ -89,6 +89,15 @@ describe('the first administrator', () => {
     expect(logs.join('')).toContain('could not be created');
   });
 
+  it('a username that cannot be one (a reserved word, the wrong letters): none is created, the log says which rule', async () => {
+    expect(await ensure({ username: 'admin' })).toBe('failed');
+    expect(logs.join('')).toContain('The first administrator \\"admin\\" could not be created: \\"admin\\" is a reserved word');
+    logs.length = 0;
+    expect(await ensure({ username: 'Lenzi.Admin' })).toBe('failed');
+    expect(logs.join('')).toContain('can only have lowercase letters, digits, - and _');
+    expect(await rawRows('SELECT id FROM users')).toEqual([]);
+  });
+
   it('when the file cannot be written: the administrator stays, the log says how to give it a password', async () => {
     const file = join(dir, 'missing-folder', 'to_delete.password.txt');
     expect(await ensure({ username: 'lenzi', passwordFile: file })).toBe('created-without-file');

@@ -42,8 +42,11 @@ async function main(): Promise<void> {
 
   try {
     await migrateWithRetry(config, app.log);
-    // The first administrator, while there is none (design-accounts.md, "first account").
-    await ensureFirstAdmin({ pool, accounts: app.accounts, log: app.log }, config.firstAdmin);
+    // The first administrator, while there is none (design-accounts.md, "first account"). An
+    // instance nobody can sign in to is of no use: when it cannot be created, the start stops here,
+    // the reason in the log, and the container's restart tries again after .env is fixed.
+    const firstAdmin = await ensureFirstAdmin({ pool, accounts: app.accounts, log: app.log }, config.firstAdmin);
+    if (firstAdmin === 'failed') throw new Error('the first administrator could not be created (see the error above)');
     await app.listen({ host: config.host, port: config.port });
     if (config.webDist) app.log.info(`serving the web build from ${config.webDist}`);
   } catch (err) {

@@ -33,7 +33,14 @@ export async function ensureFirstAdmin(
   try {
     await deps.accounts.createUser({ username: config.username, email: config.email, password, role: 'admin' }, null);
   } catch (err) {
-    deps.log.error({ err }, `The first administrator "${config.username}" could not be created: check ADMIN_USERNAME and ADMIN_EMAIL`);
+    // The reason in the message itself (a reserved word, the wrong letters, a taken email): it is
+    // what whoever installs the instance reads, and fixes in .env.
+    const reason = err instanceof Error ? err.message : String(err);
+    deps.log.error(
+      { err },
+      `The first administrator "${config.username}" could not be created: ${reason}. ` +
+        'Fix ADMIN_USERNAME or ADMIN_EMAIL in .env and start again.',
+    );
     return 'failed';
   }
   const text = [
