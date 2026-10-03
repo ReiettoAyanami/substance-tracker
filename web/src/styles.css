@@ -62,6 +62,17 @@
   padding: 0 0 8px;
 }
 
+/* On a phone the header of every panel keeps only its title: what it holds (the period, the totals,
+   the active filters) is inside once opened. It broke over two or three lines (lenzi, 2026-10-03:
+   "su mobile non mostrino le informazioni dei toggle, ... mostrarle solo web"). 600 px is where the
+   pages turn into windows. Two classes: Material's own rule (display: flex) is added after this
+   file, and would win over one. */
+@media (max-width: 599.98px) {
+  .mat-expansion-panel-header .mat-expansion-panel-header-description {
+    display: none;
+  }
+}
+
 /* The consumption's details (lenzi, 2026-10-01: "leggermente più chiara", the content "troppo
    sopra"): a little lighter than the other dialogs (Material's default here is surface):
    surface-container-high; and 12 px more over its title. Only
