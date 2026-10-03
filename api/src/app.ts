@@ -1,9 +1,13 @@
 import fastifyStatic from '@fastify/static';
 import Fastify, { type FastifyError, type FastifyInstance, type FastifyReply, type FastifyServerOptions } from 'fastify';
-import { loadConfig } from './config.js';
+import { loadConfig, type AuthConfig } from './config.js';
 import { createPool, pingDatabase, type Pool } from './db/pool.js';
 import { catalogRoutes } from './modules/catalog/routes.js';
 import { CatalogService } from './modules/catalog/service.js';
+import { createAuth } from './modules/identity/auth.js';
+import { Identity } from './modules/identity/identity.js';
+import { authDatabase } from './modules/identity/insert-memory.js';
+import { identityRoutes } from './modules/identity/routes.js';
 import { ledgerRoutes } from './modules/ledger/routes.js';
 import { metricsRoutes } from './modules/metrics/routes.js';
 import { MetricsService } from './modules/metrics/service.js';
@@ -33,6 +37,15 @@ export interface BuildAppOptions {
   webDist?: string | undefined;
   /** Source of "now" (tests pin it). */
   clock?: Clock;
+  /** Sign-in settings over the environment's (tests: another address, the counters off). */
+  auth?: Partial<AuthConfig> & { rateLimit?: boolean };
+}
+
+declare module 'fastify' {
+  interface FastifyInstance {
+    /** Who is asking, and the users' credentials (modules/identity). */
+    identity: Identity;
+  }
 }
 
 function sendProblem(reply: FastifyReply, body: ProblemBody): FastifyReply {
@@ -101,6 +114,17 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
     return sendProblem(reply, problemBody(404, 'not-found', `No route for ${request.method} ${path}`));
   });
 
+  const authConfig: AuthConfig = { ...loadConfig().auth, ...opts.auth };
+  const auth = createAuth(authDatabase(pool), {
+    appUrl: authConfig.appUrl,
+    secret: authConfig.secret,
+    cookiePrefix: authConfig.cookiePrefix,
+    rateLimit: opts.auth?.rateLimit ?? true,
+    log: (level, message) => app.log[level](message),
+  });
+  const identity = new Identity(auth, pool);
+  app.decorate('identity', identity);
+
   const settings = new SettingsService(pool);
   const catalog = new CatalogService(pool, clock);
   const reports = new ReportsService(pool, catalog, settings, clock);
@@ -124,6 +148,7 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
   // The product's version, for the corner of every page (version.ts).
   app.get('/api/version', async () => ({ version: VERSION }));
 
+  identityRoutes(app, { identity, appUrl: authConfig.appUrl, clientIpHeader: authConfig.clientIpHeader });
   catalogRoutes(app, { catalog, reports });
   ledgerRoutes(app, { ledger });
   reportsRoutes(app, { reports });

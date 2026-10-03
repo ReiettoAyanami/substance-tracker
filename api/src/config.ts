@@ -8,8 +8,21 @@ export interface DbConfig {
   password: string;
 }
 
+/** How users sign in (design-accounts.md, "Identity"). */
+export interface AuthConfig {
+  /** The instance's address, as the browser sees it (APP_URL): the only trusted origin. */
+  appUrl: string;
+  /** Signs the session cookies (AUTH_SECRET). */
+  secret: string;
+  /** Prefix of the cookie names (COOKIE_PREFIX): dev and prod on one machine must differ. */
+  cookiePrefix: string;
+  /** Header the instance's proxy sets to the client's IP (CLIENT_IP_HEADER); unset, the connection's. */
+  clientIpHeader: string | undefined;
+}
+
 export interface AppConfig {
   db: DbConfig;
+  auth: AuthConfig;
   /** Name of the test database (dev only), `${DB_NAME}_test` when TEST_DB_NAME is unset. */
   testDbName: string;
   host: string;
@@ -45,9 +58,39 @@ function optionalPath(env: Env, name: string): string | undefined {
   return isAbsolute(value) ? value : resolve(process.cwd(), value);
 }
 
+/** Development only: a production instance refuses to start without its own AUTH_SECRET. */
+export const DEV_AUTH_SECRET = 'substance-tracker-development-secret-never-for-production';
+
+function authConfig(env: Env): AuthConfig {
+  const production = env.NODE_ENV === 'production';
+  const rawUrl = env.APP_URL?.trim();
+  const secret = env.AUTH_SECRET?.trim();
+  if (production && !rawUrl) {
+    throw new Error('APP_URL must be set in production: the address the instance is opened at, e.g. https://tracker.example.com');
+  }
+  if (production && (!secret || secret.length < 32)) {
+    throw new Error('AUTH_SECRET must be set in production, at least 32 characters (e.g. openssl rand -base64 32)');
+  }
+  const appUrl = rawUrl || 'http://localhost:4200';
+  let origin: string;
+  try {
+    origin = new URL(appUrl).origin;
+  } catch {
+    throw new Error(`APP_URL must be a full address such as https://tracker.example.com, got "${appUrl}"`);
+  }
+  if (origin === 'null') throw new Error(`APP_URL must be an http or https address, got "${appUrl}"`);
+  return {
+    appUrl: origin,
+    secret: secret || DEV_AUTH_SECRET,
+    cookiePrefix: str(env, 'COOKIE_PREFIX', 'substance-tracker'),
+    clientIpHeader: env.CLIENT_IP_HEADER?.trim().toLowerCase() || undefined,
+  };
+}
+
 export function loadConfig(env: Env = process.env): AppConfig {
   const database = str(env, 'DB_NAME', 'substance_tracker');
   return {
+    auth: authConfig(env),
     db: {
       host: str(env, 'DB_HOST', 'localhost'),
       port: int(env, 'DB_PORT', 3306),

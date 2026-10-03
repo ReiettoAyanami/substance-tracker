@@ -50,42 +50,59 @@ describe('migrations', () => {
     expect(await rawRows('SELECT id FROM settings')).toHaveLength(1);
   });
 
-  it('creates the Appendix A tables, with UNIQUE keys only on client_ref', async () => {
+  it("creates the tables; UNIQUE keys only on client_ref, a user's username and email, two technical keys", async () => {
     const tables = await rawRows(
       `SELECT TABLE_NAME AS name FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() ORDER BY TABLE_NAME`,
     );
     expect(tables.map((t) => t.name)).toEqual([
+      'accounts',
       'adjustments',
       'batches',
       'consumptions',
       'one_time_consumptions',
+      'password_history',
+      'rate_limits',
       'schema_migrations',
+      'sessions',
       'settings',
       'substances',
+      'users',
+      'verifications',
       'view_items',
     ]);
     const unique = await rawRows(
       `SELECT TABLE_NAME AS t, COLUMN_NAME AS c FROM information_schema.STATISTICS
         WHERE TABLE_SCHEMA = DATABASE() AND NON_UNIQUE = 0 AND INDEX_NAME <> 'PRIMARY'
-        ORDER BY TABLE_NAME`,
+        ORDER BY TABLE_NAME, COLUMN_NAME`,
     );
+    // Names are never unique (only ids identify a row), with lenzi's exceptions: a user's username (the
+    // address of their pages) and email (Better Auth wants it unique). client_ref, a session's token and
+    // a counter's key are technical keys, not names.
     expect(unique.map((u) => `${u.t}.${u.c}`)).toEqual([
       'adjustments.client_ref',
       'batches.client_ref',
       'consumptions.client_ref',
       'one_time_consumptions.client_ref',
+      'rate_limits.key',
+      'sessions.token',
+      'users.email',
+      'users.username',
     ]);
     const fks = await rawRows(
       `SELECT TABLE_NAME AS t, COLUMN_NAME AS c, REFERENCED_TABLE_NAME AS r FROM information_schema.KEY_COLUMN_USAGE
         WHERE TABLE_SCHEMA = DATABASE() AND REFERENCED_TABLE_NAME IS NOT NULL ORDER BY TABLE_NAME, COLUMN_NAME`,
     );
     expect(fks.map((f) => `${f.t}.${f.c}->${f.r}`)).toEqual([
+      'accounts.user_id->users',
       'adjustments.batch_id->batches',
       'batches.deactivated_by_adjustment_id->adjustments',
       'batches.deactivated_by_consumption_id->consumptions',
       'batches.substance_id->substances',
       'consumptions.batch_id->batches',
       'one_time_consumptions.substance_id->substances',
+      'password_history.user_id->users',
+      'sessions.impersonated_by->users',
+      'sessions.user_id->users',
     ]);
     const deletedAt = await rawRows(
       `SELECT TABLE_NAME AS t FROM information_schema.COLUMNS

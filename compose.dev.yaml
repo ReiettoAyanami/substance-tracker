@@ -45,6 +45,11 @@ services:
       PORT: "3000"
       HOST: 0.0.0.0
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      # Sign-in (design-accounts.md): the browser opens the app on the Angular dev server, whose proxy
+      # forwards /api here. AUTH_SECRET is the API's development one unless set. The cookie prefix
+      # differs from production's: on one machine localhost:4200 and :8080 share their cookies.
+      APP_URL: ${DEV_APP_URL:-http://localhost:4200}
+      COOKIE_PREFIX: substance-tracker-dev
       # The bind mount comes from Windows: file events do not reach the container,
       # so tsx watch (chokidar) polls instead.
       CHOKIDAR_USEPOLLING: "true"
