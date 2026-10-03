@@ -2,7 +2,7 @@ import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { Observable, of, throwError } from 'rxjs';
+import { Observable, Subject, of, throwError } from 'rxjs';
 
 import type { ApiError } from '../data/api-error';
 import { AuthApi, type SessionUser } from '../data/auth-api';
@@ -60,6 +60,10 @@ describe('LoginPage', () => {
       },
       error: () => element.querySelector('.form-error')?.textContent?.trim(),
       fieldErrors: () => Array.from(element.querySelectorAll('mat-error')).map((e) => e.textContent?.trim()),
+      settle: async () => {
+        await harness.fixture.whenStable();
+        harness.detectChanges();
+      },
     };
   }
 
@@ -112,6 +116,34 @@ describe('LoginPage', () => {
     await page.submit();
 
     expect(page.error()).toBe(message);
+  });
+
+  it('a sign-in that takes a while says it may be waiting after wrong passwords, until it is answered', async () => {
+    const answer = new Subject<void>();
+    signIn.mockReturnValue(answer);
+    const page = await open();
+    page.type('username', 'lenzi');
+    page.type('password', 'not-the-password');
+    page.element.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
+
+    await page.settle();
+    expect(page.element.querySelector('.slow')).toBeNull(); // not at once
+    await vi.waitFor(
+      async () => {
+        await page.settle();
+        expect(page.element.querySelector('.slow')?.textContent?.trim()).toBe(
+          'Still checking: after several wrong passwords, each try waits a little longer.',
+        );
+      },
+      { timeout: 3000 },
+    );
+
+    answer.error(refused(401));
+    await vi.waitFor(async () => {
+      await page.settle();
+      expect(page.error()).toBe('Wrong username or password.');
+    });
+    expect(page.element.querySelector('.slow')).toBeNull();
   });
 
   it('signed in, goes to the start page of the user (the username as typed, spaces trimmed)', async () => {

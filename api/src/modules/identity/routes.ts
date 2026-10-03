@@ -3,20 +3,23 @@ import { PROBLEM_CONTENT_TYPE, ProblemError, problemBody, statusTitle } from '..
 import { CLIENT_IP_HEADER } from './auth.js';
 import { toHeaders } from './hook.js';
 import type { Identity } from './identity.js';
+import type { SignInThrottle } from './throttle.js';
 
 /**
  * The auth endpoints the app uses, answered by Better Auth (design-accounts.md, "Identity as built
  * (1.1)"). Only these: its other endpoints, `/admin/*` above all, would let a client skip the API's
  * rules, and the API's own routes call it from the server instead. Every request that changes
  * something must be JSON and come from the instance's own address: Better Auth checks the origin
- * only when a cookie is present, so a sign-in from another site would pass (login CSRF).
+ * only when a cookie is present, so a sign-in from another site would pass (login CSRF). A sign-in
+ * waits first what the wrong passwords in a row of its username ask for (throttle.ts).
  */
 
+const SIGN_IN = '/sign-in/username';
 const STOP_IMPERSONATING = '/admin/stop-impersonating';
 const REVOKE_OTHER_SESSIONS = '/revoke-other-sessions';
 
 const FORWARDED: ReadonlyArray<{ method: 'GET' | 'POST'; path: string }> = [
-  { method: 'POST', path: '/sign-in/username' },
+  { method: 'POST', path: SIGN_IN },
   { method: 'POST', path: '/sign-out' },
   { method: 'GET', path: '/get-session' },
   { method: 'POST', path: REVOKE_OTHER_SESSIONS },
@@ -35,6 +38,8 @@ const NOT_FORWARDED = new Set(['host', 'connection', 'keep-alive', 'content-leng
 
 export interface IdentityRoutesDeps {
   identity: Identity;
+  /** The wait after wrong passwords in a row, per username (throttle.ts). */
+  throttle: SignInThrottle;
   /** The only trusted origin (APP_URL). */
   appUrl: string;
   /** The header the instance's proxy sets to the client's IP; unset, the connection's address. */
@@ -57,6 +62,12 @@ export function clientIp(request: FastifyRequest, header: string | undefined): s
     if (last) return last;
   }
   return request.ip;
+}
+
+/** The username of a sign-in, as Better Auth compares it (any case, no spaces around), or null. */
+function usernameOf(body: unknown): string | null {
+  const username = (body as { username?: unknown } | null)?.username;
+  return typeof username === 'string' && username.trim() !== '' ? username.trim().toLowerCase() : null;
 }
 
 function isJson(contentType: string | undefined): boolean {
@@ -141,7 +152,13 @@ export function identityRoutes(app: FastifyInstance, deps: IdentityRoutesDeps): 
         const asker =
           path === STOP_IMPERSONATING || NOT_WHILE_IMPERSONATING.has(path) ? await deps.identity.userOf(fetchRequest.headers) : null;
         if (asker?.impersonatedBy && NOT_WHILE_IMPERSONATING.has(path)) throw notWhileImpersonating();
+        const username = path === SIGN_IN ? usernameOf(request.body) : null;
+        if (username) await deps.throttle.beforeAttempt(username);
         const response = await deps.identity.handle(fetchRequest);
+        // 401 is a wrong username or password, 200 a right one; nothing else counts (429, 422, 403).
+        if (username && (response.status === 401 || response.status === 200)) {
+          await deps.throttle.afterAttempt(username, response.status === 200);
+        }
         // The end of an impersonation goes to the log, like its start (design-accounts.md).
         if (path === STOP_IMPERSONATING && asker?.impersonatedBy && response.status === 200) {
           request.log.info(

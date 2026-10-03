@@ -61,6 +61,7 @@ describe('migrations', () => {
       'schema_migrations',
       'sessions',
       'settings',
+      'sign_in_failures',
       'substances',
       'users',
       'verifications',
@@ -101,6 +102,7 @@ describe('migrations', () => {
       'sessions.impersonated_by->users',
       'sessions.user_id->users',
       'settings.user_id->users',
+      'sign_in_failures.user_id->users',
       'substances.user_id->users',
       'view_items.user_id->users',
     ]);

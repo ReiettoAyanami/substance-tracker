@@ -49,3 +49,11 @@
   font: var(--mat-sys-body-small);
   color: var(--mat-sys-on-surface-variant);
 }
+
+/* A sign-in waiting after wrong passwords in a row says so, under the button. */
+.slow {
+  margin: 12px 0 0;
+  text-align: center;
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+}

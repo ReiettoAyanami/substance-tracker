@@ -100,3 +100,30 @@ export async function impersonationTokensBy(db: Queryable, adminId: number): Pro
   const [rows] = await db.query<RowDataPacket[]>('SELECT token FROM sessions WHERE impersonated_by = ?', [adminId]);
   return rows.map((row) => String(row.token));
 }
+
+export interface SignInFailures {
+  failures: number;
+  lastFailureAt: Date;
+}
+
+/** A user's wrong passwords in a row and the time of the last one, or null when there were none. */
+export async function signInFailures(db: Queryable, userId: number): Promise<SignInFailures | null> {
+  const [rows] = await db.query<RowDataPacket[]>('SELECT failures, last_failure_at FROM sign_in_failures WHERE user_id = ?', [userId]);
+  const row = rows[0];
+  if (!row || Number(row.failures) === 0) return null;
+  return { failures: Number(row.failures), lastFailureAt: row.last_failure_at as Date };
+}
+
+/** One more wrong password in a row. */
+export async function addSignInFailure(db: Queryable, userId: number, at: Date): Promise<void> {
+  await db.query(
+    `INSERT INTO sign_in_failures (user_id, failures, last_failure_at) VALUES (?, 1, ?) AS new
+     ON DUPLICATE KEY UPDATE failures = sign_in_failures.failures + 1, last_failure_at = new.last_failure_at`,
+    [userId, at],
+  );
+}
+
+/** A right password: the count starts again from nothing. */
+export async function clearSignInFailures(db: Queryable, userId: number): Promise<void> {
+  await db.query('UPDATE sign_in_failures SET failures = 0 WHERE user_id = ?', [userId]);
+}

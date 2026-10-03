@@ -12,6 +12,7 @@ import { requestUserHook } from './modules/identity/hook.js';
 import { Identity } from './modules/identity/identity.js';
 import { authDatabase } from './modules/identity/insert-memory.js';
 import { accountRoutes, identityRoutes } from './modules/identity/routes.js';
+import { SIGN_IN_DELAY, SignInThrottle, type SignInDelay } from './modules/identity/throttle.js';
 import { ledgerRoutes } from './modules/ledger/routes.js';
 import { metricsRoutes } from './modules/metrics/routes.js';
 import { MetricsService } from './modules/metrics/service.js';
@@ -41,8 +42,8 @@ export interface BuildAppOptions {
   webDist?: string | undefined;
   /** Source of "now" (tests pin it). */
   clock?: Clock;
-  /** Sign-in settings over the environment's (tests: another address, the counters off). */
-  auth?: Partial<AuthConfig> & { rateLimit?: boolean };
+  /** Sign-in settings over the environment's (tests: another address, the counters off, shorter waits). */
+  auth?: Partial<AuthConfig> & { rateLimit?: boolean; signInDelay?: SignInDelay };
 }
 
 declare module 'fastify' {
@@ -167,7 +168,12 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
   // The product's version, for the corner of every page (version.ts).
   app.get('/api/version', async () => ({ version: VERSION }));
 
-  identityRoutes(app, { identity, appUrl: authConfig.appUrl, clientIpHeader: authConfig.clientIpHeader });
+  identityRoutes(app, {
+    identity,
+    throttle: new SignInThrottle(pool, opts.auth?.signInDelay ?? SIGN_IN_DELAY),
+    appUrl: authConfig.appUrl,
+    clientIpHeader: authConfig.clientIpHeader,
+  });
   accountRoutes(app, { identity });
   catalogRoutes(app, { catalog, reports });
   ledgerRoutes(app, { ledger });

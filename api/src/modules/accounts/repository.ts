@@ -57,7 +57,7 @@ export async function deleteUser(db: Queryable, userId: number): Promise<boolean
   await db.query(`DELETE x FROM adjustments x ${ofBatches}`, [userId]);
   await db.query('DELETE b FROM batches b JOIN substances s ON s.id = b.substance_id WHERE s.user_id = ?', [userId]);
   await db.query('DELETE o FROM one_time_consumptions o JOIN substances s ON s.id = o.substance_id WHERE s.user_id = ?', [userId]);
-  for (const table of ['substances', 'view_items', 'settings', 'password_history', 'accounts']) {
+  for (const table of ['substances', 'view_items', 'settings', 'password_history', 'sign_in_failures', 'accounts']) {
     await db.query(`DELETE FROM ${table} WHERE user_id = ?`, [userId]);
   }
   await db.query('DELETE FROM sessions WHERE user_id = ? OR impersonated_by = ?', [userId, userId]);
@@ -70,7 +70,7 @@ export async function deleteUser(db: Queryable, userId: number): Promise<boolean
  * deletion, the one kind the project has (users; lenzi, 2026-10-01).
  */
 export async function deleteFreshUser(db: Queryable, userId: number): Promise<void> {
-  for (const table of ['view_items', 'settings', 'sessions', 'accounts']) {
+  for (const table of ['view_items', 'settings', 'sign_in_failures', 'sessions', 'accounts']) {
     await db.query(`DELETE FROM ${table} WHERE user_id = ?`, [userId]);
   }
   await db.query('DELETE FROM users WHERE id = ?', [userId]);

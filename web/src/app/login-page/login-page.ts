@@ -8,6 +8,9 @@ import { ActivatedRoute, Router } from '@angular/router';
 import type { ApiError } from '../data/api-error';
 import { Session } from '../session/session';
 
+/** A sign-in that takes longer than this says why it may be waiting. */
+const SLOW_AFTER_MS = 1500;
+
 /** What a refused sign-in says: never which of the two was wrong. */
 function messageOf(error: unknown): string {
   const problem = error as Partial<ApiError> | null;
@@ -56,6 +59,8 @@ export class LoginPage {
   private readonly passwordInput = viewChild.required<ElementRef<HTMLInputElement>>('password');
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
+  /** The answer is taking a while: after wrong passwords in a row the API waits before it checks. */
+  protected readonly slow = signal(false);
 
   protected async signIn(): Promise<void> {
     if (this.busy()) return;
@@ -66,6 +71,7 @@ export class LoginPage {
     const { username, password } = this.form.getRawValue();
     this.busy.set(true);
     this.error.set(null);
+    const slowTimer = setTimeout(() => this.slow.set(true), SLOW_AFTER_MS);
     try {
       const user = await this.session.signIn(username.trim(), password);
       if (!user) throw { status: null } satisfies Partial<ApiError>;
@@ -80,6 +86,9 @@ export class LoginPage {
       this.formDirective().resetForm({ username, password: '' });
       this.passwordInput().nativeElement.focus();
       this.busy.set(false);
+    } finally {
+      clearTimeout(slowTimer);
+      this.slow.set(false);
     }
   }
 }
