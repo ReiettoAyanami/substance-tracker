@@ -28,6 +28,8 @@ describe('HistoryDialogs', () => {
         provideRouter([
           { path: 'page', component: Blank },
           { path: 'elsewhere', component: Blank },
+          // a page whose guard takes a while, like the sign-in page's (it asks the server who this is)
+          { path: 'slow', canActivate: [() => new Promise<boolean>((resolve) => setTimeout(() => resolve(true), 30))], component: Blank },
         ]),
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
       ],
@@ -43,6 +45,24 @@ describe('HistoryDialogs', () => {
     document.querySelector<HTMLButtonElement>('mat-dialog-container button')!.click();
     expect(await closed).toBe('answer');
     expect(location.getState()).not.toEqual({ dialog: true });
+  });
+
+  it('a navigation started as soon as it resolves reaches its page, also a slow one: the back that removed the entry does not cancel it', async () => {
+    const router = TestBed.inject(Router);
+    // As an app starts: the router also follows the browser's back (TestBed alone never asks it to).
+    location.go('/page');
+    router.initialNavigation();
+    await vi.waitFor(() => expect(router.url).toBe('/page'));
+    const closed = dialogs.open<Answering, object, string>(Answering, {});
+    document.querySelector<HTMLButtonElement>('mat-dialog-container button')!.click();
+    expect(await closed).toBe('answer');
+
+    // what Sign out does once confirmed (lenzi, 2026-10-03: signed out, the app stayed on the page):
+    // the router takes the back in a later task, and that back used to cancel this navigation
+    void router.navigateByUrl('/slow');
+    await vi.waitFor(() => expect(router.url).toBe('/slow'));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(router.url).toBe('/slow');
   });
 
   it('a link in the dialog to another page closes it; the page takes its history entry, so back returns under the dialog', async () => {

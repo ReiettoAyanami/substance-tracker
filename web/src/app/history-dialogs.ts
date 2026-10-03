@@ -66,7 +66,10 @@ export class HistoryDialogs {
         }
         const popped = this.location.subscribe(() => {
           popped.unsubscribe();
-          resolve(result);
+          // The router takes a back in a later task (a setTimeout of its own, queued just before this
+          // one): resolving after it, a navigation the caller starts at once is not cancelled by that
+          // back. Signed out, the app stayed on the page instead of the sign-in one (lenzi, 2026-10-03).
+          setTimeout(() => resolve(result));
         });
         this.location.back();
       });
