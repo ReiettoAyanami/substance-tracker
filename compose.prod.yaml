@@ -24,6 +24,10 @@ services:
       start_period: 60s
 
   app:
+    # The image the CI publishes from main (README, "Releases"): APP_VERSION picks one (a26.0.0,
+    # v26.1.0...), unset it is the last release. `docker compose pull` fetches it; while no image is
+    # published, `docker compose up -d --build` builds it here from the Dockerfile.
+    image: ghcr.io/reiettoayanami/substance-tracker:${APP_VERSION:-latest}
     build:
       context: .
       dockerfile: Dockerfile

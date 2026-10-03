@@ -90,15 +90,19 @@ Lo schema vive in `api/migrations/` (`001_init.sql`, `002_…`). L'API applica a
 #    Senza uno di questi compose si rifiuta di partire.
 cp .env.example .env    # poi modifica .env
 
-# 2. Build dell'immagine (Angular + API) e avvio
+# 2. Avvio con l'immagine pubblicata (vedi "Rilasci e aggiornamenti")
+docker compose -f compose.prod.yaml pull
+docker compose -f compose.prod.yaml up -d
+#    ...oppure, finché non c'è un rilascio o per usare questo codice, build qui e avvio
 docker compose -f compose.prod.yaml up -d --build
 
 # 3. Stato e log
 docker compose -f compose.prod.yaml ps
 docker compose -f compose.prod.yaml logs -f app
 
-# 4. Aggiornamento dopo un git pull
-docker compose -f compose.prod.yaml up -d --build
+# 4. Aggiornamento: la nuova immagine, poi il riavvio (le migrazioni partono da sole)
+docker compose -f compose.prod.yaml pull
+docker compose -f compose.prod.yaml up -d
 
 # 5. Stop (i dati restano nel volume)
 docker compose -f compose.prod.yaml down
@@ -111,6 +115,17 @@ L'app risponde su `http://localhost:8080` (`APP_PORT`), e si apre da `APP_URL`: 
 Al primo avvio, quando il database non ha amministratori, l'API crea `ADMIN_USERNAME` (permanente: è l'indirizzo delle sue pagine) con l'email `ADMIN_EMAIL` e una password generata, scritta in `to_delete.password.txt` accanto a `compose.prod.yaml`. Accedi con quelle credenziali, poi cancella il file: la password si cambia da Settings. Il log (`docker compose -f compose.prod.yaml logs app`) dice dove l'ha scritta, mai la password.
 
 Se il file non si può scrivere (su Linux la cartella deve essere scrivibile dall'utente 1000 del container), l'amministratore c'è comunque e il log lo dice: gli si dà una password con `docker compose -f compose.prod.yaml exec app node dist/cli.js reset-password <username>`, che la stampa una volta sola.
+
+Se l'amministratore non si può creare (per esempio `ADMIN_USERNAME=admin`: è una parola riservata, come `login` e `api`; uno username ha 3-30 caratteri fra lettere minuscole, cifre, `-` e `_`), l'app non parte: il log dice perché, si corregge il `.env` e al riavvio riprova.
+
+### Rilasci e aggiornamenti
+
+- **Versioni** (`api/src/version.ts`, mostrata in basso a destra): `<prefisso><anno>.<backend>.<frontend>`. `dev26.0.0` sui rami di sviluppo, che si chiamano come la loro versione; `a` alpha, `b` beta, `v` release solo su `main`, solo numeri. Cambia solo quando lo decide lenzi.
+- **CI** (`.github/workflows/ci.yml`, a ogni push su `main` e sui rami `dev*`, e sulle pull request): controlla le regole delle versioni, fa girare i test dell'API (con MySQL 8.4) e del web, la build del web, `npm audit` e la build dell'immagine. `npm audit` blocca sulle vulnerabilità alte o critiche di ciò che finisce nell'immagine (le dipendenze di produzione); quelle degli strumenti di build (Angular CLI, builder) le mostra senza bloccare.
+- **Immagini**: da `main`, con una versione `a`/`b`/`v`, la CI pubblica `ghcr.io/reiettoayanami/substance-tracker:<versione>`; una `v` diventa anche `latest`. Una versione già pubblicata non viene mai sovrascritta: il commit non si pubblica e la CI lo segnala. Solo `linux/amd64` per ora.
+- **Rilasciare**: su `main`, nello stesso push, il codice approvato e la versione `a`/`b`/`v` in `api/src/version.ts`.
+- **Scegliere una versione** sull'istanza: `APP_VERSION=a26.0.0` nel `.env` (senza: l'ultima release), poi i comandi del punto 4.
+- **Dependabot** (`.github/dependabot.yml`): ogni settimana le patch delle dipendenze npm, dell'immagine Node e delle azioni della CI, minori e patch raggruppate. Legge la configurazione dal ramo predefinito del repository.
 
 > **Mai `docker compose -f compose.prod.yaml down -v` con dati veri**: `-v` cancella il volume del database. Prima di qualsiasi operazione rischiosa, fai un backup.
 
