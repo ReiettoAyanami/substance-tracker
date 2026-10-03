@@ -118,6 +118,25 @@ describe('Sidebar', () => {
     expect(TestBed.inject(Session).user()).toBeNull();
   });
 
+  it('an administrator acting as itself also finds "Admin", above "Sign out"', async () => {
+    const auth = TestBed.inject(AuthApi) as unknown as { getSession: () => unknown };
+    auth.getSession = () => of({ id: 1, username: 'lenzi', role: 'admin', impersonatedBy: null });
+    await TestBed.inject(Session).reload();
+    const fixture = await sidebarAt('/lenzi');
+    const element = fixture.nativeElement as HTMLElement;
+    const bottomTitles = () =>
+      Array.from(element.querySelectorAll('mat-nav-list')[1]!.querySelectorAll('[matListItemTitle]')).map((t) => t.textContent?.trim());
+
+    expect(bottomTitles()).toEqual(['Admin', 'Sign out', 'Settings']);
+    expect(element.querySelectorAll('mat-nav-list')[1]!.querySelector('a')?.getAttribute('href')).toBe('/admin');
+
+    // while impersonating, never: the admin view is not for the user being viewed
+    auth.getSession = () => of({ id: 1, username: 'lenzi', role: 'admin', impersonatedBy: 3 });
+    await TestBed.inject(Session).reload();
+    await fixture.whenStable();
+    expect(bottomTitles()).toEqual(['Sign out', 'Settings']);
+  });
+
   it('a sign-out the server did not take: still signed in, the drawer stays open and says why', async () => {
     signOut.mockReturnValue(throwError(() => ({ status: null })));
     const fixture = await sidebarAt('/lenzi/metrics');

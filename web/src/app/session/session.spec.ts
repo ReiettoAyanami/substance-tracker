@@ -40,6 +40,28 @@ describe('Session', () => {
     expect(session.path('/statistics/edit')).toBe('/lenzi/statistics/edit');
   });
 
+  it('the admin view is for an administrator acting as itself', async () => {
+    expect(session.canAdminister()).toBe(false); // nobody yet
+    await session.load();
+    expect(session.canAdminister()).toBe(true);
+
+    answer = () => of({ ...lenzi, id: 3, username: 'chief', impersonatedBy: 1 });
+    await session.reload();
+    expect(session.canAdminister()).toBe(false);
+
+    answer = () => of({ id: 2, username: 'friend', role: 'user', impersonatedBy: null });
+    await session.reload();
+    expect(session.canAdminister()).toBe(false);
+  });
+
+  it('reload asks the server again (an impersonation started or ended)', async () => {
+    await session.load();
+    answer = () => of({ id: 2, username: 'friend', role: 'user', impersonatedBy: 1 });
+    expect(await session.reload()).toEqual({ id: 2, username: 'friend', role: 'user', impersonatedBy: 1 });
+    expect(session.path()).toBe('/friend');
+    expect(getSession).toHaveBeenCalledTimes(2);
+  });
+
   it('remembers nobody, and asks again after a network failure', async () => {
     answer = () => of(null);
     expect(await session.load()).toBeNull();

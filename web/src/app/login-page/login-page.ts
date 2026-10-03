@@ -34,7 +34,7 @@ function messageOf(error: unknown): string {
  * The sign-in page (design-accounts.md, "Web: /login"): username and password, nothing else. There
  * is no sign-up and no password reset by email: a forgotten password is reset by an administrator.
  * Signed in, the user goes back where they were going (`next`, only if it is one of their own
- * pages), else to their own start page.
+ * pages, or the admin view for an administrator), else to their own start page.
  */
 @Component({
   selector: 'app-login-page',
@@ -71,8 +71,9 @@ export class LoginPage {
       if (!user) throw { status: null } satisfies Partial<ApiError>;
       const home = this.session.path();
       const next = this.route.snapshot.queryParamMap.get('next');
-      const own = next !== null && (next === home || next.startsWith(`${home}/`) || next.startsWith(`${home}?`));
-      await this.router.navigateByUrl(own ? next : home, { replaceUrl: true });
+      const under = (root: string) => next !== null && (next === root || next.startsWith(`${root}/`) || next.startsWith(`${root}?`));
+      const own = under(home) || (this.session.canAdminister() && under('/admin'));
+      await this.router.navigateByUrl(own && next ? next : home, { replaceUrl: true });
     } catch (error) {
       this.error.set(messageOf(error));
       // The password goes, the username stays; no field in error next to the message.

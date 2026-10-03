@@ -9,6 +9,7 @@ import { of } from 'rxjs';
 
 import { App } from './app';
 import { routes } from './app.routes';
+import { AdminApi } from './data/admin-api';
 import { AuthApi, type SessionUser } from './data/auth-api';
 import { CatalogApi } from './data/catalog-api';
 import { MetricsApi } from './data/metrics-api';
@@ -46,6 +47,8 @@ function pageData(listConsumptions: () => unknown) {
     },
     // the shell's own: the version in the corner
     { provide: VersionApi, useValue: { getVersion: () => of('dev26.0.0') } },
+    // the admin view
+    { provide: AdminApi, useValue: { listUsers: () => of([]) } },
   ];
 }
 
@@ -165,6 +168,33 @@ describe('App', () => {
     expect(app.router.url).toBe('/lenzi/substances');
     expect(app.title()).toBe('Substances');
     expect(app.sidebar.opened).toBe(false);
+  });
+
+  it('/admin: the admin view in the app for an administrator; for a user, the 404 page', async () => {
+    const app = await start('/admin');
+    expect(app.router.url).toBe('/admin');
+    expect(app.title()).toBe('Admin');
+    expect(app.element.querySelector('app-admin-page')).not.toBeNull();
+    TestBed.resetTestingModule();
+
+    const user = await start('/admin', { id: 2, username: 'friend', role: 'user', impersonatedBy: null });
+    expect(user.router.url).toBe('/admin');
+    expect(user.element.querySelector('app-not-found-page')).not.toBeNull();
+  });
+
+  it('an administrator acting as a user: the "Viewing as" bar above the top bar, no admin view', async () => {
+    const app = await start('/friend', { id: 7, username: 'friend', role: 'user', impersonatedBy: 1 });
+
+    expect(app.element.querySelector('app-viewing-as-bar')?.textContent).toContain('Viewing as friend');
+    const bar = app.element.querySelector('app-viewing-as-bar')!;
+    expect(bar.compareDocumentPosition(app.element.querySelector('mat-toolbar')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    await app.go('/admin');
+    expect(app.element.querySelector('app-not-found-page')).not.toBeNull();
+  });
+
+  it('nobody impersonated: no bar', async () => {
+    const app = await start();
+    expect(app.element.querySelector('app-viewing-as-bar')).toBeNull();
   });
 
   it('signs out from the sidebar: the session ends and the sign-in page stands alone', async () => {

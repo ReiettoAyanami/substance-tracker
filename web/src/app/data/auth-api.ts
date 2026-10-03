@@ -48,4 +48,9 @@ export class AuthApi {
   signOut(): Observable<void> {
     return this.http.post<unknown>('/api/auth/sign-out', {}).pipe(map(() => undefined));
   }
+
+  /** POST /api/auth/admin/stop-impersonating: the administrator's own session comes back. */
+  stopImpersonating(): Observable<void> {
+    return this.http.post<unknown>('/api/auth/admin/stop-impersonating', {}).pipe(map(() => undefined));
+  }
 }

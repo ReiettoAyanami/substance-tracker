@@ -13,7 +13,8 @@ const SUBTREE: IsActiveMatchOptions = { paths: 'subset', queryParams: 'ignored',
  * The navigation between the pages (design-frontend.md, "sidebar"; design-accounts.md, "Web:
  * /<username>/"): the app's name and the signed-in username, one link per page of the user, the
  * current one highlighted (also on a child route, e.g. a substance's page), then at the bottom,
- * apart from the pages, "Sign out" and the settings. The app shell hosts it in a drawer.
+ * apart from the pages, "Admin" (administrators acting as themselves only), "Sign out" and the
+ * settings. The app shell hosts it in a drawer.
  */
 @Component({
   selector: 'app-sidebar',

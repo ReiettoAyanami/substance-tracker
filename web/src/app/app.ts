@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -11,6 +11,7 @@ import { Session } from './session/session';
 import { Sidebar } from './sidebar/sidebar';
 import { Appearance } from './ui/appearance';
 import { VersionLabel } from './ui/version-label/version-label';
+import { ViewingAsBar } from './ui/viewing-as-bar/viewing-as-bar';
 
 /** The title of the deepest active route that has one. */
 function routeTitle(route: ActivatedRouteSnapshot): string {
@@ -36,7 +37,7 @@ function routeIsBare(route: ActivatedRouteSnapshot): boolean {
  */
 @Component({
   selector: 'app-root',
-  imports: [MatButtonModule, MatIconModule, MatSidenavModule, MatToolbarModule, RouterOutlet, Sidebar, VersionLabel],
+  imports: [MatButtonModule, MatIconModule, MatSidenavModule, MatToolbarModule, RouterOutlet, Sidebar, VersionLabel, ViewingAsBar],
   templateUrl: './app.html',
   styleUrl: './app.css',
 })
@@ -61,6 +62,9 @@ export class App {
     this.navigated$.pipe(map(() => routeIsBare(this.router.routerState.snapshot.root) || this.session.user() === null)),
     { initialValue: true },
   );
+
+  /** An administrator is acting as this user (design-accounts.md, "impersonation"). */
+  protected readonly impersonating = computed(() => (this.session.user()?.impersonatedBy ?? null) !== null);
 
   /**
    * The menu button opens the drawer. Its origin goes with it: closing gives the focus back to the

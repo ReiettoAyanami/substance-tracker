@@ -10,12 +10,14 @@ import { Consumption, ConsumptionRecord } from '../data/consumption';
 import { OneTimeRecord } from '../data/one-time';
 import { Substance } from '../data/substance';
 import { Batch } from '../data/substance-batches';
+import { User } from '../data/user';
 import { SubstanceForm } from '../substance-form/substance-form';
+import { UserForm } from '../user-form/user-form';
 
 /** What the entity dialog creates or edits: one form per entity (design-frontend.md, "entity form"). */
-export type EntityKind = 'substance' | 'batch' | 'consumption';
+export type EntityKind = 'substance' | 'batch' | 'consumption' | 'user';
 
-const KIND_LABELS: Record<EntityKind, string> = { substance: 'Substance', batch: 'Batch', consumption: 'Consumption' };
+const KIND_LABELS: Record<EntityKind, string> = { substance: 'Substance', batch: 'Batch', consumption: 'Consumption', user: 'User' };
 
 /** What the dialog opens with. */
 export interface EntityDialogData {
@@ -27,7 +29,8 @@ export interface EntityDialogData {
   edit?:
     | { kind: 'substance'; substance: Substance }
     | { kind: 'batch'; batch: Batch; substanceId: number }
-    | { kind: 'consumption'; consumption: Consumption };
+    | { kind: 'consumption'; consumption: Consumption }
+    | { kind: 'user'; user: User };
   /** The substance a new batch or consumption is for, when the opener knows it: the form hides its selector. */
   substanceId?: number;
   /** A new consumption can only be a one-time one: the consumption form shows neither batches nor its checkbox. */
@@ -38,7 +41,8 @@ export interface EntityDialogData {
 export type EntityDialogResult =
   | { kind: 'substance'; substance: Substance }
   | { kind: 'batch'; record: BatchRecord }
-  | { kind: 'consumption'; record: ConsumptionRecord | OneTimeRecord };
+  | { kind: 'consumption'; record: ConsumptionRecord | OneTimeRecord }
+  | { kind: 'user'; user: User };
 
 /**
  * The one dialog that hosts the entity forms (design-frontend.md, "new dialog"). The forms do not
@@ -48,7 +52,7 @@ export type EntityDialogResult =
  */
 @Component({
   selector: 'app-entity-dialog',
-  imports: [BatchForm, ConsumptionForm, MatDialogModule, MatFormFieldModule, MatSelectModule, SubstanceForm],
+  imports: [BatchForm, ConsumptionForm, MatDialogModule, MatFormFieldModule, MatSelectModule, SubstanceForm, UserForm],
   templateUrl: './entity-dialog.html',
   styleUrl: './entity-dialog.css',
 })
@@ -65,6 +69,7 @@ export class EntityDialog {
   protected readonly editedSubstance = this.data.edit?.kind === 'substance' ? this.data.edit.substance : null;
   protected readonly editedBatch = this.data.edit?.kind === 'batch' ? this.data.edit.batch : null;
   protected readonly editedConsumption = this.data.edit?.kind === 'consumption' ? this.data.edit.consumption : null;
+  protected readonly editedUser = this.data.edit?.kind === 'user' ? this.data.edit.user : null;
   /** The fixed substance of the batch form: the one of the batch edited, or the one the opener gave. */
   protected readonly batchSubstanceId =
     this.data.edit?.kind === 'batch' ? this.data.edit.substanceId : (this.data.substanceId ?? null);
@@ -79,6 +84,10 @@ export class EntityDialog {
 
   protected savedConsumption(record: ConsumptionRecord | OneTimeRecord): void {
     this.dialog.close({ kind: 'consumption', record });
+  }
+
+  protected savedUser(user: User): void {
+    this.dialog.close({ kind: 'user', user });
   }
 
   protected cancel(): void {

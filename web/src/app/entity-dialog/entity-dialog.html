@@ -38,5 +38,8 @@
         (cancelled)="cancel()"
       />
     }
+    @case ('user') {
+      <app-user-form [user]="editedUser" [showTitle]="!chooser" (saved)="savedUser($event)" (cancelled)="cancel()" />
+    }
   }
 </mat-dialog-content>

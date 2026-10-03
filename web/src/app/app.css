@@ -40,3 +40,20 @@ mat-toolbar {
   border-radius: 16px;
   backdrop-filter: var(--app-glass-filter);
 }
+
+/* While an administrator acts as a user, the "Viewing as" bar sticks above the top bar, which
+   sticks just under it: both stay in sight however far the page scrolls. */
+mat-sidenav-content {
+  --app-viewing-as-height: 44px;
+}
+
+app-viewing-as-bar {
+  position: sticky;
+  top: 8px;
+  z-index: 6;
+  margin: 8px 8px 0;
+}
+
+mat-sidenav-content.impersonating mat-toolbar {
+  top: calc(8px + var(--app-viewing-as-height) + 8px);
+}

@@ -6,8 +6,12 @@
     }
   </mat-sidenav>
 
-  <mat-sidenav-content>
+  <mat-sidenav-content [class.impersonating]="impersonating()">
     @if (!bare()) {
+      <!-- An administrator acting as a user: a bar above the top bar that cannot be closed. -->
+      @if (impersonating()) {
+        <app-viewing-as-bar />
+      }
       <mat-toolbar>
         <button mat-icon-button type="button" class="menu" aria-label="Menu" (click)="openSidebar(sidebar, $event)">
           <mat-icon>menu</mat-icon>

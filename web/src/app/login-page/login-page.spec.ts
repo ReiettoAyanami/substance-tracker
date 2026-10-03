@@ -35,6 +35,7 @@ describe('LoginPage', () => {
           { path: 'lenzi', component: Blank },
           { path: 'lenzi/metrics', component: Blank },
           { path: 'other/metrics', component: Blank },
+          { path: 'admin', component: Blank },
         ]),
         { provide: AuthApi, useValue: { getSession: () => of(session), signIn } },
       ],
@@ -130,6 +131,15 @@ describe('LoginPage', () => {
     await page.submit();
 
     expect(TestBed.inject(Router).url).toBe('/lenzi/metrics?per=week');
+  });
+
+  it('an administrator goes back to the admin view too', async () => {
+    const page = await open('/login?next=%2Fadmin');
+    page.type('username', 'lenzi');
+    page.type('password', 'Lenzi-pass-0001');
+    await page.submit();
+
+    expect(TestBed.inject(Router).url).toBe('/admin');
   });
 
   it.each(['/other/metrics', '/lenzix', 'https://example.com/lenzi', '//example.com/lenzi'])(

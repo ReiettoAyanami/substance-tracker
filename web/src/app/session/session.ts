@@ -1,4 +1,4 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
 import { AuthApi, type SessionUser } from '../data/auth-api';
@@ -17,6 +17,15 @@ export class Session {
   private loading: Promise<SessionUser | null> | null = null;
 
   readonly user = this.current.asReadonly();
+
+  /**
+   * The admin view is for an administrator acting as itself: not during an impersonation, even of
+   * another administrator (design-accounts.md, "impersonation").
+   */
+  readonly canAdminister = computed(() => {
+    const user = this.current();
+    return user?.role === 'admin' && user.impersonatedBy === null;
+  });
 
   /**
    * The address of one of the user's pages (design-accounts.md, "Web: /<username>/"): `path()` is
@@ -44,11 +53,16 @@ export class Session {
     return this.loading;
   }
 
+  /** Asks the server again who this browser is: after signing in, after an impersonation starts or ends. */
+  reload(): Promise<SessionUser | null> {
+    this.loading = null;
+    return this.load();
+  }
+
   /** Signs in, then asks who it is now. Rejects with the ApiError of a refused sign-in. */
   async signIn(username: string, password: string): Promise<SessionUser | null> {
     await firstValueFrom(this.authApi.signIn(username, password));
-    this.loading = null;
-    return this.load();
+    return this.reload();
   }
 
   /**

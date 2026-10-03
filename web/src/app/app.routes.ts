@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 
+import { adminGuard } from './session/admin-guard';
 import { homeGuard } from './session/home-guard';
 import { signedOutGuard } from './session/signed-out-guard';
 import { userGuard } from './session/user-guard';
@@ -22,6 +23,13 @@ export const routes: Routes = [
   },
   // The bare address: one's own pages, or the sign-in page.
   { path: '', pathMatch: 'full', canActivate: [homeGuard], children: [] },
+  // The admin view (design-accounts.md, "Web: /admin"); `admin` is a reserved word, never a username.
+  {
+    path: 'admin',
+    canMatch: [adminGuard],
+    loadComponent: () => import('./admin-page/admin-page').then((m) => m.AdminPage),
+    title: 'Admin',
+  },
   // A user's pages live under their username (design-accounts.md, "Web: /<username>/"); another
   // username does not match and lands on the 404 page below, like any address that does not exist.
   {

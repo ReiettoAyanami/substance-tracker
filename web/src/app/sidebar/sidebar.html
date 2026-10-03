@@ -24,6 +24,20 @@
 
   <!-- At the bottom, apart from the pages. -->
   <mat-nav-list class="bottom">
+    <!-- The admin view: administrators acting as themselves only (design-accounts.md, "Web: /admin"). -->
+    @if (session.canAdminister()) {
+      <a
+        mat-list-item
+        routerLink="/admin"
+        routerLinkActive
+        #admin="routerLinkActive"
+        [activated]="admin.isActive"
+        (click)="navigated.emit()"
+      >
+        <mat-icon matListItemIcon>admin_panel_settings</mat-icon>
+        <span matListItemTitle>Admin</span>
+      </a>
+    }
     @if (signOutError(); as message) {
       <p class="sign-out-error" role="alert">{{ message }}</p>
     }
