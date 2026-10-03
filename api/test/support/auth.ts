@@ -6,6 +6,8 @@ const auth = loadConfig().auth;
 /** The app's own address in the tests (APP_URL, from the environment): the only trusted origin. */
 export const ORIGIN = auth.appUrl;
 export const SESSION_COOKIE = `${auth.cookiePrefix}.session_token`;
+/** Where Better Auth keeps an administrator's own session while it impersonates someone. */
+export const ADMIN_SESSION_COOKIE = `${auth.cookiePrefix}.admin_session`;
 
 export interface SignIn {
   status: number;

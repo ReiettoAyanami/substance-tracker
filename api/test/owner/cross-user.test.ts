@@ -15,6 +15,7 @@ import { OTHER, TESTER, idOf } from '../support/session.js';
  */
 
 interface Ids {
+  user: number;
   substance: number;
   batch: number;
   consumption: number;
@@ -23,16 +24,23 @@ interface Ids {
   viewItem: number;
 }
 
-const MISSING: Ids = { substance: 999999, batch: 999998, consumption: 999997, adjustment: 999996, oneTime: 999995, viewItem: 999994 };
+const MISSING: Ids = { user: 999993, substance: 999999, batch: 999998, consumption: 999997, adjustment: 999996, oneTime: 999995, viewItem: 999994 };
 const SECRET = 'A-secret';
 
 type Call = (as: Api, ids: Ids) => Promise<Res>;
-/** like-missing: A's ids answer as missing ids do. own: B's own data, nothing of A in it. */
-type Case = { kind: 'like-missing'; call: Call; echoesInput?: boolean } | { kind: 'own'; call: (as: Api) => Promise<Res> };
+/**
+ * like-missing: A's ids answer as missing ids do. own: B's own data, nothing of A in it. hidden: an
+ * administrator's route, which for B, a user, answers as a route that does not exist.
+ */
+type Case =
+  | { kind: 'like-missing'; call: Call; echoesInput?: boolean }
+  | { kind: 'own'; call: (as: Api) => Promise<Res> }
+  | { kind: 'hidden'; call: Call };
 
 /** `echoesInput`: the answer repeats what B sent (a section name B typed), which is not A's data. */
 const missing = (call: Call, echoesInput = false): Case => ({ kind: 'like-missing', call, echoesInput });
 const own = (call: (as: Api) => Promise<Res>): Case => ({ kind: 'own', call });
+const hidden = (call: Call): Case => ({ kind: 'hidden', call });
 
 const RANGE = 'from=2026-09-01&to=2026-09-30';
 
@@ -107,6 +115,13 @@ const CASES: Record<string, Case[]> = {
   // Settings
   'GET /api/settings': [own((b) => b.get('/api/settings'))],
   'PATCH /api/settings': [own((b) => b.patch('/api/settings', { currency: 'USD' }))],
+  // Admin: B is no administrator
+  'GET /api/admin/users': [hidden((b) => b.get('/api/admin/users'))],
+  'POST /api/admin/users': [hidden((b) => b.post('/api/admin/users', { username: 'b-made', email: 'b@dev.invalid', password: 'B-made-pass-0001', role: 'admin' }))],
+  'PATCH /api/admin/users/:id': [hidden((b, i) => b.patch(`/api/admin/users/${i.user}`, { password: 'Taken-pass-00001', blocked: true }))],
+  'DELETE /api/admin/users/:id': [hidden((b, i) => b.del(`/api/admin/users/${i.user}`))],
+  'POST /api/admin/users/:id/impersonate': [hidden((b, i) => b.post(`/api/admin/users/${i.user}/impersonate`))],
+  'GET /api/admin/generated-password': [hidden((b) => b.get('/api/admin/generated-password'))],
 };
 
 /** Routes anyone may call: no user's data behind them. */
@@ -145,6 +160,7 @@ async function recordA(): Promise<Ids> {
   ).toBe(201);
   expect((await api.patch('/api/settings', { currency: 'GBP', timezone: 'Europe/London' })).status).toBe(200);
   return {
+    user: await idOf(api.app, TESTER),
     substance: substance.id,
     batch: batch.id,
     consumption: consumption.id,
@@ -201,6 +217,10 @@ describe('another user', () => {
           const res = await c.call(b);
           expect(res.status, `${route}: ${JSON.stringify(res.body)}`).toBeLessThan(500);
           expect(JSON.stringify(res.body), route).not.toContain(SECRET);
+        } else if (c.kind === 'hidden') {
+          for (const ids of [a, MISSING]) {
+            expect(shape(await c.call(b, ids)), route).toEqual({ status: 404, type: 'urn:substance-tracker:problem:not-found' });
+          }
         } else {
           const withA = await c.call(b, a);
           const withMissing = await c.call(b, MISSING);
@@ -212,6 +232,12 @@ describe('another user', () => {
     }
 
     expect(await dataOf(aId)).toEqual(before);
+    // A's account too: same role, not blocked, still signed in; and B made nobody
+    expect(await rawRows('SELECT username, role, banned FROM users ORDER BY id')).toEqual([
+      { username: 'tester', role: 'user', banned: 0 },
+      { username: 'other-user', role: 'user', banned: 0 },
+    ]);
+    expect((await api.get('/api/settings')).status).toBe(200);
     // B's own settings are B's: the defaults, then B's own change
     expect((await b.get('/api/settings')).body).toEqual({ timezone: 'Europe/Rome', dayStartsAt: '00:00:00', currency: 'USD' });
   });

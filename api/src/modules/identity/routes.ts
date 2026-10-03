@@ -11,12 +11,14 @@ import type { Identity } from './identity.js';
  * only when a cookie is present, so a sign-in from another site would pass (login CSRF).
  */
 
+const STOP_IMPERSONATING = '/admin/stop-impersonating';
+
 const FORWARDED: ReadonlyArray<{ method: 'GET' | 'POST'; path: string }> = [
   { method: 'POST', path: '/sign-in/username' },
   { method: 'POST', path: '/sign-out' },
   { method: 'GET', path: '/get-session' },
   { method: 'POST', path: '/revoke-other-sessions' },
-  { method: 'POST', path: '/admin/stop-impersonating' },
+  { method: 'POST', path: STOP_IMPERSONATING },
 ];
 
 /** Hop-by-hop and recomputed headers, and ours, which only this file sets. */
@@ -126,7 +128,17 @@ export function identityRoutes(app: FastifyInstance, deps: IdentityRoutesDeps): 
             throw new ProblemError(415, 'media-type', 'The body must be JSON');
           }
         }
-        return send(reply, await deps.identity.handle(toFetchRequest(request, deps)));
+        const fetchRequest = toFetchRequest(request, deps);
+        // The end of an impersonation goes to the log, like its start (design-accounts.md).
+        const ending = path === STOP_IMPERSONATING ? await deps.identity.userOf(fetchRequest.headers) : null;
+        const response = await deps.identity.handle(fetchRequest);
+        if (ending?.impersonatedBy && response.status === 200) {
+          request.log.info(
+            { impersonation: { by: ending.impersonatedBy, as: ending.userId, username: ending.username } },
+            'impersonation ended',
+          );
+        }
+        return send(reply, response);
       },
     });
   }

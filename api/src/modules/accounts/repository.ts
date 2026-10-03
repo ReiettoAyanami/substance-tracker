@@ -37,6 +37,35 @@ export async function insertStartingState(
 }
 
 /**
+ * Deletes a user and everything of theirs (design-accounts.md, "delete (a user)"): the one real
+ * deletion of the project, soft-deleted rows included. Run inside a transaction. First the cycle is
+ * broken: a batch remembers the consumption or adjustment that emptied it, so those references go
+ * before the rows they point to; then from the leaves to the root. The sessions opened by the user
+ * as somebody else (impersonations) go with its own. False when there is no such user.
+ */
+export async function deleteUser(db: Queryable, userId: number): Promise<boolean> {
+  const [found] = await db.query<RowDataPacket[]>('SELECT id FROM users WHERE id = ? FOR UPDATE', [userId]);
+  if (found.length === 0) return false;
+  await db.query(
+    `UPDATE batches b JOIN substances s ON s.id = b.substance_id
+        SET b.deactivated_by_consumption_id = NULL, b.deactivated_by_adjustment_id = NULL
+      WHERE s.user_id = ?`,
+    [userId],
+  );
+  const ofBatches = 'JOIN batches b ON b.id = x.batch_id JOIN substances s ON s.id = b.substance_id WHERE s.user_id = ?';
+  await db.query(`DELETE x FROM consumptions x ${ofBatches}`, [userId]);
+  await db.query(`DELETE x FROM adjustments x ${ofBatches}`, [userId]);
+  await db.query('DELETE b FROM batches b JOIN substances s ON s.id = b.substance_id WHERE s.user_id = ?', [userId]);
+  await db.query('DELETE o FROM one_time_consumptions o JOIN substances s ON s.id = o.substance_id WHERE s.user_id = ?', [userId]);
+  for (const table of ['substances', 'view_items', 'settings', 'password_history', 'accounts']) {
+    await db.query(`DELETE FROM ${table} WHERE user_id = ?`, [userId]);
+  }
+  await db.query('DELETE FROM sessions WHERE user_id = ? OR impersonated_by = ?', [userId, userId]);
+  await db.query('DELETE FROM users WHERE id = ?', [userId]);
+  return true;
+}
+
+/**
  * Takes back a user created a moment ago whose starting state could not be written: a real
  * deletion, the one kind the project has (users; lenzi, 2026-10-01).
  */

@@ -3,6 +3,8 @@ import Fastify, { type FastifyError, type FastifyInstance, type FastifyReply, ty
 import { loadConfig, type AuthConfig } from './config.js';
 import { createPool, pingDatabase, type Pool } from './db/pool.js';
 import { AccountLifecycle } from './modules/accounts/service.js';
+import { adminRoutes } from './modules/admin/routes.js';
+import { AdminService } from './modules/admin/service.js';
 import { catalogRoutes } from './modules/catalog/routes.js';
 import { CatalogService } from './modules/catalog/service.js';
 import { createAuth } from './modules/identity/auth.js';
@@ -141,7 +143,8 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
   });
 
   const settings = new SettingsService(pool);
-  app.decorate('accounts', new AccountLifecycle(pool, identity, settings, clock));
+  const accounts = new AccountLifecycle(pool, identity, settings, clock);
+  app.decorate('accounts', accounts);
   const catalog = new CatalogService(pool, clock);
   const reports = new ReportsService(pool, catalog, settings, clock);
   const ledger = new LedgerService(pool, clock);
@@ -171,6 +174,7 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
   metricsRoutes(app, { metrics });
   viewsRoutes(app, { views });
   settingsRoutes(app, { settings });
+  adminRoutes(app, { admin: new AdminService(identity, accounts) });
 
   if (opts.webDist) {
     await app.register(fastifyStatic, { root: opts.webDist, index: ['index.html'], wildcard: true });

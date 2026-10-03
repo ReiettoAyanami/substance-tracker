@@ -87,7 +87,7 @@ export function notFound(what: string, id: number | string): ProblemError {
   return new ProblemError(404, 'not-found', `${what} ${id} not found`);
 }
 
-/** 409: a ledger / catalog rule refuses the operation. */
-export function conflict(code: string, detail: string): ProblemError {
-  return new ProblemError(409, code, detail);
+/** 409: a rule refuses the operation; `field`, when one field of the form is the cause. */
+export function conflict(code: string, detail: string, field?: string): ProblemError {
+  return new ProblemError(409, code, detail, field ? [{ field, message: detail }] : []);
 }

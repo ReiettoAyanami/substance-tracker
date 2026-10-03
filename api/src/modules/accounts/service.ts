@@ -1,4 +1,5 @@
 import { withTransaction, type Pool } from '../../db/pool.js';
+import { notFound } from '../../shared/errors.js';
 import { ownerOf, type Owner } from '../../shared/owner.js';
 import { toDbDateTime, truncateToSecond, type Clock } from '../../shared/time.js';
 import type { Identity, NewUser } from '../identity/identity.js';
@@ -10,8 +11,8 @@ import * as repo from './repository.js';
  * Account lifecycle (design-accounts.md): a user is created ready to use, credentials and starting
  * state together. The starting state: the settings of the administrator who creates the user
  * (approved 2026-10-03: people on one instance usually share a place and a currency), the defaults
- * for the first administrator, and the default layout of every page. Deleting a user comes with the
- * admin routes.
+ * for the first administrator, and the default layout of every page. Deleting a user takes all of
+ * it away again, with everything the user recorded.
  */
 export class AccountLifecycle {
   constructor(
@@ -41,5 +42,14 @@ export class AccountLifecycle {
       throw err;
     }
     return id;
+  }
+
+  /**
+   * Deletes a user and everything of theirs, in one transaction (design-accounts.md, "delete (a
+   * user)"): their sessions end with it. Who may delete whom is the admin service's business.
+   */
+  async deleteUser(id: number): Promise<void> {
+    const deleted = await withTransaction(this.pool, (conn) => repo.deleteUser(conn, id));
+    if (!deleted) throw notFound('User', id);
   }
 }
