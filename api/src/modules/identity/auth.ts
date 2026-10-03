@@ -91,8 +91,17 @@ export function createAuth(database: AuthDatabase, options: AuthOptions) {
       fields: { lastRequest: 'last_request' },
     },
     advanced: {
-      // MySQL's own AUTO_INCREMENT ids, read back through insert-memory.ts.
-      database: { generateId: 'serial' },
+      database: {
+        // MySQL's own AUTO_INCREMENT ids, read back through insert-memory.ts.
+        generateId: 'serial',
+        // The schema is ours, the numbered migrations (design-accounts.md, "Identity"). Better
+        // Auth's own check runs as soon as this object exists, which at the first start of an
+        // instance is before the migrations create the tables, and it keeps its "tables missing"
+        // until its own `migrate` (never used here) clears it: no first administrator, every
+        // sign-in refused until a restart (seen on a new demo database, 2026-10-03). The tests
+        // check every auth path on our schema instead (test/identity/schema.test.ts).
+        validateSchema: false,
+      },
       ipAddress: { ipAddressHeaders: [CLIENT_IP_HEADER] },
       cookiePrefix: options.cookiePrefix,
     },
