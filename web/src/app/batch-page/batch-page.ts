@@ -132,8 +132,12 @@ export class BatchPage {
     else void this.router.navigate([this.session.path('/substances'), this.substanceId], { replaceUrl: true, queryParamsHandling: 'preserve' });
   }
 
+  /** Something was written here: the substance's page under this one asks again when it closes. */
+  wrote = false;
+
   /** A consumption of the batch was changed or deleted from its last consumptions: its numbers too. */
   protected written(): void {
+    this.wrote = true;
     this.batch.reload();
     this.substance.reload();
   }

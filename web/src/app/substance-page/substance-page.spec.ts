@@ -18,6 +18,7 @@ import { Surface } from '../data/view-item';
 import { ViewsApi } from '../data/views-api';
 import { BatchList } from './batch-list/batch-list';
 import { OneTimeList } from './one-time-list/one-time-list';
+import { SubstancePage } from './substance-page';
 
 const settings = { timezone: 'Europe/Rome', dayStartsAt: '00:00:00', currency: 'EUR' };
 
@@ -247,6 +248,23 @@ describe('SubstancePage', () => {
 
     expect(bars()).toBe(2); // the card of the page and the one in the list
     expect(TestBed.inject(Router).url).toBe('/lenzi/substances/1');
+  });
+
+  it("a batch's page that changed something (its last consumptions): once it closes, the substance and its batches are asked again", async () => {
+    await open('/lenzi/substances/1');
+    const page = harness.fixture.debugElement.query(By.directive(SubstancePage)).componentInstance as SubstancePage;
+    const batchList = harness.fixture.debugElement.query(By.directive(BatchList)).componentInstance as BatchList;
+    const refresh = vi.spyOn(batchList, 'refresh');
+    const backend = TestBed.inject(HttpTestingController);
+
+    // a batch's page that only looked: nothing asked
+    (page as unknown as { childClosed(child: unknown): void }).childClosed({ wrote: false });
+    backend.expectNone('/api/substances/1');
+    expect(refresh).not.toHaveBeenCalled();
+
+    (page as unknown as { childClosed(child: unknown): void }).childClosed({ wrote: true });
+    backend.expectOne('/api/substances/1').flush(substance(1, 'Caffè'));
+    expect(refresh).toHaveBeenCalledTimes(1);
   });
 
   it('asks its substance again also when a one-time consumption was added in its one-time list', async () => {

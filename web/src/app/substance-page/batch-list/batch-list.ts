@@ -185,6 +185,11 @@ export class BatchList {
     if (await this.actions.delete(batch)) this.written();
   }
 
+  /** Asks the batches again: something changed them elsewhere (the batch's own page). */
+  refresh(): void {
+    this.batches.reload();
+  }
+
   /** The batches are asked again (those shown stay until the new ones arrive), and the page is told. */
   protected written(): void {
     this.batches.reload();

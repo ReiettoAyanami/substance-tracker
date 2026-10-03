@@ -1,6 +1,6 @@
 import { A11yModule } from '@angular/cdk/a11y';
 import { DOCUMENT, Location } from '@angular/common';
-import { Component, DestroyRef, computed, inject, input, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, input, signal, viewChild } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { ActivatedRoute, Router, RouterOutlet } from '@angular/router';
@@ -40,6 +40,7 @@ export interface PageHistoryState {
 export class SubstancePage {
   /** The `:id` of the route. */
   readonly id = input.required<string>();
+  private readonly batchList = viewChild(BatchList);
   private readonly list = inject(SubstanceList);
   private readonly session = inject(Session);
   protected readonly actions = inject(SubstanceActions);
@@ -75,6 +76,16 @@ export class SubstancePage {
   /** A batch or a one-time consumption of the substance was written: its numbers are the API's, so it is asked again. */
   protected reload(id: number): void {
     this.list.reload(id);
+  }
+
+  /**
+   * A batch's page closed: when it wrote something (a consumption changed or deleted from its last
+   * consumptions), the substance and its batches are asked again here.
+   */
+  protected childClosed(child: unknown): void {
+    if ((child as { wrote?: boolean } | null)?.wrote !== true) return;
+    this.list.reload(Number(this.id()));
+    this.batchList()?.refresh();
   }
 
   /**
