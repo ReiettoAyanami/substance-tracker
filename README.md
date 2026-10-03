@@ -111,6 +111,8 @@ docker compose -f compose.prod.yaml down
 
 L'app risponde su `http://localhost:8080` (`APP_PORT`), e si apre da `APP_URL`: da un altro indirizzo l'accesso viene rifiutato.
 
+Ogni risposta porta gli header di sicurezza (`api/src/shared/security-headers.ts`): script solo dall'istanza, stili e font anche da Google Fonts, nessun riquadro (l'app non si apre dentro un iframe di un altro sito, nemmeno di una dashboard), `nosniff`, `Referrer-Policy: same-origin`, e HSTS per un anno quando `APP_URL` è https.
+
 ### Primo avvio: l'amministratore
 
 Al primo avvio, quando il database non ha amministratori, l'API crea `ADMIN_USERNAME` (`admin` se non è impostato; permanente: è l'indirizzo delle sue pagine, e il suo pannello di amministrazione è `/<username>/admin`) con l'email `ADMIN_EMAIL` e una password generata, scritta in `to_delete.password.txt` accanto a `compose.prod.yaml`. Accedi con quelle credenziali, poi cancella il file: la password si cambia da Settings. Il log (`docker compose -f compose.prod.yaml logs app`) dice dove l'ha scritta, mai la password.

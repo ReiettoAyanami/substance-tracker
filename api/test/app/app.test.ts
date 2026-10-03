@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../../src/app.js';
 import { createPool } from '../../src/db/pool.js';
 import { Api, expectProblem, fixedClock, makeApi } from '../support/api.js';
-import { testDbConfig } from '../support/db.js';
+import { testDbConfig, testPool } from '../support/db.js';
 import { TESTER, cookieOf } from '../support/session.js';
 import { VERSION, VERSION_FORMAT } from '../../src/version.js';
 
@@ -138,5 +138,53 @@ describe('static files and SPA fallback (WEB_DIST)', () => {
     expectProblem(await web.post('/some/deep/route', {}), 404);
     const head = await web.req('HEAD', '/some/deep/route');
     expect(head.status).toBe(200);
+  });
+});
+
+describe('security headers (lenzi, 2026-10-03: "si")', () => {
+  // The whole policy, spelled out: a change to it is a decision, not a side effect.
+  const POLICY =
+    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+    "font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; object-src 'none'; " +
+    "base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
+  let dir: string;
+  let web: Api;
+
+  beforeAll(async () => {
+    dir = await mkdtemp(join(tmpdir(), 'st-web-'));
+    await writeFile(join(dir, 'index.html'), '<!doctype html><html><body><app-root></app-root></body></html>');
+    await writeFile(join(dir, 'main.js'), 'console.log("hi");');
+    web = await makeApi({ webDist: dir });
+  });
+  afterAll(async () => {
+    await web.app.close();
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it.each([
+    ['the app', 'GET', '/'],
+    ['a deep page of the app', 'GET', '/lenzi/metrics'],
+    ['a file of the build', 'GET', '/main.js'],
+    ['an API answer', 'GET', '/api/health'],
+    ['an API error (no session)', 'GET', '/api/substances'],
+    ['a refused sign-in (another origin)', 'POST', '/api/auth/sign-in/username'],
+  ] as const)('on every answer: %s', async (_what, method, url) => {
+    const res = await web.req(method, url);
+    expect(res.headers['content-security-policy']).toBe(POLICY);
+    expect(res.headers['x-frame-options']).toBe('DENY');
+    expect(res.headers['x-content-type-options']).toBe('nosniff');
+    expect(res.headers['referrer-policy']).toBe('same-origin');
+    // Opened over http (APP_URL): a browser ignores HSTS there, and it is never sent.
+    expect(res.headers['strict-transport-security']).toBeUndefined();
+  });
+
+  it('HSTS only for an instance opened over https: the browser keeps to https for a year', async () => {
+    const app = await buildApp({ pool: testPool(), clock: fixedClock, auth: { appUrl: 'https://tracker.example.invalid', rateLimit: false } });
+    try {
+      const res = await app.inject({ method: 'GET', url: '/api/version' });
+      expect(res.headers['strict-transport-security']).toBe('max-age=31536000');
+    } finally {
+      await app.close();
+    }
   });
 });

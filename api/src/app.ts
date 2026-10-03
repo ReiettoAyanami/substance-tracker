@@ -30,6 +30,7 @@ import {
   type ProblemBody,
   type ProblemFieldError,
 } from './shared/errors.js';
+import { securityHeadersHook } from './shared/security-headers.js';
 import { systemClock, type Clock } from './shared/time.js';
 import { VERSION } from './version.js';
 
@@ -102,6 +103,10 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
     });
   }
 
+  const authConfig: AuthConfig = { ...loadConfig().auth, ...opts.auth };
+  // What every answer tells the browser: before the routes, the 404 handler and the web build.
+  securityHeadersHook(app, authConfig.appUrl);
+
   // Every error leaves as Problem Details.
   app.setErrorHandler((error: FastifyError, request, reply) => {
     if (error instanceof ProblemError) return sendProblem(reply, error.toBody());
@@ -123,7 +128,6 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
     return sendProblem(reply, problemBody(404, 'not-found', `No route for ${request.method} ${path}`));
   });
 
-  const authConfig: AuthConfig = { ...loadConfig().auth, ...opts.auth };
   const auth = createAuth(authDatabase(pool), {
     appUrl: authConfig.appUrl,
     secret: authConfig.secret,
