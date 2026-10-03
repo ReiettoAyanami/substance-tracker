@@ -46,6 +46,15 @@ describe('AuthApi', () => {
     await expect(done).resolves.toBeUndefined();
   });
 
+  it('revokeOtherSessions posts an empty JSON body', async () => {
+    const done = firstValueFrom(api.revokeOtherSessions());
+    const req = backend.expectOne({ method: 'POST', url: '/api/auth/revoke-other-sessions' });
+    expect(req.request.body).toEqual({});
+    req.flush({ status: true });
+
+    await expect(done).resolves.toBeUndefined();
+  });
+
   it('stopImpersonating posts an empty JSON body', async () => {
     const done = firstValueFrom(api.stopImpersonating());
     const req = backend.expectOne({ method: 'POST', url: '/api/auth/admin/stop-impersonating' });

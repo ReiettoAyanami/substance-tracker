@@ -11,7 +11,7 @@ import { createAuth } from './modules/identity/auth.js';
 import { requestUserHook } from './modules/identity/hook.js';
 import { Identity } from './modules/identity/identity.js';
 import { authDatabase } from './modules/identity/insert-memory.js';
-import { identityRoutes } from './modules/identity/routes.js';
+import { accountRoutes, identityRoutes } from './modules/identity/routes.js';
 import { ledgerRoutes } from './modules/ledger/routes.js';
 import { metricsRoutes } from './modules/metrics/routes.js';
 import { MetricsService } from './modules/metrics/service.js';
@@ -168,6 +168,7 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
   app.get('/api/version', async () => ({ version: VERSION }));
 
   identityRoutes(app, { identity, appUrl: authConfig.appUrl, clientIpHeader: authConfig.clientIpHeader });
+  accountRoutes(app, { identity });
   catalogRoutes(app, { catalog, reports });
   ledgerRoutes(app, { ledger });
   reportsRoutes(app, { reports });

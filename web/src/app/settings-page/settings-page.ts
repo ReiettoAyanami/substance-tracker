@@ -19,6 +19,7 @@ import { SettingsApi } from '../data/settings-api';
 import { LOCALE } from '../locale';
 import { Session } from '../session/session';
 import { Appearance } from '../ui/appearance';
+import { AccountSettings } from './account-settings/account-settings';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
@@ -69,11 +70,13 @@ type Field = 'currency' | 'timezone' | 'dayStartsAt';
  * the time zone and the time the day starts decide which logical day a consumption belongs to,
  * and the page says that changing them moves consumptions between days. Save sends what changed;
  * the form then shows what the API saved, and every page opened afterwards asks for the settings
- * again. Below, the way to what the pages show (/statistics/edit).
+ * again. Below, the way to what the pages show (/statistics/edit), then the user's own account
+ * (AccountSettings: password, other devices).
  */
 @Component({
   selector: 'app-settings-page',
   imports: [
+    AccountSettings,
     MatAutocompleteModule,
     MatButtonModule,
     MatFormFieldModule,

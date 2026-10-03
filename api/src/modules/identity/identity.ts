@@ -207,11 +207,12 @@ export class Identity {
 
   /**
    * Throws when a password cannot be the user's next one: the rules, or a password the user already
-   * had (the current one or any earlier one, design-accounts.md "password rules").
+   * had (the current one or any earlier one, design-accounts.md "password rules"). `field`: the form
+   * field the problems go under.
    */
-  async checkNewPassword(userId: number, password: string): Promise<void> {
+  async checkNewPassword(userId: number, password: string, field = 'password'): Promise<void> {
     const problem = passwordProblem(password);
-    if (problem) throw badRequest(problem, 'password');
+    if (problem) throw badRequest(problem, field);
     const context = await this.auth.$context;
     await runAuth(async () => {
       const user = await context.internalAdapter.findUserById(String(userId));
@@ -220,7 +221,7 @@ export class Identity {
       const earlier = await repo.passwordHistory(this.pool, userId);
       for (const hash of [account?.password, ...earlier]) {
         if (hash && (await context.password.verify({ hash, password }))) {
-          throw conflict('password-used-before', 'This password was already used: choose one never used before', 'password');
+          throw conflict('password-used-before', 'This password was already used: choose one never used before', field);
         }
       }
     });
@@ -233,6 +234,35 @@ export class Identity {
    */
   async setPassword(userId: number, password: string): Promise<void> {
     await this.checkNewPassword(userId, password);
+    await this.storePassword(userId, password, null);
+  }
+
+  /**
+   * A user changing their own password from the settings (design-accounts.md, "password reset"):
+   * the current one must be given, the new one follows the rules and was never theirs. The session
+   * in use stays open; the user's other sessions close, since a new password is often a lost or a
+   * shared one.
+   */
+  async changeOwnPassword(headers: Headers, currentPassword: string, newPassword: string): Promise<void> {
+    const found = await runAuth(() => this.auth.api.getSession({ headers }));
+    if (!found) throw new ProblemError(401, 'unauthenticated', 'Sign in to use the app');
+    const userId = Number(found.user.id);
+    const context = await this.auth.$context;
+    const account = await runAuth(() => context.internalAdapter.findCredentialAccount(String(userId)));
+    const right = account?.password ? await context.password.verify({ hash: account.password, password: currentPassword }) : false;
+    if (!right) {
+      const detail = 'This is not your current password';
+      throw new ProblemError(400, 'wrong-password', detail, [{ field: 'currentPassword', message: detail }]);
+    }
+    await this.checkNewPassword(userId, newPassword, 'newPassword');
+    await this.storePassword(userId, newPassword, found.session.token);
+  }
+
+  /**
+   * Stores a password already checked: the hash, the one it replaces into the history, and the
+   * user's sessions closed, except `keepToken` (the session of a user changing their own).
+   */
+  private async storePassword(userId: number, password: string, keepToken: string | null): Promise<void> {
     const context = await this.auth.$context;
     await runAuth(async () => {
       const account = await context.internalAdapter.findCredentialAccount(String(userId));
@@ -248,7 +278,12 @@ export class Identity {
           password: hash,
         });
       }
-      await context.internalAdapter.deleteUserSessions(String(userId));
+      if (keepToken === null) {
+        await context.internalAdapter.deleteUserSessions(String(userId));
+      } else {
+        const others = (await context.internalAdapter.listSessions(String(userId))).filter((s) => s.token !== keepToken);
+        if (others.length > 0) await context.internalAdapter.deleteSessions(others.map((s) => s.token));
+      }
     });
   }
 

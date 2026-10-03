@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { PROBLEM_CONTENT_TYPE, ProblemError, problemBody, statusTitle } from '../../shared/errors.js';
 import { CLIENT_IP_HEADER } from './auth.js';
+import { toHeaders } from './hook.js';
 import type { Identity } from './identity.js';
 
 /**
@@ -12,14 +13,22 @@ import type { Identity } from './identity.js';
  */
 
 const STOP_IMPERSONATING = '/admin/stop-impersonating';
+const REVOKE_OTHER_SESSIONS = '/revoke-other-sessions';
 
 const FORWARDED: ReadonlyArray<{ method: 'GET' | 'POST'; path: string }> = [
   { method: 'POST', path: '/sign-in/username' },
   { method: 'POST', path: '/sign-out' },
   { method: 'GET', path: '/get-session' },
-  { method: 'POST', path: '/revoke-other-sessions' },
+  { method: 'POST', path: REVOKE_OTHER_SESSIONS },
   { method: 'POST', path: STOP_IMPERSONATING },
 ];
+
+/** Refused while an administrator acts as the user: an impersonation is for the data, not for their account. */
+const NOT_WHILE_IMPERSONATING = new Set([REVOKE_OTHER_SESSIONS]);
+
+function notWhileImpersonating(): ProblemError {
+  return new ProblemError(403, 'impersonating', 'Not while impersonating: the account is the user’s own');
+}
 
 /** Hop-by-hop and recomputed headers, and ours, which only this file sets. */
 const NOT_FORWARDED = new Set(['host', 'connection', 'keep-alive', 'content-length', 'transfer-encoding', 'upgrade', 'expect', CLIENT_IP_HEADER]);
@@ -129,12 +138,14 @@ export function identityRoutes(app: FastifyInstance, deps: IdentityRoutesDeps): 
           }
         }
         const fetchRequest = toFetchRequest(request, deps);
-        // The end of an impersonation goes to the log, like its start (design-accounts.md).
-        const ending = path === STOP_IMPERSONATING ? await deps.identity.userOf(fetchRequest.headers) : null;
+        const asker =
+          path === STOP_IMPERSONATING || NOT_WHILE_IMPERSONATING.has(path) ? await deps.identity.userOf(fetchRequest.headers) : null;
+        if (asker?.impersonatedBy && NOT_WHILE_IMPERSONATING.has(path)) throw notWhileImpersonating();
         const response = await deps.identity.handle(fetchRequest);
-        if (ending?.impersonatedBy && response.status === 200) {
+        // The end of an impersonation goes to the log, like its start (design-accounts.md).
+        if (path === STOP_IMPERSONATING && asker?.impersonatedBy && response.status === 200) {
           request.log.info(
-            { impersonation: { by: ending.impersonatedBy, as: ending.userId, username: ending.username } },
+            { impersonation: { by: asker.impersonatedBy, as: asker.userId, username: asker.username } },
             'impersonation ended',
           );
         }
@@ -142,4 +153,36 @@ export function identityRoutes(app: FastifyInstance, deps: IdentityRoutesDeps): 
       },
     });
   }
+}
+
+const changePasswordSchema = {
+  body: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['currentPassword', 'newPassword'],
+    // Generous bounds: the rules (passwordProblem) give the reasons.
+    properties: {
+      currentPassword: { type: 'string', minLength: 1, maxLength: 512 },
+      newPassword: { type: 'string', minLength: 1, maxLength: 512 },
+    },
+  },
+} as const;
+
+interface ChangePasswordBody {
+  currentPassword: string;
+  newPassword: string;
+}
+
+/**
+ * The signed-in user's own account (design-accounts.md, "Web: /<username>/settings"): a new
+ * password, giving the current one (204; the session in use stays, the others close). Never while
+ * an administrator acts as the user. Signing out of the other devices is Better Auth's own
+ * `/api/auth/revoke-other-sessions`, forwarded above.
+ */
+export function accountRoutes(app: FastifyInstance, deps: { identity: Identity }): void {
+  app.post<{ Body: ChangePasswordBody }>('/api/account/password', { schema: changePasswordSchema }, async (req, reply) => {
+    if (req.user?.impersonatedBy) throw notWhileImpersonating();
+    await deps.identity.changeOwnPassword(toHeaders(req.headers), req.body.currentPassword, req.body.newPassword);
+    return reply.code(204).send();
+  });
 }

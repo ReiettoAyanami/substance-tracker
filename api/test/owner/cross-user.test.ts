@@ -115,6 +115,8 @@ const CASES: Record<string, Case[]> = {
   // Settings
   'GET /api/settings': [own((b) => b.get('/api/settings'))],
   'PATCH /api/settings': [own((b) => b.patch('/api/settings', { currency: 'USD' }))],
+  // B's own account (a wrong current password: nothing changes for the next cases)
+  'POST /api/account/password': [own((b) => b.post('/api/account/password', { currentPassword: 'not-mine-0000!', newPassword: 'Taken-pass-00001' }))],
   // Admin: B is no administrator
   'GET /api/admin/users': [hidden((b) => b.get('/api/admin/users'))],
   'POST /api/admin/users': [hidden((b) => b.post('/api/admin/users', { username: 'b-made', email: 'b@dev.invalid', password: 'B-made-pass-0001', role: 'admin' }))],

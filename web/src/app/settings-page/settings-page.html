@@ -65,6 +65,9 @@
     <p class="message">…</p>
   }
 
+  <!-- The user's own password and sessions: apart from the settings of the tracking. -->
+  <app-account-settings />
+
   <!-- A choice of this browser, not a setting of the API: outside the form, applied at once. -->
   <section class="display" aria-label="Display">
     <mat-slide-toggle [checked]="appearance.reduceTransparency()" (change)="appearance.setReduceTransparency($event.checked)">
