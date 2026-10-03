@@ -179,16 +179,28 @@ describe('App', () => {
     expect(document.activeElement?.textContent).toContain('Metrics');
   });
 
-  it('/admin: the admin view in the app for an administrator; for a user, the 404 page', async () => {
-    const app = await start('/admin');
-    expect(app.router.url).toBe('/admin');
+  it('/<username>/admin: the admin view in the app for an administrator; for a user, the 404 page', async () => {
+    const app = await start('/lenzi/admin');
+    expect(app.router.url).toBe('/lenzi/admin');
     expect(app.title()).toBe('Admin');
     expect(app.element.querySelector('app-admin-page')).not.toBeNull();
+    // /admin is no page of its own any more: the start page of a user called admin, not lenzi's
+    await app.go('/admin');
+    expect(app.element.querySelector('app-admin-page')).toBeNull();
+    expect(app.element.querySelector('app-not-found-page')).not.toBeNull();
     TestBed.resetTestingModule();
 
-    const user = await start('/admin', { id: 2, username: 'friend', role: 'user', impersonatedBy: null });
-    expect(user.router.url).toBe('/admin');
+    const user = await start('/friend/admin', { id: 2, username: 'friend', role: 'user', impersonatedBy: null });
+    expect(user.router.url).toBe('/friend/admin');
     expect(user.element.querySelector('app-not-found-page')).not.toBeNull();
+  });
+
+  it('"admin" is a username like any other (lenzi, 2026-10-03): /admin is its start page, /admin/admin its admin view', async () => {
+    const app = await start('/admin', { id: 1, username: 'admin', role: 'admin', impersonatedBy: null });
+    expect(app.element.querySelector('app-consumptions-page')).not.toBeNull();
+
+    await app.go('/admin/admin');
+    expect(app.element.querySelector('app-admin-page')).not.toBeNull();
   });
 
   it('an administrator acting as a user: the "Viewing as" bar above the top bar, no admin view', async () => {
@@ -197,7 +209,7 @@ describe('App', () => {
     expect(app.element.querySelector('app-viewing-as-bar')?.textContent).toContain('Viewing as friend');
     const bar = app.element.querySelector('app-viewing-as-bar')!;
     expect(bar.compareDocumentPosition(app.element.querySelector('mat-toolbar')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    await app.go('/admin');
+    await app.go('/friend/admin');
     expect(app.element.querySelector('app-not-found-page')).not.toBeNull();
   });
 

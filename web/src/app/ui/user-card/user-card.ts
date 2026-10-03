@@ -10,7 +10,7 @@ import { LOCALE } from '../../locale';
 const CREATED = new Intl.DateTimeFormat(LOCALE, { day: 'numeric', month: 'short', year: 'numeric' });
 
 /**
- * One user in the admin view (design-accounts.md, "Web: /admin"): username, email, role, created,
+ * One user in the admin view (design-accounts.md, "Web: /<username>/admin"): username, email, role, created,
  * status. Its ⋮ menu asks the page to edit, impersonate or delete the user; the signed-in
  * administrator's own card has no menu (an administrator never acts on itself) and says "You".
  */

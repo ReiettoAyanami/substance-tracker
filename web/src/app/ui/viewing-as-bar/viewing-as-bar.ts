@@ -38,7 +38,8 @@ export class ViewingAsBar {
       return;
     }
     await this.session.reload();
-    await this.router.navigateByUrl('/admin');
+    // Back to the admin view, under the administrator's own username.
+    await this.router.navigateByUrl(this.session.path('/admin'));
     this.leaving.set(false);
   }
 }

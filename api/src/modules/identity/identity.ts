@@ -51,8 +51,13 @@ export interface UserChanges {
   blocked?: boolean;
 }
 
-/** Top-level paths of the app and the server: a user called `admin` would hide the admin panel. */
-export const RESERVED_USERNAMES: readonly string[] = ['login', 'admin', 'api', 'download', 'assets', 'media', 'setup'];
+/**
+ * Top-level paths of the app and the server: a user called `login` would hide the sign-in page.
+ * `admin` is not one: the admin panel lives under the administrator's own username,
+ * `/<username>/admin`, and "admin" is the compose files' default first administrator (lenzi,
+ * 2026-10-03).
+ */
+export const RESERVED_USERNAMES: readonly string[] = ['login', 'api', 'download', 'assets', 'media', 'setup'];
 
 /** What is wrong with a username, or null. It is compared lowercase and never changes. */
 export function usernameProblem(username: string): string | null {

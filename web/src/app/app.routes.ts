@@ -23,13 +23,6 @@ export const routes: Routes = [
   },
   // The bare address: one's own pages, or the sign-in page.
   { path: '', pathMatch: 'full', canActivate: [homeGuard], children: [] },
-  // The admin view (design-accounts.md, "Web: /admin"); `admin` is a reserved word, never a username.
-  {
-    path: 'admin',
-    canMatch: [adminGuard],
-    loadComponent: () => import('./admin-page/admin-page').then((m) => m.AdminPage),
-    title: 'Admin',
-  },
   // A user's pages live under their username (design-accounts.md, "Web: /<username>/"); another
   // username does not match and lands on the 404 page below, like any address that does not exist.
   {
@@ -79,6 +72,15 @@ export const routes: Routes = [
         path: 'settings',
         loadComponent: () => import('./settings-page/settings-page').then((m) => m.SettingsPage),
         title: 'Settings',
+      },
+      // The admin view (design-accounts.md, "Web: /<username>/admin"): under the administrator's own
+      // username, so that `admin` is a username like any other (lenzi, 2026-10-03: the first
+      // administrator is "admin" by default). A user, or an impersonation, gets the 404 page below.
+      {
+        path: 'admin',
+        canMatch: [adminGuard],
+        loadComponent: () => import('./admin-page/admin-page').then((m) => m.AdminPage),
+        title: 'Admin',
       },
       { path: '**', ...notFound },
     ],

@@ -34,7 +34,7 @@ describe('AdminPage', () => {
       imports: [AdminPage],
       providers: [
         provideRouter([
-          { path: 'admin', component: Blank },
+          { path: 'lenzi/admin', component: Blank },
           { path: 'friend', component: Blank },
         ]),
         { provide: AuthApi, useValue: { getSession: () => of(session) } },
@@ -53,7 +53,7 @@ describe('AdminPage', () => {
       ],
     });
     await TestBed.inject(Session).load();
-    await TestBed.inject(Router).navigateByUrl('/admin');
+    await TestBed.inject(Router).navigateByUrl('/lenzi/admin');
     const fixture = TestBed.createComponent(AdminPage);
     await fixture.whenStable();
     const cards = () => fixture.debugElement.queryAll(By.directive(UserCard)).map((d) => d.componentInstance as UserCard);
@@ -137,6 +137,6 @@ describe('AdminPage', () => {
     page.cards()[0]!.impersonate.emit();
 
     await vi.waitFor(() => expect(snacks).toEqual(['Could not impersonate friend: A blocked user cannot be impersonated: unblock it first']));
-    expect(TestBed.inject(Router).url).toBe('/admin');
+    expect(TestBed.inject(Router).url).toBe('/lenzi/admin');
   });
 });

@@ -47,8 +47,14 @@ describe('createUser', () => {
     expect(await problemOf(bad('main.js'))).toMatchObject({ status: 400, field: 'username' });
     expect(await problemOf(bad('ab'))).toMatchObject({ status: 400, field: 'username' });
     expect(await problemOf(bad('a'.repeat(31)))).toMatchObject({ status: 400, field: 'username' });
-    expect(await problemOf(bad('admin'))).toMatchObject({ status: 400, field: 'username' });
+    expect(await problemOf(bad('api'))).toMatchObject({ status: 400, field: 'username' });
     expect(await problemOf(bad('Login'))).toMatchObject({ status: 400, field: 'username' });
+  });
+
+  it('takes "admin": the admin panel lives under the administrator’s own username (lenzi, 2026-10-03)', async () => {
+    await app.identity.createUser({ username: 'admin', email: 'admin@dev.invalid', password: 'Admin-pass-0001!', role: 'admin' });
+    expect(await rawRows('SELECT username, role FROM users')).toEqual([{ username: 'admin', role: 'admin' }]);
+    expect((await signIn(app, 'admin', 'Admin-pass-0001!')).status).toBe(200);
   });
 
   it('refuses a password that breaks the rules', async () => {

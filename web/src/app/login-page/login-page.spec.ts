@@ -35,6 +35,7 @@ describe('LoginPage', () => {
           { path: 'lenzi', component: Blank },
           { path: 'lenzi/metrics', component: Blank },
           { path: 'other/metrics', component: Blank },
+          { path: 'lenzi/admin', component: Blank },
           { path: 'admin', component: Blank },
         ]),
         { provide: AuthApi, useValue: { getSession: () => of(session), signIn } },
@@ -165,16 +166,17 @@ describe('LoginPage', () => {
     expect(TestBed.inject(Router).url).toBe('/lenzi/metrics?per=week');
   });
 
-  it('an administrator goes back to the admin view too', async () => {
-    const page = await open('/login?next=%2Fadmin');
+  it('an administrator goes back to the admin view too: one of its own pages (/<username>/admin)', async () => {
+    const page = await open('/login?next=%2Flenzi%2Fadmin');
     page.type('username', 'lenzi');
     page.type('password', 'Lenzi-pass-0001');
     await page.submit();
 
-    expect(TestBed.inject(Router).url).toBe('/admin');
+    expect(TestBed.inject(Router).url).toBe('/lenzi/admin');
   });
 
-  it.each(['/other/metrics', '/lenzix', 'https://example.com/lenzi', '//example.com/lenzi'])(
+  // /admin: since 2026-10-03 the start page of a user called admin, no more the admin view
+  it.each(['/other/metrics', '/lenzix', '/admin', 'https://example.com/lenzi', '//example.com/lenzi'])(
     'never goes to a page that is not the user’s own (next=%s)',
     async (next) => {
       const page = await open(`/login?next=${encodeURIComponent(next)}`);

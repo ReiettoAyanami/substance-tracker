@@ -15,7 +15,7 @@ import { AddButton } from '../ui/add-button/add-button';
 import { UserCard } from '../ui/user-card/user-card';
 
 /**
- * The admin view (design-accounts.md, "Web: /admin"): one card per user, the "+" to create one, and
+ * The admin view (design-accounts.md, "Web: /<username>/admin"): one card per user, the "+" to create one, and
  * each card's ⋮ menu to edit, impersonate or delete. The forms and dialogs do their own requests;
  * the list is asked again after each change. Impersonating opens the user's pages in this browser
  * (the "Viewing as" bar brings the administrator back here).

@@ -22,7 +22,7 @@ describe('ViewingAsBar', () => {
       imports: [ViewingAsBar],
       providers: [
         provideRouter([
-          { path: 'admin', component: Blank },
+          { path: 'lenzi/admin', component: Blank },
           { path: 'login', component: Blank },
           { path: 'friend', component: Blank },
         ]),
@@ -54,7 +54,7 @@ describe('ViewingAsBar', () => {
     const element = await render();
     element.querySelector<HTMLButtonElement>('button')!.click();
 
-    await vi.waitFor(() => expect(TestBed.inject(Router).url).toBe('/admin'));
+    await vi.waitFor(() => expect(TestBed.inject(Router).url).toBe('/lenzi/admin'));
     expect(TestBed.inject(Session).user()).toEqual(lenzi);
   });
 

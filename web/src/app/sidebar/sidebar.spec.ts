@@ -177,7 +177,7 @@ describe('Sidebar', () => {
       Array.from(element.querySelectorAll('mat-nav-list')[1]!.querySelectorAll('[matListItemTitle]')).map((t) => t.textContent?.trim());
 
     expect(bottomTitles()).toEqual(['Admin', 'Sign out', 'Settings']);
-    expect(element.querySelectorAll('mat-nav-list')[1]!.querySelector('a')?.getAttribute('href')).toBe('/admin');
+    expect(element.querySelectorAll('mat-nav-list')[1]!.querySelector('a')?.getAttribute('href')).toBe('/lenzi/admin');
 
     // while impersonating, never: the admin view is not for the user being viewed
     auth.getSession = () => of({ id: 1, username: 'lenzi', role: 'admin', impersonatedBy: 3 });

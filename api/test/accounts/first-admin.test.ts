@@ -90,12 +90,21 @@ describe('the first administrator', () => {
   });
 
   it('a username that cannot be one (a reserved word, the wrong letters): none is created, the log says which rule', async () => {
-    expect(await ensure({ username: 'admin' })).toBe('failed');
-    expect(logs.join('')).toContain('The first administrator \\"admin\\" could not be created: \\"admin\\" is a reserved word');
+    expect(await ensure({ username: 'login' })).toBe('failed');
+    expect(logs.join('')).toContain('The first administrator \\"login\\" could not be created: \\"login\\" is a reserved word');
     logs.length = 0;
     expect(await ensure({ username: 'Lenzi.Admin' })).toBe('failed');
     expect(logs.join('')).toContain('can only have lowercase letters, digits, - and _');
     expect(await rawRows('SELECT id FROM users')).toEqual([]);
+  });
+
+  it('"admin", the default of the compose files (lenzi, 2026-10-03), is a username like any other', async () => {
+    const file = join(dir, 'admin.txt');
+    expect(await ensure({ username: 'admin', email: 'admin@example.invalid', passwordFile: file })).toBe('created');
+
+    const password = /^password: (.+)$/m.exec(await readFile(file, 'utf8'))?.[1] ?? '';
+    expect((await signIn(app, 'admin', password)).status).toBe(200);
+    expect(await rawRows('SELECT username, role FROM users')).toEqual([{ username: 'admin', role: 'admin' }]);
   });
 
   it('when the file cannot be written: the administrator stays, the log says how to give it a password', async () => {

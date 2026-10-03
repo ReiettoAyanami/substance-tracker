@@ -25,7 +25,7 @@ function messageFor(errors: ValidationErrors | null): string | null {
 }
 
 /**
- * The user form (design-accounts.md, "Web: /admin": "one form for create and edit"): it creates a
+ * The user form (design-accounts.md, "Web: /<username>/admin": "one form for create and edit"): it creates a
  * user (username, email, role, starting password typed or generated), or changes the one it is given
  * (email, role, a new password, blocked); the username never changes. The rules of usernames and
  * passwords are the API's: their reasons come back under their field. It says `saved` with the user

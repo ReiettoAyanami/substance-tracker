@@ -48,9 +48,10 @@ services:
       AUTH_SECRET: ${AUTH_SECRET:?AUTH_SECRET must be set in .env - openssl rand -base64 32}
       CLIENT_IP_HEADER: ${CLIENT_IP_HEADER:-}
       # The first administrator: created at the first start, its password written to
-      # to_delete.password.txt next to this file (delete it after reading). The username is
-      # permanent: it is the address of the administrator's pages.
-      ADMIN_USERNAME: ${ADMIN_USERNAME:?ADMIN_USERNAME must be set in .env - the first administrator, permanent}
+      # to_delete.password.txt next to this file (delete it after reading). admin unless .env says
+      # otherwise (lenzi, 2026-10-03). The username is permanent: it is the address of the
+      # administrator's pages (/admin, its admin panel /admin/admin).
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.invalid}
       FIRST_ADMIN_PASSWORD_FILE: /project/to_delete.password.txt
       # WEB_DIST=/app/public is set in the Dockerfile.

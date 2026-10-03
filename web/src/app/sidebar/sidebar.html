@@ -24,11 +24,11 @@
 
   <!-- At the bottom, apart from the pages. -->
   <mat-nav-list class="bottom">
-    <!-- The admin view: administrators acting as themselves only (design-accounts.md, "Web: /admin"). -->
+    <!-- The admin view: administrators acting as themselves only (design-accounts.md, "Web: /<username>/admin"). -->
     @if (session.canAdminister()) {
       <a
         mat-list-item
-        routerLink="/admin"
+        [routerLink]="session.path('/admin')"
         routerLinkActive
         #admin="routerLinkActive"
         [activated]="admin.isActive"

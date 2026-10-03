@@ -39,7 +39,7 @@ Note:
   `docker compose -f compose.dev.yaml exec db bash /docker-entrypoint-initdb.d/01-test-db.sh`
 - `docker compose -f compose.dev.yaml down -v` cancella anche il database di sviluppo e i `node_modules`: usalo solo se vuoi ripartire da zero.
 - In dev Angular chiama l'API con percorsi relativi (`/api/...`): `ng serve` li inoltra al servizio `api` tramite `web/proxy.conf.json`. Quindi anche `http://localhost:4200/api/health` risponde.
-- Utenti: ogni pagina e ogni chiamata a `/api` vuole un utente collegato. Quando il database non ha ancora un amministratore, l'API lo crea all'avvio: `lenzi` (`ADMIN_USERNAME`, `ADMIN_EMAIL` per cambiarli), con una password generata scritta in `to_delete.password.txt` nella root del progetto (ignorato da git). Accedi, poi cancella il file.
+- Utenti: ogni pagina e ogni chiamata a `/api` vuole un utente collegato. Quando il database non ha ancora un amministratore, l'API lo crea all'avvio: `admin` (`ADMIN_USERNAME`, `ADMIN_EMAIL` per cambiarli; il pannello di amministrazione è in `/<username>/admin`, quindi `/admin/admin`), con una password generata scritta in `to_delete.password.txt` nella root del progetto (ignorato da git). Accedi, poi cancella il file.
 
 ### Database demo
 
@@ -61,7 +61,7 @@ bash db/demo/reset-demo.sh --db substance_tracker_demo_prova
 ```
 
 - Lo script fa `DROP DATABASE` del database demo a ogni esecuzione. Non tocca mai `substance_tracker` né `substance_tracker_test` (accetta solo nomi che cominciano con `substance_tracker_demo`): se l'API non punta a quel database si ferma senza fare nulla.
-- Gli utenti: all'avvio sul database nuovo l'API crea l'amministratore `lenzi` e scrive la sua password in `to_delete.password.txt` (riscritto a ogni reset); lo script crea poi `test-user` (password `Test-user-pass-1`), che ha tutti i dati qui sotto, e `other-user` (`Other-user-pass-1`) con due sostanze sue, per provare insieme l'accesso, l'isolamento (le cose dell'altro non esistono) e l'impersonazione. Password demo, solo sviluppo: un'istanza di produzione non ha utenti demo né dati.
+- Gli utenti: all'avvio sul database nuovo l'API crea l'amministratore (`admin`, o `ADMIN_USERNAME`) e scrive la sua password in `to_delete.password.txt` (riscritto a ogni reset); lo script crea poi `test-user` (password `Test-user-pass-1`), che ha tutti i dati qui sotto, e `other-user` (`Other-user-pass-1`) con due sostanze sue, per provare insieme l'accesso, l'isolamento (le cose dell'altro non esistono) e l'impersonazione. Password demo, solo sviluppo: un'istanza di produzione non ha utenti demo né dati.
 - Lanciato due volte dà gli stessi dati con gli stessi id: le date sono fisse e il database è nuovo. Cambiano solo i timbri di registrazione (`createdAt`, `deactivatedAt`, `archivedAt`).
 - I dati di `test-user` sono in `db/demo/fill-demo.mjs`: 7 sostanze, una per ogni caso da vedere sulla card (molti lotti, segmenti minuscoli, ultimo lotto finito, decimali, scorta 0 con consumi one-time, nessun lotto, nome e prezzo enormi, sostanza archiviata). In fondo, i consumi per la pagina consumi (43 in tutto): oltre 20 per le Sigarette (quattro pacchetti a luglio, finiti), una one-time a 0 €, un consumo annullato, qualche nota.
 - Per tornare al database di sviluppo: togli `API_DB_NAME` dal `.env` e `docker compose -f compose.dev.yaml up -d api`.
@@ -86,7 +86,8 @@ Lo schema vive in `api/migrations/` (`001_init.sql`, `002_…`). L'API applica a
 
 ```sh
 # 1. .env con segreti veri (password lunghe, solo lettere e numeri), l'indirizzo dell'istanza
-#    (APP_URL), il segreto delle sessioni (AUTH_SECRET) e il primo amministratore (ADMIN_USERNAME).
+#    (APP_URL), il segreto delle sessioni (AUTH_SECRET); il primo amministratore è `admin`
+#    se ADMIN_USERNAME non dice altro.
 #    Senza uno di questi compose si rifiuta di partire.
 cp .env.example .env    # poi modifica .env
 
@@ -112,11 +113,11 @@ L'app risponde su `http://localhost:8080` (`APP_PORT`), e si apre da `APP_URL`: 
 
 ### Primo avvio: l'amministratore
 
-Al primo avvio, quando il database non ha amministratori, l'API crea `ADMIN_USERNAME` (permanente: è l'indirizzo delle sue pagine) con l'email `ADMIN_EMAIL` e una password generata, scritta in `to_delete.password.txt` accanto a `compose.prod.yaml`. Accedi con quelle credenziali, poi cancella il file: la password si cambia da Settings. Il log (`docker compose -f compose.prod.yaml logs app`) dice dove l'ha scritta, mai la password.
+Al primo avvio, quando il database non ha amministratori, l'API crea `ADMIN_USERNAME` (`admin` se non è impostato; permanente: è l'indirizzo delle sue pagine, e il suo pannello di amministrazione è `/<username>/admin`) con l'email `ADMIN_EMAIL` e una password generata, scritta in `to_delete.password.txt` accanto a `compose.prod.yaml`. Accedi con quelle credenziali, poi cancella il file: la password si cambia da Settings. Il log (`docker compose -f compose.prod.yaml logs app`) dice dove l'ha scritta, mai la password.
 
 Se il file non si può scrivere (su Linux la cartella deve essere scrivibile dall'utente 1000 del container), l'amministratore c'è comunque e il log lo dice: gli si dà una password con `docker compose -f compose.prod.yaml exec app node dist/cli.js reset-password <username>`, che la stampa una volta sola.
 
-Se l'amministratore non si può creare (per esempio `ADMIN_USERNAME=admin`: è una parola riservata, come `login` e `api`; uno username ha 3-30 caratteri fra lettere minuscole, cifre, `-` e `_`), l'app non parte: il log dice perché, si corregge il `.env` e al riavvio riprova.
+Se l'amministratore non si può creare (per esempio `ADMIN_USERNAME=login`: è una parola riservata, come `api`; uno username ha 3-30 caratteri fra lettere minuscole, cifre, `-` e `_`), l'app non parte: il log dice perché, si corregge il `.env` e al riavvio riprova.
 
 ### Rilasci e aggiornamenti
 

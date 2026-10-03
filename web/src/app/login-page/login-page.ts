@@ -78,7 +78,8 @@ export class LoginPage {
       const home = this.session.path();
       const next = this.route.snapshot.queryParamMap.get('next');
       const under = (root: string) => next !== null && (next === root || next.startsWith(`${root}/`) || next.startsWith(`${root}?`));
-      const own = under(home) || (this.session.canAdminister() && under('/admin'));
+      // The admin view is one of the user's own pages too (/<username>/admin).
+      const own = under(home);
       await this.router.navigateByUrl(own && next ? next : home, { replaceUrl: true });
     } catch (error) {
       this.error.set(messageOf(error));

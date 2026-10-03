@@ -127,7 +127,7 @@ describe('creating a user', () => {
     const fieldOf = (res: Res) => res.body.errors.map((e: { field: string }) => e.field);
 
     for (const [change, field] of [
-      [{ username: 'admin' }, 'username'], // a reserved word
+      [{ username: 'login' }, 'username'], // a reserved word
       [{ username: 'a.b' }, 'username'],
       [{ email: 'not-an-email' }, 'email'],
       [{ password: 'Short-1!' }, 'password'],

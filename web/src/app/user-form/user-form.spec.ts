@@ -115,7 +115,7 @@ describe('UserForm', () => {
     });
 
     it("the API's reasons go under their fields", async () => {
-      await type('username', 'admin');
+      await type('username', 'login');
       await type('email', 'taken@dev.invalid');
       await type('password', 'weak');
       await save();
@@ -124,14 +124,14 @@ describe('UserForm', () => {
           type: 'urn:substance-tracker:problem:validation',
           title: 'Bad Request',
           status: 400,
-          detail: '"admin" is a reserved word',
-          errors: [{ field: 'username', message: '"admin" is a reserved word' }],
+          detail: '"login" is a reserved word',
+          errors: [{ field: 'username', message: '"login" is a reserved word' }],
         },
         { status: 400, statusText: 'Bad Request' },
       );
       await fixture.whenStable();
 
-      expect(errorUnder('username')).toBe('"admin" is a reserved word');
+      expect(errorUnder('username')).toBe('"login" is a reserved word');
       expect(element().querySelector('.form-error')).toBeNull();
       expect(said).toEqual([]);
     });

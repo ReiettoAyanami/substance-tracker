@@ -10,7 +10,7 @@
 # then `docker compose -f compose.dev.yaml up -d api`): otherwise the script stops before doing
 # anything, so it can never touch substance_tracker or the test database.
 # Users (design-accounts.md, "Demo"): at its start on the new database the API creates the
-# administrator (ADMIN_USERNAME, lenzi in dev) and writes its password to to_delete.password.txt at
+# administrator (ADMIN_USERNAME, admin in dev unless .env says otherwise) and writes its password to to_delete.password.txt at
 # the project root; the fill then creates test-user, with all of the demo data, and other-user,
 # with a little of its own (demo passwords, printed at the end).
 # A fresh database and fixed dates: running it twice gives the same data, with the same ids.
