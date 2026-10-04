@@ -4,6 +4,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { signal } from '@angular/core';
 
 import { RUNS_IN_APP } from '../connection/address';
+import { Compatibility } from '../connection/compatibility';
 import { ServerAddress } from '../connection/server-address';
 import { errorInterceptor } from '../data/error-interceptor';
 import { Session } from '../session/session';
@@ -32,6 +33,7 @@ const REF = (n: number) => `00000000-0000-4000-8000-00000000000${n}`;
 const shown = { substanceId: 2, substanceName: 'Sigarette', unit: 'sigaretta', batchName: 'Pack A' };
 
 describe('Queue', () => {
+  const blocked = signal(false);
   let queue: Queue;
   let backend: HttpTestingController;
   let phone: MemoryQueue;
@@ -40,11 +42,13 @@ describe('Queue', () => {
   function setUp(inApp = true): void {
     phone = new MemoryQueue();
     user.set({ id: 7 });
+    blocked.set(false);
     TestBed.configureTestingModule({
       providers: [
         { provide: RUNS_IN_APP, useValue: inApp },
         { provide: QUEUE_BACKEND, useValue: phone },
         { provide: Session, useValue: { user } },
+        { provide: Compatibility, useValue: { blocked } },
         provideHttpClient(withInterceptors([errorInterceptor])),
         provideHttpClientTesting(),
       ],
@@ -150,6 +154,22 @@ describe('Queue', () => {
     backend.match('/api/batches/8/consumptions').forEach((req) => req.error(new ProgressEvent('error')));
     await queue.wipe();
     expect(phone.map.size).toBe(0);
+  });
+
+  it('while app and server differ in API level, nothing is sent; once they agree, the queue goes', async () => {
+    setUp();
+    blocked.set(true);
+    TestBed.tick();
+    await settle();
+    await record(1);
+    await settle();
+    backend.expectNone('/api/batches/8/consumptions');
+    blocked.set(false);
+    TestBed.tick();
+    await settle();
+    backend.expectOne('/api/batches/8/consumptions').flush({ id: 92 }, { status: 201, statusText: 'Created' });
+    await settle();
+    expect(queue.items()).toEqual([]);
   });
 
   it('the website has no queue', async () => {

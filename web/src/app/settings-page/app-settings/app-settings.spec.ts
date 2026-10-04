@@ -1,3 +1,4 @@
+import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
@@ -7,6 +8,7 @@ import { Observable } from 'rxjs';
 
 import { APP_VERSION } from '../../app-version';
 import { RUNS_IN_APP } from '../../connection/address';
+import { Compatibility } from '../../connection/compatibility';
 import { ServerAddress } from '../../connection/server-address';
 import { errorInterceptor } from '../../data/error-interceptor';
 import { HistoryDialogs } from '../../history-dialogs';
@@ -14,6 +16,7 @@ import { Session } from '../../session/session';
 import { AppSettings } from './app-settings';
 
 describe('AppSettings', () => {
+  const blocked = signal(false);
   let fixture: ComponentFixture<AppSettings>;
   let backend: HttpTestingController;
   let server: ServerAddress;
@@ -28,6 +31,7 @@ describe('AppSettings', () => {
       imports: [AppSettings],
       providers: [
         { provide: RUNS_IN_APP, useValue: true },
+        { provide: Compatibility, useValue: { blocked } },
         provideHttpClient(withInterceptors([errorInterceptor])),
         provideHttpClientTesting(),
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },

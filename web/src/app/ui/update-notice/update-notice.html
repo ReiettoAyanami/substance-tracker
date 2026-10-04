@@ -1,0 +1,36 @@
+@switch (standing()) {
+  @case ('newer-version') {
+    <div class="bar" role="status">
+      <mat-icon class="icon">system_update</mat-icon>
+      <span class="text">A new version of the app is available</span>
+      <a mat-button class="get" [href]="download()" target="_blank" rel="noopener">Download</a>
+    </div>
+  }
+  @case ('app-older') {
+    <div class="screen" role="alertdialog" aria-labelledby="update-title">
+      <div class="card">
+        <mat-icon class="big">system_update</mat-icon>
+        <h1 class="title" id="update-title">Update required</h1>
+        <p class="text">
+          This app ({{ appVersion }}) is older than your server ({{ serverVersion() }}) and cannot work with it. Download
+          the new version and install it over this one: what the app keeps stays, and it sends what is waiting.
+        </p>
+        <a mat-flat-button class="get" [href]="download()" target="_blank" rel="noopener">Download the update</a>
+      </div>
+    </div>
+  }
+  @case ('server-older') {
+    <div class="screen" role="alertdialog" aria-labelledby="update-title">
+      <div class="card">
+        <mat-icon class="big">dns</mat-icon>
+        <h1 class="title" id="update-title">Your server is older</h1>
+        <p class="text">
+          This app ({{ appVersion }}) is newer than your server ({{ serverVersion() }}) and cannot work with it. Ask whoever
+          runs the server to update it, or install the server's own app from its download page, after uninstalling this one
+          (what this app keeps on the phone is lost).
+        </p>
+        <a mat-stroked-button class="get" [href]="download()" target="_blank" rel="noopener">The server's download page</a>
+      </div>
+    </div>
+  }
+}

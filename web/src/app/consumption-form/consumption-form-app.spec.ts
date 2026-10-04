@@ -5,6 +5,7 @@ import { signal } from '@angular/core';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
 
 import { RUNS_IN_APP } from '../connection/address';
+import { Compatibility } from '../connection/compatibility';
 import { Connectivity } from '../connection/connectivity';
 import { ServerAddress } from '../connection/server-address';
 import { errorInterceptor } from '../data/error-interceptor';
@@ -44,6 +45,7 @@ const packs: SubstanceBatches = {
 
 /** The consumption form in the Android app (design-android.md, "queue (Pending)"). */
 describe('ConsumptionForm in the Android app', () => {
+  const blocked = signal(false);
   let fixture: ComponentFixture<ConsumptionForm>;
   let backend: HttpTestingController;
   let phone: MemoryQueue;
@@ -67,6 +69,7 @@ describe('ConsumptionForm in the Android app', () => {
       imports: [ConsumptionForm],
       providers: [
         { provide: RUNS_IN_APP, useValue: true },
+        { provide: Compatibility, useValue: { blocked } },
         { provide: QUEUE_BACKEND, useValue: phone },
         { provide: Session, useValue: { user: signal({ id: 7 }) } },
         provideHttpClient(withInterceptors([errorInterceptor])),

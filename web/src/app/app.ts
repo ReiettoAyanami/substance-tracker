@@ -14,6 +14,7 @@ import { Session } from './session/session';
 import { Sidebar } from './sidebar/sidebar';
 import { Appearance } from './ui/appearance';
 import { OfflineBar } from './ui/offline-bar/offline-bar';
+import { UpdateNotice } from './ui/update-notice/update-notice';
 import { VersionLabel } from './ui/version-label/version-label';
 import { ViewingAsBar } from './ui/viewing-as-bar/viewing-as-bar';
 
@@ -49,6 +50,7 @@ function routeIsBare(route: ActivatedRouteSnapshot): boolean {
     OfflineBar,
     RouterOutlet,
     Sidebar,
+    UpdateNotice,
     VersionLabel,
     ViewingAsBar,
   ],
@@ -79,6 +81,7 @@ export class App {
 
   /** The Android app without an answer from its server (design-android.md, "offline"). */
   protected readonly offline = inject(Connectivity).offline;
+  protected readonly inApp = inject(RUNS_IN_APP);
 
   /** An administrator is acting as this user (design-accounts.md, "impersonation"). */
   protected readonly impersonating = computed(() => (this.session.user()?.impersonatedBy ?? null) !== null);

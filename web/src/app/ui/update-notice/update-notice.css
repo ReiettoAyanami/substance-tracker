@@ -1,0 +1,74 @@
+/* The bar: under the top bar, like the offline bar. */
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-sizing: border-box;
+  min-height: 40px;
+  margin: 8px;
+  padding: 0 8px 0 16px;
+  border-radius: 16px;
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+  font: var(--mat-sys-body-medium);
+}
+
+.bar .text {
+  flex: 1;
+  min-width: 0;
+}
+
+.bar .get {
+  --mat-button-text-label-text-color: var(--mat-sys-on-secondary-container);
+}
+
+/* The screen: over everything, nothing behind it can be reached. */
+.screen {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  padding: 16px;
+  background: var(--mat-sys-surface);
+}
+
+.card {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 28px 24px;
+  border-radius: 28px;
+  text-align: center;
+  background: var(--mat-sys-surface-container-low);
+  border: var(--app-border) solid var(--mat-sys-outline-variant);
+}
+
+.big {
+  width: 48px;
+  height: 48px;
+  font-size: 48px;
+  color: var(--mat-sys-primary);
+}
+
+.title {
+  margin: 0;
+  font: var(--mat-sys-headline-small);
+  color: var(--mat-sys-on-surface);
+}
+
+.card .text {
+  margin: 0;
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.card .get {
+  margin-top: 8px;
+  height: 48px;
+}

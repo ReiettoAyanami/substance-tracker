@@ -3,6 +3,7 @@ import { App } from '@capacitor/app';
 import { Observable, firstValueFrom } from 'rxjs';
 
 import { RUNS_IN_APP } from '../connection/address';
+import { Compatibility } from '../connection/compatibility';
 import { Connectivity } from '../connection/connectivity';
 import { ServerAddress } from '../connection/server-address';
 import { ApiError, isUnreachable } from '../data/api-error';
@@ -61,6 +62,7 @@ export class Queue {
   private readonly session = inject(Session);
   private readonly ledger = inject(LedgerApi);
   private readonly connectivity = inject(Connectivity);
+  private readonly compatibility = inject(Compatibility);
   private readonly itemsState = signal<QueuedConsumption[]>([]);
   private readonly sentState = signal(0);
   private sending: Promise<void> | null = null;
@@ -77,6 +79,10 @@ export class Queue {
       this.session.user();
       this.server.address();
       untracked(() => void this.load().then(() => this.send()));
+    });
+    // The versions agree again (an update).
+    effect(() => {
+      if (!this.compatibility.blocked()) untracked(() => void this.send());
     });
     // The server answers again.
     let wasOffline = false;
@@ -133,6 +139,8 @@ export class Queue {
 
   private async run(): Promise<void> {
     await this.load();
+    // Another API level: nothing is sent until the app (or the server) is updated.
+    if (this.compatibility.blocked()) return;
     for (const item of this.itemsState().filter((queued) => queued.state === 'pending')) {
       // Only with its own user's session (another may have signed in meanwhile).
       if (this.session.user()?.id !== item.userId || this.server.address() !== item.server) return;
