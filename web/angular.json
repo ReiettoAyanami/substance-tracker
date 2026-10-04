@@ -24,7 +24,10 @@
                 "input": "public"
               }
             ],
-            "styles": ["src/material-theme.scss", "src/styles.css"]
+            "styles": [
+              "src/material-theme.scss",
+              "src/styles.css"
+            ]
           },
           "configurations": {
             "production": {
@@ -52,6 +55,25 @@
               "optimization": false,
               "extractLicenses": false,
               "sourceMap": true
+            },
+            "android": {
+              "outputPath": "dist/android",
+              "index": { "input": "src/index.android.html", "output": "index.html" },
+              "fileReplacements": [
+                {
+                  "replace": "src/app/platform.ts",
+                  "with": "src/app/platform.android.ts"
+                }
+              ],
+              "styles": [
+                "src/material-theme.scss",
+                "src/styles.css",
+                "node_modules/@fontsource/roboto-mono/400.css",
+                "node_modules/@fontsource/roboto-mono/400-italic.css",
+                "node_modules/@fontsource/roboto-mono/500.css",
+                "node_modules/@fontsource/roboto-mono/700.css",
+                "node_modules/material-icons/iconfont/filled.css"
+              ]
             }
           },
           "defaultConfiguration": "production"

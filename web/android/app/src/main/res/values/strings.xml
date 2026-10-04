@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Substance tracker</string>
+    <string name="title_activity_main">Substance tracker</string>
+    <string name="package_name">io.github.reiettoayanami.substancetracker</string>
+    <string name="custom_url_scheme">io.github.reiettoayanami.substancetracker</string>
+</resources>

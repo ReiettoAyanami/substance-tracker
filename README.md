@@ -66,6 +66,45 @@ bash db/demo/reset-demo.sh --db substance_tracker_demo_prova
 - I dati di `test-user` sono in `db/demo/fill-demo.mjs`: 7 sostanze, una per ogni caso da vedere sulla card (molti lotti, segmenti minuscoli, ultimo lotto finito, decimali, scorta 0 con consumi one-time, nessun lotto, nome e prezzo enormi, sostanza archiviata). In fondo, i consumi per la pagina consumi (43 in tutto): oltre 20 per le Sigarette (quattro pacchetti a luglio, finiti), una one-time a 0 €, un consumo annullato, qualche nota.
 - Per tornare al database di sviluppo: togli `API_DB_NAME` dal `.env` e `docker compose -f compose.dev.yaml up -d api`.
 
+### App Android (sviluppo)
+
+L'app Android è il sito impacchettato con Capacitor (`web/android`, `web/capacitor.config.ts`; design in `wiki/projects/substance-tracker/design-android.md` nel brain). Due app dallo stesso codice: **Substance tracker** (`io.github.reiettoayanami.substancetracker`, solo https, firmata dalla CI) e **Substance tracker dev** (`...substancetracker.dev`, chiave di prova, accetta http), che stanno insieme sullo stesso telefono. Si costruisce nel container Android (`tools/android/`), che parte solo su richiesta: su Windows non serve installare niente.
+
+```sh
+# 1. Il container Android (la prima volta costruisce l'immagine), poi l'SDK nel suo volume (~1 GB, una volta)
+docker compose -f compose.dev.yaml --profile android up -d android
+docker compose -f compose.dev.yaml exec android android.sh setup
+
+# 2. La build per l'app (font e icone dentro, la sua CSP, niente Admin) copiata nel progetto Android
+docker compose -f compose.dev.yaml exec web npx ng build --configuration production,android
+docker compose -f compose.dev.yaml exec web npx cap sync android
+#    ...oppure, per vedere subito le modifiche sul telefono, la versione che carica le pagine da ng serve
+docker compose -f compose.dev.yaml exec -e CAP_LIVE_RELOAD=http://localhost:4200 web npx cap sync android
+
+# 3. L'APK dell'app dev, installato sul telefono (o sull'emulatore) collegato, e aperto
+docker compose -f compose.dev.yaml exec android android.sh build
+docker compose -f compose.dev.yaml exec android android.sh install
+docker compose -f compose.dev.yaml exec android android.sh live    # solo con CAP_LIVE_RELOAD
+docker compose -f compose.dev.yaml exec android android.sh start
+
+# Un emulatore senza finestra, se il PC ha la virtualizzazione (KVM): la prima volta scarica Android 16 (~1,5 GB)
+docker compose -f compose.dev.yaml exec android android.sh emulator
+```
+
+**Collegare il telefono.** Docker su Windows non vede le porte USB, quindi `adb` arriva al telefono in un altro modo:
+
+- **Wi-Fi (consigliato, Android 11 o più):** telefono e PC sulla stessa rete → Opzioni sviluppatore → Debug wireless attivo → "Associa dispositivo con codice di accoppiamento". Poi, con l'indirizzo:porta e il codice che mostra (il codice vale circa un minuto):
+  `docker compose -f compose.dev.yaml exec android android.sh pair <ip:porta> <codice>`, e con l'indirizzo:porta della schermata "Debug wireless" (è un'altra porta):
+  `docker compose -f compose.dev.yaml exec android android.sh connect <ip:porta>`. Il comando mostra anche la versione di Android del telefono.
+- **Cavo USB:** scarica "SDK Platform-Tools" per Windows da developer.android.com (uno zip, basta scompattarlo), collega il telefono e accetta "Consentire il debug USB?"; nella cartella scompattata `adb devices` deve mostrarlo come `device`, poi `adb install web\android\app\build\outputs\apk\dev\debug\app-dev-debug.apk`.
+
+Note:
+
+- Con il live reload il telefono raggiunge `ng serve` attraverso adb (`android.sh live`: la porta 4200 del telefono porta al container, e da lì al servizio `web`), quindi niente firewall né indirizzi: la pagina è `http://localhost:4200`, l'unico nome che il dev server accetta.
+- Il live reload serve per l'aspetto delle pagine. Per tutto il resto si prova la build impacchettata (punto 2, senza `CAP_LIVE_RELOAD`), perché in live reload Capacitor si comporta diversamente: le chiamate con indirizzo relativo (`/api/...`) passano dalla WebView invece che dalle richieste native, e una richiesta nativa fallita torna come 200 con la pagina del dev server invece di un errore (prova del 2026-10-04).
+- L'APK dell'app dev è firmato con la chiave di debug del container, che sta nel volume `android-home`: resta la stessa tra una build e l'altra, quindi l'app si aggiorna senza disinstallarla. Se il volume viene cancellato, l'app dev va disinstallata una volta.
+- Requisiti dell'app: Android 7.0 o più (API 24, il minimo di Capacitor 8.5).
+
 ## Porte
 
 | Servizio | Host | Container | Note |

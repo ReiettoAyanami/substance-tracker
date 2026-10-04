@@ -87,7 +87,28 @@ services:
     ports:
       - "${WEB_HOST_PORT:-4200}:4200"
 
+  # The Android SDK container (tools/android/Dockerfile; design-android.md, "Dev tooling"), only on
+  # request: docker compose -f compose.dev.yaml --profile android up -d android
+  # It shares web/ and its node_modules (Capacitor's Android library lives there) with the web
+  # service; the SDK, Gradle's cache and ~/.android (adb keys, the dev app's debug key) stay in
+  # volumes, so the dev app keeps its key across rebuilds.
+  android:
+    profiles: ["android"]
+    build: ./tools/android
+    devices:
+      # The emulator, when this machine has hardware virtualisation (KVM).
+      - /dev/kvm
+    volumes:
+      - ./web:/app
+      - web-node-modules:/app/node_modules
+      - android-sdk:/opt/android-sdk
+      - android-gradle:/root/.gradle
+      - android-home:/root/.android
+
 volumes:
   db-data:
   api-node-modules:
   web-node-modules:
+  android-sdk:
+  android-gradle:
+  android-home:

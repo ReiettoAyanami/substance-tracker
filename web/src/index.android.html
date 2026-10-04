@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <!--
+      The Android app's own CSP (design-android.md, "bundled assets"): its pages come from inside the
+      APK and never receive the server's headers (api/src/shared/security-headers.ts). The website's
+      rules, without Google Fonts (the fonts are bundled) and without frame-ancestors, which a <meta>
+      cannot carry and the app does not need.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'"
+    />
+    <title>Substance tracker</title>
+    <base href="/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+  </head>
+  <body>
+    <app-root></app-root>
+  </body>
+</html>

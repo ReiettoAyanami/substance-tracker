@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The icon is a white square until lenzi draws one (lenzi, 2026-10-04). -->
+    <color name="ic_launcher_background">#FFFFFF</color>
+    <!-- The app's background (material-theme.scss), behind the launch screen. -->
+    <color name="app_background">#1F1F22</color>
+</resources>

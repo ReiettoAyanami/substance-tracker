@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!-- The dev app's name, next to the release app on the same phone. -->
+<resources>
+    <string name="app_name">Substance tracker dev</string>
+    <string name="title_activity_main">Substance tracker dev</string>
+</resources>

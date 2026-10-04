@@ -2,6 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
 import { AuthApi, type SessionUser } from '../data/auth-api';
+import { IS_APP } from '../platform';
 
 /**
  * Who is signed in (design-accounts.md, "session"): the server decides, this only remembers what it
@@ -20,11 +21,12 @@ export class Session {
 
   /**
    * The admin view is for an administrator acting as itself: not during an impersonation, even of
-   * another administrator (design-accounts.md, "impersonation").
+   * another administrator (design-accounts.md, "impersonation"), and never in the Android app, whose
+   * administration stays on the website (design-android.md, "app").
    */
   readonly canAdminister = computed(() => {
     const user = this.current();
-    return user?.role === 'admin' && user.impersonatedBy === null;
+    return !IS_APP && user?.role === 'admin' && user.impersonatedBy === null;
   });
 
   /**
