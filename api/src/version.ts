@@ -10,7 +10,7 @@
  * frontend number for an approved frontend change. The pages carry a copy of it and of API_LEVEL
  * (web/src/app/app-version.ts, for the Android app): the CI fails when the two differ.
  */
-export const VERSION = 'dev26.0.0';
+export const VERSION = 'a26.0.0';
 
 /**
  * The API level the Android app compares with its own (design-android.md, "compatibility"): a whole
