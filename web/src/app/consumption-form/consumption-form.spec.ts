@@ -7,10 +7,14 @@ import { MatCheckboxHarness } from '@angular/material/checkbox/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
 
 import { Consumption } from '../data/consumption';
+import { CLIENT_REF_FORMAT } from '../data/client-ref';
 import { errorInterceptor } from '../data/error-interceptor';
 import { Substance } from '../data/substance';
 import { Batch, SubstanceBatches } from '../data/substance-batches';
 import { ConsumptionForm } from './consumption-form';
+
+/** Any clientRef the form made (client-ref.ts). */
+const anyRef = expect.stringMatching(CLIENT_REF_FORMAT);
 
 const settings = { timezone: 'Europe/Rome', dayStartsAt: '00:00:00', currency: 'EUR' };
 
@@ -216,7 +220,7 @@ describe('ConsumptionForm', () => {
 
     const req = backend.expectOne('/api/batches/8/consumptions');
     expect(req.request.method).toBe('POST');
-    expect(req.request.body).toEqual({ quantity: '2.5', note: 'with coffee', occurredAt: '2026-09-05T18:15:00Z' });
+    expect(req.request.body).toEqual({ quantity: '2.5', note: 'with coffee', occurredAt: '2026-09-05T18:15:00Z', clientRef: anyRef });
     expect(said).toEqual([]);
 
     const record = { id: 77, batchId: 8 };
@@ -243,7 +247,7 @@ describe('ConsumptionForm', () => {
 
     const req = backend.expectOne('/api/substances/2/one-time-consumptions');
     expect(req.request.method).toBe('POST');
-    expect(req.request.body).toEqual({ quantity: '3', totalPrice: '1.00', name: 'Bar', occurredAt: '2026-09-05T18:15:00Z' });
+    expect(req.request.body).toEqual({ quantity: '3', totalPrice: '1.00', name: 'Bar', occurredAt: '2026-09-05T18:15:00Z', clientRef: anyRef });
     req.flush({ id: 6 }, { status: 201, statusText: 'Created' });
     await fixture.whenStable();
     expect(said).toEqual([{ id: 6 }]);
@@ -270,7 +274,7 @@ describe('ConsumptionForm', () => {
     await type('totalPrice', '1');
     save();
     const req = backend.expectOne('/api/substances/2/one-time-consumptions');
-    expect(req.request.body).toEqual({ quantity: '2', totalPrice: '1', occurredAt: '2026-09-05T18:15:00Z' });
+    expect(req.request.body).toEqual({ quantity: '2', totalPrice: '1', occurredAt: '2026-09-05T18:15:00Z', clientRef: anyRef });
     req.flush({ id: 7 }, { status: 201, statusText: 'Created' });
   });
 
@@ -323,7 +327,7 @@ describe('ConsumptionForm', () => {
     await type('name', 'Pinta al pub');
     save();
     const req = backend.expectOne('/api/substances/4/one-time-consumptions');
-    expect(req.request.body).toEqual({ quantity: '1', totalPrice: '5', name: 'Pinta al pub', occurredAt: '2026-09-05T18:15:00Z' });
+    expect(req.request.body).toEqual({ quantity: '1', totalPrice: '5', name: 'Pinta al pub', occurredAt: '2026-09-05T18:15:00Z', clientRef: anyRef });
     req.flush({ id: 9 }, { status: 201, statusText: 'Created' });
   });
 
@@ -351,7 +355,7 @@ describe('ConsumptionForm', () => {
     save();
 
     const req = backend.expectOne('/api/batches/9/consumptions');
-    expect(req.request.body).toEqual({ quantity: '1', occurredAt: '2026-09-05T18:15:00Z' });
+    expect(req.request.body).toEqual({ quantity: '1', occurredAt: '2026-09-05T18:15:00Z', clientRef: anyRef });
     req.flush({ id: 78 }, { status: 201, statusText: 'Created' });
   });
 
@@ -406,6 +410,75 @@ describe('ConsumptionForm', () => {
     expect(errorUnder('day')).toBe('must match format "date-time"');
     expect(element().querySelector('.form-error')).toBeNull();
     expect(element().querySelector<HTMLButtonElement>('button[type="submit"]')!.disabled).toBe(false);
+  });
+
+  it('with no answer says "Server not reachable", keeps the form, and Save sends the same clientRef again', async () => {
+    await renderForSigarette();
+    await type('quantity', '2');
+    save();
+    const first = backend.expectOne('/api/batches/8/consumptions');
+    const ref = first.request.body.clientRef;
+    expect(ref).toEqual(anyRef);
+    first.error(new ProgressEvent('error'));
+    await fixture.whenStable();
+
+    expect(text('.form-error')).toBe('Server not reachable. Press Save again: it will not be saved twice.');
+    expect(input('quantity').value).toBe('2');
+    expect(said).toEqual([]);
+
+    save();
+    const second = backend.expectOne('/api/batches/8/consumptions');
+    expect(second.request.body.clientRef).toBe(ref);
+    // The first one had been written after all: the API answers it (200), not a second one.
+    second.flush({ id: 80, batchId: 8 }, { status: 200, statusText: 'OK' });
+    await fixture.whenStable();
+    expect(said).toEqual([{ id: 80, batchId: 8 }]);
+  });
+
+  it('a 502 of the proxy in front of a stopped API is "Server not reachable" too', async () => {
+    await renderForSigarette();
+    await type('quantity', '2');
+    save();
+    backend.expectOne('/api/batches/8/consumptions').flush(null, { status: 502, statusText: 'Bad Gateway' });
+    await fixture.whenStable();
+    expect(text('.form-error')).toBe('Server not reachable. Press Save again: it will not be saved twice.');
+  });
+
+  it('another form makes another clientRef', async () => {
+    await renderForSigarette();
+    await type('quantity', '1');
+    save();
+    const first = backend.expectOne('/api/batches/8/consumptions');
+    const ref = first.request.body.clientRef;
+    first.flush({ id: 81 }, { status: 201, statusText: 'Created' });
+
+    await renderForSigarette();
+    await type('quantity', '1');
+    save();
+    const other = backend.expectOne('/api/batches/8/consumptions');
+    expect(other.request.body.clientRef).toEqual(anyRef);
+    expect(other.request.body.clientRef).not.toBe(ref);
+    other.flush({ id: 82 }, { status: 201, statusText: 'Created' });
+  });
+
+  it('a clientRef already used by someone else: a new one, and Save is offered again', async () => {
+    await renderForSigarette();
+    await type('quantity', '1');
+    save();
+    const first = backend.expectOne('/api/batches/8/consumptions');
+    const ref = first.request.body.clientRef;
+    first.flush(
+      { type: 'urn:substance-tracker:problem:client-ref-used', title: 'Conflict', status: 409, detail: 'This clientRef was already used: send a new one', errors: [] },
+      { status: 409, statusText: 'Conflict' },
+    );
+    await fixture.whenStable();
+    expect(text('.form-error')).toBe('Could not save: press Save again.');
+
+    save();
+    const second = backend.expectOne('/api/batches/8/consumptions');
+    expect(second.request.body.clientRef).toEqual(anyRef);
+    expect(second.request.body.clientRef).not.toBe(ref);
+    second.flush({ id: 83 }, { status: 201, statusText: 'Created' });
   });
 
   it('shows a refusal of the Ledger (409) above the buttons', async () => {

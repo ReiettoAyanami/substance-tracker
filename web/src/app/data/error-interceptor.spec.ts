@@ -3,6 +3,7 @@ import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { firstValueFrom } from 'rxjs';
 
+import { ApiError, isUnreachable } from './api-error';
 import { errorInterceptor } from './error-interceptor';
 
 describe('errorInterceptor', () => {
@@ -66,9 +67,36 @@ describe('errorInterceptor', () => {
     expect(error).toEqual({
       status: null,
       code: null,
-      title: 'Network error',
-      detail: 'The API could not be reached.',
+      title: 'Server not reachable',
+      detail: 'The server could not be reached.',
       fieldErrors: [],
     });
+  });
+
+  it('a request with no answer in 15 s ends as one with no status', async () => {
+    vi.useFakeTimers();
+    try {
+      const result = firstValueFrom(http.get('/api/slow')).then(
+        () => 'no error',
+        (error: unknown) => error,
+      );
+      const req = backend.expectOne('/api/slow');
+      vi.advanceTimersByTime(14_999);
+      expect(req.cancelled).toBe(false);
+      vi.advanceTimersByTime(1);
+      expect(await result).toEqual({ status: null, code: null, title: 'Server not reachable', detail: 'The server did not answer.', fieldErrors: [] });
+      expect(req.cancelled).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe('isUnreachable', () => {
+  const error = (status: number | null): ApiError => ({ status, code: null, title: '', detail: '', fieldErrors: [] });
+
+  it('no answer, or the proxy of a stopped API; any other status is an answer', () => {
+    for (const status of [null, 502, 503, 504]) expect(isUnreachable(error(status)), String(status)).toBe(true);
+    for (const status of [400, 401, 404, 409, 422, 429, 500]) expect(isUnreachable(error(status)), String(status)).toBe(false);
   });
 });

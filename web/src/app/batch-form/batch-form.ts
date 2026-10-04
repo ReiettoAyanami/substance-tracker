@@ -11,7 +11,8 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTimepickerModule } from '@angular/material/timepicker';
 import { Observable } from 'rxjs';
 
-import { ApiError } from '../data/api-error';
+import { ApiError, SERVER_NOT_REACHABLE, isUnreachable } from '../data/api-error';
+import { newClientRef } from '../data/client-ref';
 import { BatchRecord } from '../data/batch';
 import { CatalogApi } from '../data/catalog-api';
 import { LedgerApi } from '../data/ledger-api';
@@ -199,6 +200,8 @@ export class BatchForm implements OnInit {
   protected readonly saving = signal(false);
   /** An error of the request that belongs to no field (a 409 of the Ledger). */
   protected readonly formError = signal<string | null>(null);
+  /** Sent with the create, the same on every Save of this form: a resend never makes a second row. */
+  private clientRef = newClientRef();
 
   private prefilled = false;
 
@@ -317,11 +320,22 @@ export class BatchForm implements OnInit {
       ...(this.priceIn() === 'unit' ? { unitPrice: decimal(v.unitPrice) } : { totalPrice: decimal(v.totalPrice) }),
       ...(note === null ? {} : { note }),
       ...when,
+      clientRef: this.clientRef,
     });
   }
 
   /** Each field error under its field (the API's message); anything else above the buttons. */
   private showErrors(error: ApiError): void {
+    if (isUnreachable(error)) {
+      this.formError.set(SERVER_NOT_REACHABLE);
+      return;
+    }
+    // Someone else's clientRef (a UUID, so never in practice): a new one, and the user tries again.
+    if (error.code === 'client-ref-used') {
+      this.clientRef = newClientRef();
+      this.formError.set('Could not save: press Save again.');
+      return;
+    }
     const controls: Record<string, AbstractControl | undefined> = this.form.controls;
     const unplaced = error.fieldErrors.filter((fieldError) => {
       const control = controls[FIELD_OF[fieldError.field] ?? fieldError.field];

@@ -38,7 +38,7 @@ describe('LedgerApi', () => {
 
   it('creates a batch of a substance, changes it and deletes it', async () => {
     const batch = { id: 7, substanceId: 2, name: 'Peroni', quantity: '6.000', totalPrice: '7.20' } as BatchRecord;
-    const input = { name: 'Peroni', refills: '1', totalPrice: '7.20', occurredAt: '2026-09-30T18:00:00Z', note: null };
+    const input = { name: 'Peroni', refills: '1', totalPrice: '7.20', occurredAt: '2026-09-30T18:00:00Z', note: null, clientRef: '5f0c2a3e-8b1d-4c6e-9a7f-1d2e3f4a5b6c' };
     expect(
       await send(api.createBatch(2, input), { method: 'POST', url: '/api/substances/2/batches', body: input }, { body: batch, status: 201 }),
     ).toEqual(batch);
@@ -51,7 +51,7 @@ describe('LedgerApi', () => {
 
   it('records a consumption from a batch, changes it and cancels it', async () => {
     const consumption = { id: 40, batchId: 7, substanceId: 2, quantity: '2.000' } as ConsumptionRecord;
-    const input = { quantity: '2', occurredAt: '2026-09-30T20:00:00Z', note: 'after dinner' };
+    const input = { quantity: '2', occurredAt: '2026-09-30T20:00:00Z', note: 'after dinner', clientRef: '5f0c2a3e-8b1d-4c6e-9a7f-1d2e3f4a5b6c' };
     expect(
       await send(api.createConsumption(7, input), { method: 'POST', url: '/api/batches/7/consumptions', body: input }, { body: consumption, status: 201 }),
     ).toEqual(consumption);
@@ -68,7 +68,7 @@ describe('LedgerApi', () => {
 
   it('records a one-time consumption of a substance, changes it and deletes it', async () => {
     const oneTime = { id: 5, substanceId: 2, name: 'Pub', quantity: '1.000', totalPrice: '5.00' } as OneTimeRecord;
-    const input = { quantity: '1', totalPrice: '5.00', name: 'Pub' };
+    const input = { quantity: '1', totalPrice: '5.00', name: 'Pub', clientRef: '5f0c2a3e-8b1d-4c6e-9a7f-1d2e3f4a5b6c' };
     expect(
       await send(api.createOneTime(2, input), { method: 'POST', url: '/api/substances/2/one-time-consumptions', body: input }, { body: oneTime, status: 201 }),
     ).toEqual(oneTime);

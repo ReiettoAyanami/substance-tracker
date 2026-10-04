@@ -75,6 +75,8 @@ export interface CreateConsumptionInput {
   quantity: string;
   occurredAt?: string;
   note?: string | null;
+  /** Sending it again returns the row already written, never a second one (client-ref.ts). */
+  clientRef: string;
 }
 
 /** Body of PATCH /api/consumptions/:id: only what changes (never the batch); null clears the note. */

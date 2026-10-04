@@ -3,10 +3,14 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, TestRequest, provideHttpClientTesting } from '@angular/common/http/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
 
+import { CLIENT_REF_FORMAT } from '../data/client-ref';
 import { errorInterceptor } from '../data/error-interceptor';
 import { Substance } from '../data/substance';
 import { Batch } from '../data/substance-batches';
 import { BatchForm } from './batch-form';
+
+/** Any clientRef the form made (client-ref.ts). */
+const anyRef = expect.stringMatching(CLIENT_REF_FORMAT);
 
 const settings = { timezone: 'Europe/Rome', dayStartsAt: '00:00:00', currency: 'EUR' };
 
@@ -156,6 +160,7 @@ describe('BatchForm', () => {
       totalPrice: '25',
       note: 'from the usual guy',
       occurredAt: '2026-09-05T18:15:00Z',
+      clientRef: anyRef,
     });
     expect(said).toEqual([]);
 
@@ -195,7 +200,7 @@ describe('BatchForm', () => {
     save();
 
     const req = backend.expectOne('/api/substances/4/batches');
-    expect(req.request.body).toEqual({ refills: '3', totalPrice: '21.60', occurredAt: '2026-09-05T18:15:00Z' });
+    expect(req.request.body).toEqual({ refills: '3', totalPrice: '21.60', occurredAt: '2026-09-05T18:15:00Z', clientRef: anyRef });
     req.flush({ id: 52 }, { status: 201, statusText: 'Created' });
   });
 
@@ -211,7 +216,7 @@ describe('BatchForm', () => {
     save();
 
     const req = backend.expectOne('/api/substances/4/batches');
-    expect(req.request.body).toEqual({ quantity: '18', unitPrice: '1.10', occurredAt: '2026-09-05T18:15:00Z' });
+    expect(req.request.body).toEqual({ quantity: '18', unitPrice: '1.10', occurredAt: '2026-09-05T18:15:00Z', clientRef: anyRef });
     req.flush({ id: 53 }, { status: 201, statusText: 'Created' });
   });
 
@@ -271,7 +276,7 @@ describe('BatchForm', () => {
     await type('totalPrice', '14,40');
     save();
     const req = backend.expectOne('/api/substances/4/batches');
-    expect(req.request.body).toEqual({ quantity: '12', totalPrice: '14.40', occurredAt: '2026-09-05T18:15:00Z' });
+    expect(req.request.body).toEqual({ quantity: '12', totalPrice: '14.40', occurredAt: '2026-09-05T18:15:00Z', clientRef: anyRef });
     req.flush({ id: 55 }, { status: 201, statusText: 'Created' });
   });
 
@@ -433,5 +438,23 @@ describe('BatchForm', () => {
       .click();
 
     expect(said).toEqual(['cancelled']);
+  });
+
+  it('with no answer says "Server not reachable", and Save sends the same clientRef again', async () => {
+    await render({ substanceId: 3 });
+    await type('quantity', '12');
+    await type('totalPrice', '14.40');
+    save();
+    const first = backend.expectOne('/api/substances/3/batches');
+    const ref = first.request.body.clientRef;
+    expect(ref).toEqual(anyRef);
+    first.error(new ProgressEvent('error'));
+    await fixture.whenStable();
+    expect(text('.form-error')).toBe('Server not reachable. Press Save again: it will not be saved twice.');
+
+    save();
+    const second = backend.expectOne('/api/substances/3/batches');
+    expect(second.request.body.clientRef).toBe(ref);
+    second.flush({ id: 52, substanceId: 3 }, { status: 200, statusText: 'OK' });
   });
 });

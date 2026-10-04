@@ -11,7 +11,8 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTimepickerModule } from '@angular/material/timepicker';
 import { Observable } from 'rxjs';
 
-import { ApiError } from '../data/api-error';
+import { ApiError, SERVER_NOT_REACHABLE, isUnreachable } from '../data/api-error';
+import { newClientRef } from '../data/client-ref';
 import { CatalogApi } from '../data/catalog-api';
 import { Consumption, ConsumptionRecord } from '../data/consumption';
 import { LedgerApi } from '../data/ledger-api';
@@ -178,6 +179,8 @@ export class ConsumptionForm implements OnInit {
   protected readonly saving = signal(false);
   /** An error of the request that belongs to no field (a 409 of the Ledger). */
   protected readonly formError = signal<string | null>(null);
+  /** Sent with the create, the same on every Save of this form: a resend never makes a second row. */
+  private clientRef = newClientRef();
 
   /** The one-time kind was forced on (no active batch), not chosen. */
   private forcedOneTime = false;
@@ -299,9 +302,10 @@ export class ConsumptionForm implements OnInit {
         ...(name === null ? {} : { name }),
         ...(note === null ? {} : { note }),
         ...when,
+        clientRef: this.clientRef,
       });
     }
-    return this.ledger.createConsumption(v.batchId!, { quantity, ...(note === null ? {} : { note }), ...when });
+    return this.ledger.createConsumption(v.batchId!, { quantity, ...(note === null ? {} : { note }), ...when, clientRef: this.clientRef });
   }
 
   /** One-time: no batch, a price is required. */
@@ -338,6 +342,16 @@ export class ConsumptionForm implements OnInit {
 
   /** Each field error under its field (the API's message); anything else above the buttons. */
   private showErrors(error: ApiError): void {
+    if (isUnreachable(error)) {
+      this.formError.set(SERVER_NOT_REACHABLE);
+      return;
+    }
+    // Someone else's clientRef (a UUID, so never in practice): a new one, and the user tries again.
+    if (error.code === 'client-ref-used') {
+      this.clientRef = newClientRef();
+      this.formError.set('Could not save: press Save again.');
+      return;
+    }
     const controls: Record<string, AbstractControl | undefined> = this.form.controls;
     const unplaced = error.fieldErrors.filter((fieldError) => {
       const control = controls[FIELD_OF[fieldError.field] ?? fieldError.field];

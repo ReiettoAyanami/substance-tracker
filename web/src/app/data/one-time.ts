@@ -64,6 +64,8 @@ export interface CreateOneTimeInput {
   name?: string | null;
   occurredAt?: string;
   note?: string | null;
+  /** Sending it again returns the row already written, never a second one (client-ref.ts). */
+  clientRef: string;
 }
 
 /** Body of PATCH /api/one-time-consumptions/:id: only what changes; null clears the name or the note. */
