@@ -1,4 +1,4 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, effect, inject, untracked } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -7,9 +7,13 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRouteSnapshot, NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter, map } from 'rxjs';
 
+import { RUNS_IN_APP } from './connection/address';
+import { Connectivity } from './connection/connectivity';
+import { LastData } from './last-data/last-data';
 import { Session } from './session/session';
 import { Sidebar } from './sidebar/sidebar';
 import { Appearance } from './ui/appearance';
+import { OfflineBar } from './ui/offline-bar/offline-bar';
 import { VersionLabel } from './ui/version-label/version-label';
 import { ViewingAsBar } from './ui/viewing-as-bar/viewing-as-bar';
 
@@ -37,7 +41,17 @@ function routeIsBare(route: ActivatedRouteSnapshot): boolean {
  */
 @Component({
   selector: 'app-root',
-  imports: [MatButtonModule, MatIconModule, MatSidenavModule, MatToolbarModule, RouterOutlet, Sidebar, VersionLabel, ViewingAsBar],
+  imports: [
+    MatButtonModule,
+    MatIconModule,
+    MatSidenavModule,
+    MatToolbarModule,
+    OfflineBar,
+    RouterOutlet,
+    Sidebar,
+    VersionLabel,
+    ViewingAsBar,
+  ],
   templateUrl: './app.html',
   styleUrl: './app.css',
 })
@@ -63,8 +77,25 @@ export class App {
     { initialValue: true },
   );
 
+  /** The Android app without an answer from its server (design-android.md, "offline"). */
+  protected readonly offline = inject(Connectivity).offline;
+
   /** An administrator is acting as this user (design-accounts.md, "impersonation"). */
   protected readonly impersonating = computed(() => (this.session.user()?.impersonatedBy ?? null) !== null);
+
+  constructor() {
+    // The Android app, signed in: what recording a consumption offline needs, once per user and launch.
+    if (inject(RUNS_IN_APP)) {
+      const lastData = inject(LastData);
+      let refreshedFor: number | null = null;
+      effect(() => {
+        const user = this.session.user();
+        if (!user || user.id === refreshedFor) return;
+        refreshedFor = user.id;
+        untracked(() => void lastData.refreshForOffline());
+      });
+    }
+  }
 
   /**
    * The menu button opens the drawer. Its origin goes with it: closing gives the focus back to the

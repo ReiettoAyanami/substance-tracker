@@ -30,6 +30,11 @@
       </mat-toolbar>
     }
 
+    <!-- The Android app without an answer from its server: the pages show their last data. -->
+    @if (offline()) {
+      <app-offline-bar />
+    }
+
     <router-outlet />
   </mat-sidenav-content>
 </mat-sidenav-container>

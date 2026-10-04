@@ -57,3 +57,8 @@ app-viewing-as-bar {
 mat-sidenav-content.impersonating mat-toolbar {
   top: calc(8px + var(--app-viewing-as-height) + 8px);
 }
+
+/* The Android app offline (design-android.md, "last data"): under the top bar, above the page. */
+app-offline-bar {
+  margin: 8px;
+}

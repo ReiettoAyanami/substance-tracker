@@ -1,0 +1,29 @@
+/* Above the top bar, like the "Viewing as" bar: it stands out from every page, never in glass. */
+:host {
+  display: block;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-sizing: border-box;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 16px;
+  background: var(--mat-sys-surface-container-highest);
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-body-medium);
+}
+
+.icon {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

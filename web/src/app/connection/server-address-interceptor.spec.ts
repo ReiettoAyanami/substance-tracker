@@ -44,9 +44,22 @@ describe('serverAddressInterceptor', () => {
     backend.expectOne('/media/x.png').flush(null);
   });
 
+  it('in the app, a request without a body sends an empty JSON object (never a form)', () => {
+    setUp(true, 'https://tracker.example.com');
+    http.delete('/api/consumptions/5').subscribe();
+    http.post('/api/batches/8/consumptions', { quantity: '1' }).subscribe();
+    const deleted = backend.expectOne('https://tracker.example.com/api/consumptions/5');
+    expect(deleted.request.body).toEqual({});
+    expect(deleted.request.detectContentTypeHeader()).toBe('application/json');
+    deleted.flush(null);
+    expect(backend.expectOne('https://tracker.example.com/api/batches/8/consumptions').request.body).toEqual({ quantity: '1' });
+  });
+
   it('the website keeps its relative paths', () => {
     setUp(false, null);
     http.get('/api/substances').subscribe();
+    http.delete('/api/consumptions/5').subscribe();
     backend.expectOne('/api/substances').flush([]);
+    expect(backend.expectOne('/api/consumptions/5').request.body).toBeNull();
   });
 });

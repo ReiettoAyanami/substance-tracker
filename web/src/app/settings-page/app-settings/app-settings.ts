@@ -9,6 +9,7 @@ import { ConfirmDialog, ConfirmDialogData } from '../../confirm-dialog/confirm-d
 import { ServerAddress } from '../../connection/server-address';
 import { VersionApi } from '../../data/version-api';
 import { HistoryDialogs } from '../../history-dialogs';
+import { LastData } from '../../last-data/last-data';
 import { Session } from '../../session/session';
 
 /**
@@ -27,6 +28,7 @@ export class AppSettings {
   private readonly versionApi = inject(VersionApi);
   private readonly dialogs = inject(HistoryDialogs);
   private readonly router = inject(Router);
+  private readonly lastData = inject(LastData);
   protected readonly session = inject(Session);
 
   protected readonly address = this.server.address;
@@ -38,7 +40,7 @@ export class AppSettings {
   });
 
   /**
-   * Signs out and forgets this server (and, from roadmap 2.7, what the phone keeps of it), then the
+   * Signs out and forgets this server and what the phone keeps of it (its last data), then the
    * server screen. Not reached, the server keeps the session until it expires; the phone forgets it.
    */
   protected async changeServer(): Promise<void> {
@@ -46,7 +48,7 @@ export class AppSettings {
       ConfirmDialog,
       {
         title: 'Change server?',
-        message: 'You will be signed out, and the app forgets this server.',
+        message: 'You will be signed out, and the app forgets this server and the data it kept of it.',
         confirm: 'Change server',
         destructive: false,
         action: () =>
@@ -60,6 +62,7 @@ export class AppSettings {
       { width: '400px' },
     );
     if (!changed) return;
+    await this.lastData.wipe();
     this.server.clear();
     await this.router.navigateByUrl('/server');
   }

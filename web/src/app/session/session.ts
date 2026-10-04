@@ -3,6 +3,7 @@ import { firstValueFrom } from 'rxjs';
 
 import { AuthApi, type SessionUser } from '../data/auth-api';
 import { RUNS_IN_APP } from '../connection/address';
+import { LastData } from '../last-data/last-data';
 
 /**
  * Who is signed in (design-accounts.md, "session"): the server decides, this only remembers what it
@@ -15,6 +16,7 @@ import { RUNS_IN_APP } from '../connection/address';
 export class Session {
   private readonly authApi = inject(AuthApi);
   private readonly inApp = inject(RUNS_IN_APP);
+  private readonly lastData = inject(LastData);
   private readonly current = signal<SessionUser | null>(null);
   private loading: Promise<SessionUser | null> | null = null;
 
@@ -70,11 +72,14 @@ export class Session {
 
   /**
    * Signs out. When the server did not end the session (no connection), it rejects and the user
-   * stays signed in here too: the session is still alive, so saying otherwise would lie.
+   * stays signed in here too: the session is still alive, so saying otherwise would lie. In the
+   * Android app the phone's last data are wiped; a 401 (forget) keeps them, bound to their user.
    */
   async signOut(): Promise<void> {
     await firstValueFrom(this.authApi.signOut());
     this.forget();
+    // The Android app's last data go with the session (design-android.md, "last data").
+    await this.lastData.wipe();
   }
 
   /** The session is over (signed out, or an API call answered 401): forget it. */
