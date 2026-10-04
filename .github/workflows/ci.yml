@@ -1,6 +1,7 @@
-# CI (design-accounts.md, "Releases"): the version rules, the API's and the web's tests, npm audit,
-# the image built on every push, and published to the GitHub Container Registry only from main with
-# a final version (a alpha, b beta, v release; lenzi, 2026-10-03).
+# CI (design-accounts.md, "Releases"; design-android.md, "Release pipeline"): the version rules, the
+# API's and the web's tests, npm audit, the Android APK and the image built on every push, and
+# published (the image to the GitHub Container Registry, the APK with a GitHub Release) only from
+# main with a final version (a alpha, b beta, v release; lenzi, 2026-10-03).
 name: CI
 
 on:
@@ -118,15 +119,98 @@ jobs:
           (cd api && npm audit --audit-level=high)
           (cd web && npm audit --audit-level=high)
 
+  apk:
+    name: Android APK
+    needs: [version, web]
+    runs-on: ubuntu-latest
+    env:
+      NG_CLI_ANALYTICS: 'false'
+      VERSION: ${{ needs.version.outputs.version }}
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      # Capacitor 8 builds with Java 21; the runner already has the Android SDK (ANDROID_HOME).
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+      - run: npm ci
+      - name: The app build, copied into the Android project
+        run: |
+          npx ng build --configuration production,android
+          npx cap sync android
+      - id: code
+        name: The version code, which must always grow (design-android.md, "Release pipeline")
+        run: |
+          stage="${VERSION%%[0-9]*}"
+          numbers="${VERSION#"$stage"}"; numbers="${numbers%%-*}"
+          IFS=. read -r year backend frontend <<< "$numbers"
+          case "$stage" in a) s=1 ;; b) s=2 ;; v) s=3 ;; *) s=0 ;; esac
+          if [ "$backend" -ge 100 ] || [ "$frontend" -ge 100 ]; then
+            echo "::error::$VERSION: the backend and frontend numbers must stay below 100 for the version code"; exit 1
+          fi
+          code=$(( 10#$year * 1000000 + backend * 10000 + frontend * 100 + s ))
+          echo "$VERSION -> version code $code"
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+      # The release key from the secrets, only for a final version on main. Anywhere else (a dev
+      # branch, a pull request) the APK is a dry run, signed with a key made here and thrown away:
+      # installable to try it, never published.
+      - name: The signing key
+        env:
+          RELEASE: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          keystore="$RUNNER_TEMP/signing.p12"
+          if [ "$RELEASE" = true ]; then
+            [ -n "$KEYSTORE_BASE64" ] || { echo "::error::a release needs the ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD and ANDROID_KEY_ALIAS secrets"; exit 1; }
+            echo "$KEYSTORE_BASE64" | base64 -d > "$keystore"
+            password="$KEYSTORE_PASSWORD"; alias="$KEY_ALIAS"
+          else
+            password="$(openssl rand -hex 24)"; alias=dry-run
+            echo "::add-mask::$password"
+            keytool -genkeypair -keystore "$keystore" -storetype PKCS12 -storepass "$password" -alias "$alias"               -keyalg RSA -keysize 2048 -validity 30 -dname "CN=substance-tracker dry run" >/dev/null 2>&1
+          fi
+          { echo "ANDROID_KEYSTORE=$keystore"; echo "ANDROID_KEYSTORE_PASSWORD=$password"; echo "ANDROID_KEY_ALIAS=$alias"; } >> "$GITHUB_ENV"
+      - name: The release APK
+        working-directory: web/android
+        run: |
+          start=$(date +%s)
+          ./gradlew --no-daemon assembleProdRelease -PappVersionName="$VERSION" -PappVersionCode="${{ steps.code.outputs.code }}"
+          apk=app/build/outputs/apk/prod/release/app-prod-release.apk
+          "$ANDROID_HOME"/build-tools/*/apksigner verify --print-certs "$apk" | head -3
+          cp "$apk" "$RUNNER_TEMP/substance.apk"
+          echo "built in $(( $(date +%s) - start )) s, $(du -h "$RUNNER_TEMP/substance.apk" | cut -f1)"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: substance-apk
+          path: ${{ runner.temp }}/substance.apk
+          retention-days: 30
+
   image:
     name: Image
-    needs: [version, api, web, audit]
+    needs: [version, api, web, audit, apk]
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      # contents: write for the GitHub Release of a published version, with its APK.
+      contents: write
       packages: write
     steps:
       - uses: actions/checkout@v4
+      # The APK of this commit into apk/, which the image copies and serves at /download/substance.apk.
+      - uses: actions/download-artifact@v4
+        with:
+          name: substance-apk
+          path: apk
       - id: target
         name: Published only from main, with a final version never published before
         env:
@@ -168,3 +252,14 @@ jobs:
             org.opencontainers.image.version=${{ needs.version.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      # The GitHub Release of a published version, with the same APK the image carries: where the
+      # APK comes from for an instance built without the CI (design-android.md, "/download").
+      - if: steps.target.outputs.publish == 'true'
+        name: GitHub Release with the APK
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          prerelease=""
+          [[ "$VERSION" == v* ]] || prerelease="--prerelease"
+          gh release create "$VERSION" apk/substance.apk --target "$GITHUB_SHA" --title "$VERSION" $prerelease             --notes "Image: ghcr.io/${GITHUB_REPOSITORY,,}:$VERSION. Android app: substance.apk (also at /download on an instance of this version)."

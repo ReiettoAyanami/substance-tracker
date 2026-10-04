@@ -28,6 +28,11 @@ COPY --from=api-build /app/dist ./dist
 COPY api/migrations ./migrations
 COPY --from=web /web/dist/web/browser ./public
 ENV WEB_DIST=/app/public
+# The Android app's APK, when the CI built it (apk/substance.apk; design-android.md, "/download"):
+# served at /download/substance.apk. A build without it has only apk/README.md, and the page sends
+# to the GitHub Release instead.
+COPY apk/ ./android/
+ENV APK_FILE=/app/android/substance.apk
 USER node
 EXPOSE 3000
 CMD ["node", "dist/server.js"]

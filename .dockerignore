@@ -12,3 +12,6 @@
 # Not needed in the image
 **/*.log
 db/
+
+# The Android project: the image never builds the APK (the CI does, into apk/)
+web/android

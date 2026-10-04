@@ -16,3 +16,6 @@ db/backup/
 
 # The first administrator's password, written at the first start (delete it after reading)
 to_delete.password.txt
+
+# The Android app's APK, put here by the CI before the image build (apk/README.md)
+apk/*.apk

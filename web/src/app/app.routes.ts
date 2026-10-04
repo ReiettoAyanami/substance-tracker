@@ -21,6 +21,14 @@ export const routes: Routes = [
     title: 'Sign in',
     data: { bare: true },
   },
+  // The Android app's download (design-android.md, "/download"): public, needed before signing in on
+  // the phone; `download` is a reserved word, never a username.
+  {
+    path: 'download',
+    loadComponent: () => import('./download-page/download-page').then((m) => m.DownloadPage),
+    title: 'Download the app',
+    data: { bare: true },
+  },
   // The bare address: one's own pages, or the sign-in page.
   { path: '', pathMatch: 'full', canActivate: [homeGuard], children: [] },
   // A user's pages live under their username (design-accounts.md, "Web: /<username>/"); another

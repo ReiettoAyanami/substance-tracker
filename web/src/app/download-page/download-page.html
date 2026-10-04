@@ -1,0 +1,45 @@
+<main class="page">
+  <section class="card">
+    <h1 class="app-name">Substance tracker</h1>
+    <p class="subtitle">The Android app</p>
+
+    @if (version.value(); as version) {
+      <p class="version">Version {{ version }}, the same as this server.</p>
+
+      @if (hasApk.value() === true) {
+        <a mat-flat-button class="download" [href]="apkPath" download>
+          <mat-icon>download</mat-icon>
+          Download the app
+        </a>
+      } @else if (hasApk.value() === false) {
+        @if (releaseOf(version); as release) {
+          <p class="note">This server does not carry the app: take it from the release of its version.</p>
+          <a mat-flat-button class="download" [href]="release" rel="noopener">
+            <mat-icon>open_in_new</mat-icon>
+            Release {{ version }} on GitHub
+          </a>
+        } @else {
+          <p class="note">This server runs a development version, which has no app to download.</p>
+        }
+      }
+    }
+
+    <h2 class="steps-title">How to install it</h2>
+    <ol class="steps">
+      <li>Open this page on the phone and download the app.</li>
+      <li>Open the downloaded file. Android asks to allow your browser to install unknown apps: allow it, then go back.</li>
+      <li>
+        Open Substance tracker and give it this server's address:
+        <span class="address">{{ address }}</span>
+      </li>
+      <li>Sign in with your username and password, as here.</li>
+    </ol>
+    @if (!secure) {
+      <p class="note warning">
+        The app talks to its server only over https, and this page was opened over http: the app will need this
+        server's https address.
+      </p>
+    }
+    <p class="hint">Android 7.0 or later. Not on the Play Store.</p>
+  </section>
+</main>
