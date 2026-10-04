@@ -68,6 +68,11 @@
   <!-- The user's own password and sessions: apart from the settings of the tracking. -->
   <app-account-settings />
 
+  <!-- The Android app's server and versions (design-android.md, "App settings"). -->
+  @if (inApp) {
+    <app-app-settings />
+  }
+
   <!-- A choice of this browser, not a setting of the API: outside the form, applied at once. -->
   <section class="display" aria-label="Display">
     <mat-slide-toggle [checked]="appearance.reduceTransparency()" (change)="appearance.setReduceTransparency($event.checked)">

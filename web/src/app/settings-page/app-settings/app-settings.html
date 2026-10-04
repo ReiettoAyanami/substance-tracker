@@ -1,0 +1,20 @@
+<section class="app" aria-labelledby="app-title">
+  <h2 class="title" id="app-title">App</h2>
+
+  <dl class="facts">
+    <dt>Server</dt>
+    <dd class="address">{{ address() }}</dd>
+    <dt>App version</dt>
+    <dd>{{ appVersion }}</dd>
+    <dt>Server version</dt>
+    <dd>{{ serverVersion.value() ?? '…' }}</dd>
+  </dl>
+
+  @if (adminAddress(); as admin) {
+    <p class="note">Administration is on the website: {{ admin }}</p>
+  }
+
+  <div class="actions">
+    <button mat-stroked-button type="button" class="change-server" (click)="changeServer()">Change server</button>
+  </div>
+</section>

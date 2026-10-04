@@ -19,7 +19,9 @@ import { SettingsApi } from '../data/settings-api';
 import { LOCALE } from '../locale';
 import { Session } from '../session/session';
 import { Appearance } from '../ui/appearance';
+import { RUNS_IN_APP } from '../connection/address';
 import { AccountSettings } from './account-settings/account-settings';
+import { AppSettings } from './app-settings/app-settings';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
@@ -77,6 +79,7 @@ type Field = 'currency' | 'timezone' | 'dayStartsAt';
   selector: 'app-settings-page',
   imports: [
     AccountSettings,
+    AppSettings,
     MatAutocompleteModule,
     MatButtonModule,
     MatFormFieldModule,
@@ -97,6 +100,8 @@ export class SettingsPage {
   protected readonly session = inject(Session);
   private readonly snackBar = inject(MatSnackBar);
   protected readonly appearance = inject(Appearance);
+  /** The Android app's own settings (server, versions) show only there. */
+  protected readonly inApp = inject(RUNS_IN_APP);
 
   protected readonly settings = rxResource({ stream: () => this.api.getSettings() });
 

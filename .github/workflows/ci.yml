@@ -28,6 +28,13 @@ jobs:
         name: The version of this commit, and the rules of its branch
         run: |
           version=$(sed -n "s/^export const VERSION = '\(.*\)';$/\1/p" api/src/version.ts)
+          level=$(sed -n "s/^export const API_LEVEL = \([0-9]*\);$/\1/p" api/src/version.ts)
+          # The pages carry a copy, for the Android app (web/src/app/app-version.ts): the same, always.
+          app_version=$(sed -n "s/^export const APP_VERSION = '\(.*\)';$/\1/p" web/src/app/app-version.ts)
+          app_level=$(sed -n "s/^export const APP_API_LEVEL = \([0-9]*\);$/\1/p" web/src/app/app-version.ts)
+          if [ "$app_version" != "$version" ] || [ "$app_level" != "$level" ]; then
+            echo "::error::web/src/app/app-version.ts ($app_version, level $app_level) must say what api/src/version.ts says ($version, level $level)"; exit 1
+          fi
           branch="${GITHUB_HEAD_REF:-$GITHUB_REF_NAME}"
           echo "version $version on $branch"
           echo "version=$version" >> "$GITHUB_OUTPUT"

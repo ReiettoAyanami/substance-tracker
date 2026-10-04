@@ -7,7 +7,8 @@
  * - `a` alpha, `b` beta, `v` release: final versions, only on main, numbers only.
  *
  * It changes only when lenzi says so: the backend number for an approved backend change, the
- * frontend number for an approved frontend change.
+ * frontend number for an approved frontend change. The pages carry a copy of it and of API_LEVEL
+ * (web/src/app/app-version.ts, for the Android app): the CI fails when the two differ.
  */
 export const VERSION = 'dev26.0.0';
 

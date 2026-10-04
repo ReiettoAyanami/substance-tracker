@@ -2,7 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
 import { AuthApi, type SessionUser } from '../data/auth-api';
-import { IS_APP } from '../platform';
+import { RUNS_IN_APP } from '../connection/address';
 
 /**
  * Who is signed in (design-accounts.md, "session"): the server decides, this only remembers what it
@@ -14,6 +14,7 @@ import { IS_APP } from '../platform';
 })
 export class Session {
   private readonly authApi = inject(AuthApi);
+  private readonly inApp = inject(RUNS_IN_APP);
   private readonly current = signal<SessionUser | null>(null);
   private loading: Promise<SessionUser | null> | null = null;
 
@@ -26,7 +27,7 @@ export class Session {
    */
   readonly canAdminister = computed(() => {
     const user = this.current();
-    return !IS_APP && user?.role === 'admin' && user.impersonatedBy === null;
+    return !this.inApp && user?.role === 'admin' && user.impersonatedBy === null;
   });
 
   /**

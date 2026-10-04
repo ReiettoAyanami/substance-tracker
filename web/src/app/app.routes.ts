@@ -1,5 +1,7 @@
 import { Routes } from '@angular/router';
 
+import { serverGuard } from './connection/server-guard';
+import { IS_APP } from './platform';
 import { adminGuard } from './session/admin-guard';
 import { homeGuard } from './session/home-guard';
 import { signedOutGuard } from './session/signed-out-guard';
@@ -13,10 +15,22 @@ const notFound = {
 // Every page is loaded when it is first opened (its own chunk): the initial bundle stays the shell,
 // within the budget of angular.json, however many Material pieces the pages use.
 export const routes: Routes = [
+  // The Android app's first screen (design-android.md, "First launch"): its server's address. Only in
+  // the app; every other page waits for it (serverGuard, first of each route's guards).
+  ...(IS_APP
+    ? [
+        {
+          path: 'server',
+          loadComponent: () => import('./server-page/server-page').then((m) => m.ServerPage),
+          title: 'Your server',
+          data: { bare: true },
+        },
+      ]
+    : []),
   // Signing in (design-accounts.md, "Web: /login"): a page of its own, without the app around it.
   {
     path: 'login',
-    canActivate: [signedOutGuard],
+    canActivate: [serverGuard, signedOutGuard],
     loadComponent: () => import('./login-page/login-page').then((m) => m.LoginPage),
     title: 'Sign in',
     data: { bare: true },
@@ -30,12 +44,12 @@ export const routes: Routes = [
     data: { bare: true },
   },
   // The bare address: one's own pages, or the sign-in page.
-  { path: '', pathMatch: 'full', canActivate: [homeGuard], children: [] },
+  { path: '', pathMatch: 'full', canActivate: [serverGuard, homeGuard], children: [] },
   // A user's pages live under their username (design-accounts.md, "Web: /<username>/"); another
   // username does not match and lands on the 404 page below, like any address that does not exist.
   {
     path: ':username',
-    canMatch: [userGuard],
+    canMatch: [serverGuard, userGuard],
     children: [
       // The start page: recording a consumption is the most frequent action (design-frontend.md).
       {

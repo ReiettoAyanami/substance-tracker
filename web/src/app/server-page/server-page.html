@@ -1,0 +1,29 @@
+<main class="page">
+  <form class="card" [formGroup]="form" (ngSubmit)="connect()" novalidate>
+    <h1 class="app-name">Substance tracker</h1>
+    <p class="subtitle">Your server</p>
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>Server address</mat-label>
+      <input
+        matInput
+        formControlName="address"
+        type="url"
+        inputmode="url"
+        placeholder="https://tracker.example.com"
+        autocomplete="url"
+        autocapitalize="none"
+        autocorrect="off"
+        spellcheck="false"
+      />
+      <mat-hint>The address you open the tracker at in a browser</mat-hint>
+    </mat-form-field>
+
+    @if (error(); as message) {
+      <p class="form-error" role="alert">{{ message }}</p>
+    }
+
+    <button mat-flat-button type="submit" class="submit" [disabled]="busy()">Connect</button>
+    <p class="hint">Not sure? Ask whoever runs your tracker: the app is on its /download page.</p>
+  </form>
+</main>

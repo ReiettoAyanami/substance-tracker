@@ -26,4 +26,14 @@ describe('VersionApi', () => {
     req.flush({ version: 'dev26.0.0' });
     expect(await result).toBe('dev26.0.0');
   });
+
+  it('gets the version and the API level, of this instance or of another address', async () => {
+    const here = firstValueFrom(api.getServerVersion());
+    backend.expectOne('/api/version').flush({ version: 'a26.1.0', apiLevel: 1 });
+    expect(await here).toEqual({ version: 'a26.1.0', apiLevel: 1 });
+
+    const there = firstValueFrom(api.getServerVersion('https://tracker.example.com'));
+    backend.expectOne('https://tracker.example.com/api/version').flush({ version: 'v26.2.0', apiLevel: 2 });
+    expect(await there).toEqual({ version: 'v26.2.0', apiLevel: 2 });
+  });
 });
