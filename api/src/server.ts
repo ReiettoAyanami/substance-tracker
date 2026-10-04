@@ -35,7 +35,7 @@ async function migrateWithRetry(config: AppConfig, log: FastifyBaseLogger): Prom
 async function main(): Promise<void> {
   const config = loadConfig();
   const pool = createPool(config.db);
-  const app = await buildApp({ pool, logger: { level: config.logLevel }, webDist: config.webDist });
+  const app = await buildApp({ pool, logger: { level: config.logLevel }, webDist: config.webDist, apkFile: config.apkFile });
   app.addHook('onClose', async () => {
     await pool.end();
   });

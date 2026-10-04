@@ -7,6 +7,7 @@ import { adminRoutes } from './modules/admin/routes.js';
 import { AdminService } from './modules/admin/service.js';
 import { catalogRoutes } from './modules/catalog/routes.js';
 import { CatalogService } from './modules/catalog/service.js';
+import { downloadRoutes } from './modules/download/routes.js';
 import { createAuth } from './modules/identity/auth.js';
 import { requestUserHook } from './modules/identity/hook.js';
 import { Identity } from './modules/identity/identity.js';
@@ -32,7 +33,7 @@ import {
 } from './shared/errors.js';
 import { securityHeadersHook } from './shared/security-headers.js';
 import { systemClock, type Clock } from './shared/time.js';
-import { VERSION } from './version.js';
+import { API_LEVEL, VERSION } from './version.js';
 
 export interface BuildAppOptions {
   /** mysql2 pool. When omitted, one is created from the environment and closed with the app. */
@@ -41,6 +42,8 @@ export interface BuildAppOptions {
   logger?: FastifyServerOptions['logger'];
   /** Folder with the Angular build: serves its files and falls back to index.html. */
   webDist?: string | undefined;
+  /** The Android app's APK the image carries (APK_FILE), served at /download/substance.apk. */
+  apkFile?: string | undefined;
   /** Source of "now" (tests pin it). */
   clock?: Clock;
   /** Sign-in settings over the environment's (tests: another address, the counters off, shorter waits). */
@@ -169,8 +172,11 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
     }
   });
 
-  // The product's version, for the corner of every page (version.ts).
-  app.get('/api/version', async () => ({ version: VERSION }));
+  // The product's version, for the corner of every page, and the API level the Android app
+  // compares with its own (version.ts).
+  app.get('/api/version', async () => ({ version: VERSION, apiLevel: API_LEVEL }));
+
+  downloadRoutes(app, { apkFile: opts.apkFile });
 
   identityRoutes(app, {
     identity,

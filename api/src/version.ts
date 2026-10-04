@@ -11,5 +11,13 @@
  */
 export const VERSION = 'dev26.0.0';
 
+/**
+ * The API level the Android app compares with its own (design-android.md, "compatibility"): a whole
+ * number that goes up only when a change makes an older app work wrong (a field removed or renamed,
+ * a meaning changed, a route gone). Adding fields or routes, and a backend fix, leave it as it is.
+ * Like VERSION, it changes only when lenzi says so.
+ */
+export const API_LEVEL = 1;
+
 /** What a version may look like (VERSION is checked against it by the tests). */
 export const VERSION_FORMAT = /^(?:dev\d{2}\.\d+\.\d+(?:-[a-z0-9]+(?:-[a-z0-9]+)*)?|[abv]\d{2}\.\d+\.\d+)$/;

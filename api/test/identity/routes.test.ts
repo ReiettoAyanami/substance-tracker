@@ -49,19 +49,45 @@ describe('sign in by username', () => {
   });
 });
 
-describe('only JSON from the app itself', () => {
+describe('only JSON, from the app itself or the Android app', () => {
   const post = (headers: Record<string, string>, payload = '{"username":"lenzi","password":"Lenzi-pass-0001"}') =>
     app.inject({ method: 'POST', url: '/api/auth/sign-in/username', headers, payload });
 
-  it('another origin, or none: 403', async () => {
+  it('another origin, even "null": 403', async () => {
     await lenzi();
-    const variants: Record<string, string>[] = [{ 'content-type': 'application/json' }, { origin: 'http://evil.example', 'content-type': 'application/json' }];
-    for (const headers of variants) {
-      const res = await post(headers);
-      expect(res.statusCode).toBe(403);
+    for (const origin of ['http://evil.example', 'null', `${ORIGIN}.evil.example`]) {
+      const res = await post({ origin, 'content-type': 'application/json' });
+      expect(res.statusCode, origin).toBe(403);
       expect(res.json()).toMatchObject({ type: 'urn:substance-tracker:problem:origin' });
       expect(res.cookies).toEqual([]);
     }
+  });
+
+  it('no origin at all (the Android app\'s native requests): signs in', async () => {
+    await lenzi();
+    const res = await post({ 'content-type': 'application/json' });
+    expect(res.statusCode).toBe(200);
+    expect(res.cookies.find((c) => c.name === SESSION_COOKIE)?.value).toBeTruthy();
+  });
+
+  it('no origin, with the session cookie: sign-out and revoke-other-sessions work (Better Auth sees APP_URL)', async () => {
+    await lenzi();
+    const phone = await signIn(app, 'lenzi', 'Lenzi-pass-0001');
+    const laptop = await signIn(app, 'lenzi', 'Lenzi-pass-0001');
+    const revoke = await app.inject({ method: 'POST', url: '/api/auth/revoke-other-sessions', headers: { 'content-type': 'application/json', cookie: phone.cookie }, payload: '{}' });
+    expect(revoke.statusCode).toBe(200);
+    expect(await app.identity.userOf(new Headers({ cookie: laptop.cookie }))).toBeNull();
+    const out = await app.inject({ method: 'POST', url: '/api/auth/sign-out', headers: { 'content-type': 'application/json', cookie: phone.cookie }, payload: '{}' });
+    expect(out.statusCode).toBe(200);
+    expect(await rawRows('SELECT id FROM sessions')).toEqual([]);
+  });
+
+  it('another origin with the session cookie: 403, the session stays', async () => {
+    await lenzi();
+    const res = await signIn(app, 'lenzi', 'Lenzi-pass-0001');
+    const out = await app.inject({ method: 'POST', url: '/api/auth/sign-out', headers: { origin: 'http://evil.example', 'content-type': 'application/json', cookie: res.cookie }, payload: '{}' });
+    expect(out.statusCode).toBe(403);
+    expect(await app.identity.userOf(new Headers({ cookie: res.cookie }))).not.toBeNull();
   });
 
   it('a form or plain text: 415', async () => {

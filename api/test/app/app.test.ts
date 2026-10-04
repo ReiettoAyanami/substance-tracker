@@ -7,7 +7,7 @@ import { createPool } from '../../src/db/pool.js';
 import { Api, expectProblem, fixedClock, makeApi } from '../support/api.js';
 import { testDbConfig, testPool } from '../support/db.js';
 import { TESTER, cookieOf } from '../support/session.js';
-import { VERSION, VERSION_FORMAT } from '../../src/version.js';
+import { API_LEVEL, VERSION, VERSION_FORMAT } from '../../src/version.js';
 
 let api: Api;
 beforeAll(async () => {
@@ -42,8 +42,13 @@ describe('GET /api/version', () => {
   it('the product version, in the agreed format', async () => {
     const res = await api.get('/api/version');
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ version: VERSION });
+    expect(res.body).toEqual({ version: VERSION, apiLevel: API_LEVEL });
     expect(VERSION).toMatch(VERSION_FORMAT);
+  });
+
+  it('the API level is a whole number from 1: the Android app compares it (design-android.md, "compatibility")', () => {
+    expect(Number.isInteger(API_LEVEL)).toBe(true);
+    expect(API_LEVEL).toBeGreaterThanOrEqual(1);
   });
 
   it('the format: dev may carry a short text, final versions are numbers only', () => {
@@ -185,6 +190,36 @@ describe('security headers (lenzi, 2026-10-03: "si")', () => {
       expect(res.headers['strict-transport-security']).toBe('max-age=31536000');
     } finally {
       await app.close();
+    }
+  });
+});
+
+describe('GET /download/substance.apk (public)', () => {
+  it('404 problem when the image carries no APK (built without the CI)', async () => {
+    const res = await api.app.inject({ method: 'GET', url: '/download/substance.apk' });
+    expect(res.statusCode).toBe(404);
+    expect(res.json()).toMatchObject({ type: 'urn:substance-tracker:problem:no-apk' });
+  });
+
+  it('the APK, with no session, as a file to save; HEAD says whether it is there', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'apk-'));
+    const file = join(dir, 'substance.apk');
+    await writeFile(file, Buffer.from('PK fake apk'));
+    const app = await buildApp({ pool: testPool(), clock: fixedClock, apkFile: file });
+    try {
+      const res = await app.inject({ method: 'GET', url: '/download/substance.apk' });
+      expect(res.statusCode).toBe(200);
+      expect(res.headers['content-type']).toBe('application/vnd.android.package-archive');
+      expect(res.headers['content-disposition']).toBe(`attachment; filename="substance-tracker-${VERSION}.apk"`);
+      expect(res.body).toBe('PK fake apk');
+      const head = await app.inject({ method: 'HEAD', url: '/download/substance.apk' });
+      expect(head.statusCode).toBe(200);
+      await rm(file);
+      const gone = await app.inject({ method: 'HEAD', url: '/download/substance.apk' });
+      expect(gone.statusCode).toBe(404);
+    } finally {
+      await app.close();
+      await rm(dir, { recursive: true, force: true });
     }
   });
 });

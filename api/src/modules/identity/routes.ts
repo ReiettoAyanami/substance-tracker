@@ -9,9 +9,13 @@ import type { SignInThrottle } from './throttle.js';
  * The auth endpoints the app uses, answered by Better Auth (design-accounts.md, "Identity as built
  * (1.1)"). Only these: its other endpoints, `/admin/*` above all, would let a client skip the API's
  * rules, and the API's own routes call it from the server instead. Every request that changes
- * something must be JSON and come from the instance's own address: Better Auth checks the origin
- * only when a cookie is present, so a sign-in from another site would pass (login CSRF). A sign-in
- * waits first what the wrong passwords in a row of its username ask for (throttle.ts).
+ * something must be JSON and must not come from another site: Better Auth checks the origin only
+ * when a cookie is present, so a sign-in from another site would pass (login CSRF). An `Origin`
+ * equal to the instance's address passes, and so does none at all: the Android app's native requests
+ * carry none (design-android.md, "native requests"), while a browser always sends it on a POST, so a
+ * request from another site is still refused. The request handed to Better Auth then carries the
+ * instance's address as its `Origin`, so the library's own check sees what it sees from the website.
+ * A sign-in waits first what the wrong passwords in a row of its username ask for (throttle.ts).
  */
 
 const SIGN_IN = '/sign-in/username';
@@ -81,6 +85,8 @@ function toFetchRequest(request: FastifyRequest, deps: IdentityRoutesDeps): Requ
     headers.set(name, Array.isArray(value) ? value.join(', ') : value);
   }
   headers.set(CLIENT_IP_HEADER, clientIp(request, deps.clientIpHeader));
+  // Checked by the route (missing or our own): from here on it is the instance's own request.
+  if (request.method !== 'GET' && request.method !== 'HEAD') headers.set('origin', deps.appUrl);
   const hasBody = request.method !== 'GET' && request.method !== 'HEAD';
   return new Request(`${deps.appUrl}${request.url}`, {
     method: request.method,
@@ -141,7 +147,8 @@ export function identityRoutes(app: FastifyInstance, deps: IdentityRoutesDeps): 
       url: `/api/auth${path}`,
       handler: async (request, reply) => {
         if (method !== 'GET') {
-          if (request.headers.origin !== deps.appUrl) {
+          const origin = request.headers.origin;
+          if (origin !== undefined && origin !== deps.appUrl) {
             throw new ProblemError(403, 'origin', 'This request must come from the app itself');
           }
           if (!isJson(request.headers['content-type'])) {

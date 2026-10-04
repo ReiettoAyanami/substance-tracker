@@ -43,6 +43,8 @@ export interface AppConfig {
   webDist: string | undefined;
   /** Optional override of the migrations folder. */
   migrationsDir: string | undefined;
+  /** The Android app's APK the image carries (APK_FILE); unset or missing, /download/substance.apk is a 404. */
+  apkFile: string | undefined;
 }
 
 type Env = Record<string, string | undefined>;
@@ -121,5 +123,6 @@ export function loadConfig(env: Env = process.env): AppConfig {
     logLevel: str(env, 'LOG_LEVEL', 'info'),
     webDist: optionalPath(env, 'WEB_DIST'),
     migrationsDir: optionalPath(env, 'MIGRATIONS_DIR'),
+    apkFile: optionalPath(env, 'APK_FILE'),
   };
 }
