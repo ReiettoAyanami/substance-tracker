@@ -1,5 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { App } from '@capacitor/app';
+import { CapacitorCookies } from '@capacitor/core';
 
 import { RUNS_IN_APP } from './address';
 
@@ -45,6 +46,20 @@ export class ServerAddress {
       // Nothing stored.
     }
     this.stored.set(null);
+  }
+
+  /**
+   * Every cookie of the phone's store, the session's included: when the app forgets its server, a
+   * server that did not answer the sign-out keeps its session, but the phone must not (found on
+   * lenzi's phone, 2026-10-05).
+   */
+  async clearCookies(): Promise<void> {
+    if (!this.inApp) return;
+    try {
+      await CapacitorCookies.clearAllCookies();
+    } catch {
+      // No cookie store to clear.
+    }
   }
 
   /** The dev app also talks plain http, to a PC at home (design-android.md, "release app and dev app"). */

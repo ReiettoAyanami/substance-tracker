@@ -97,15 +97,17 @@ describe('AppSettings', () => {
     expect(navigated).toEqual(['/server']);
   });
 
-  it('a server that does not answer the sign-out is forgotten all the same', async () => {
+  it('a server that does not answer the sign-out is forgotten all the same, its cookie too', async () => {
     confirmed = true;
     await render();
+    const clearCookies = vi.spyOn(server, 'clearCookies').mockResolvedValue();
     vi.spyOn(session, 'signOut').mockRejectedValue({ status: null });
     const forget = vi.spyOn(session, 'forget');
     element().querySelector<HTMLButtonElement>('.change-server')!.click();
     await new Promise((resolve) => setTimeout(resolve));
     await fixture.whenStable();
     expect(forget).toHaveBeenCalled();
+    expect(clearCookies).toHaveBeenCalled();
     expect(server.address()).toBeNull();
   });
 

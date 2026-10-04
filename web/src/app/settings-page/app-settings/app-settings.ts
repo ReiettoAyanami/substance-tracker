@@ -44,7 +44,8 @@ export class AppSettings {
 
   /**
    * Signs out and forgets this server and what the phone keeps of it (its last data), then the
-   * server screen. Not reached, the server keeps the session until it expires; the phone forgets it.
+   * server screen. Not reached, the server keeps the session until it expires; the phone forgets it,
+   * its cookie included.
    */
   protected async changeServer(): Promise<void> {
     const changed = await this.dialogs.open<ConfirmDialog, ConfirmDialogData, true>(
@@ -66,6 +67,7 @@ export class AppSettings {
     );
     if (!changed) return;
     await this.lastData.wipe();
+    await this.server.clearCookies();
     this.server.clear();
     await this.router.navigateByUrl('/server');
   }
