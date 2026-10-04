@@ -10,6 +10,8 @@ import { Consumption, ConsumptionFilter, ConsumptionScope } from '../data/consum
 import { ReportsApi } from '../data/reports-api';
 import { Settings } from '../data/settings';
 import { SettingsApi } from '../data/settings-api';
+import { Queue } from '../queue/queue';
+import { QueuedConsumption } from '../queue/queued-consumption';
 import { ConsumptionCard } from '../ui/consumption-card/consumption-card';
 import { keptValue } from '../ui/kept-value';
 import { ConsumptionActions } from './consumption-actions';
@@ -60,6 +62,46 @@ function scopeOf({ substanceId, batchId, oneTime, from, to }: ConsumptionFilter)
 /** Two filters built by the functions above (same key order) are equal when they print the same. */
 const sameFilter = (a: object, b: object) => JSON.stringify(a) === JSON.stringify(b);
 
+/**
+ * A consumption of the Android app's queue, as a card shows it: what was entered, at the time it was
+ * recorded. No cost of the server's (a one-time one shows its price), no delta.
+ */
+function asConsumption(item: QueuedConsumption): Consumption {
+  const { request, shown } = item;
+  const body = request.body;
+  return {
+    type: request.kind === 'batch' ? 'consumption' : 'one_time',
+    id: 0,
+    substanceId: shown.substanceId,
+    substanceName: shown.substanceName,
+    unit: shown.unit,
+    batchId: request.kind === 'batch' ? request.batchId : null,
+    batchName: shown.batchName,
+    name: 'name' in body ? (body.name ?? null) : null,
+    occurredAt: body.occurredAt ?? item.recordedAt,
+    quantity: body.quantity,
+    unitPrice: '',
+    cost: 'totalPrice' in body ? (body.totalPrice ?? '') : '',
+    note: body.note ?? null,
+    deltaQuantity: null,
+    deltaUnitPrice: null,
+    deltaCost: null,
+  };
+}
+
+/** The queue follows the substance, the batch and "one-time only" of the filter (proposal). */
+function queuedMatches(item: QueuedConsumption, filter: ConsumptionFilter): boolean {
+  if (filter.substanceId !== undefined && item.shown.substanceId !== filter.substanceId) return false;
+  if (filter.batchId !== undefined && (item.request.kind !== 'batch' || item.request.batchId !== filter.batchId)) return false;
+  if (filter.oneTime && item.request.kind !== 'one-time') return false;
+  return true;
+}
+
+/** A card of the list: the server's consumption, or one of the Android app's queue. */
+export type ConsumptionRow =
+  | { kind: 'server'; key: string; consumption: Consumption }
+  | { kind: 'queued'; key: string; consumption: Consumption; item: QueuedConsumption };
+
 /** An error of a resource, as a short line: the interceptor's ApiError is wrapped as its cause. */
 function reason(failure: Error): string {
   const error = (failure.cause ?? failure) as Partial<ApiError>;
@@ -88,6 +130,7 @@ export class ConsumptionsPage {
   private readonly settingsApi = inject(SettingsApi);
   private readonly catalog = inject(CatalogApi);
   private readonly actions = inject(ConsumptionActions);
+  private readonly queue = inject(Queue);
 
   private readonly query = toSignal(this.route.queryParams, { requireSync: true });
   /** What the list shows: the filter of the URL. */
@@ -136,6 +179,34 @@ export class ConsumptionsPage {
     return { settings, items: [...first, ...this.olderPages()] };
   });
 
+  /**
+   * The cards: the server's consumptions, and in the Android app those of its queue (Pending, To fix)
+   * at their place by date (design-android.md, "queue (Pending)"), each before the first of the
+   * server's that happened earlier.
+   */
+  protected readonly rows = computed((): ConsumptionRow[] | null => {
+    const list = this.list();
+    if (!list) return null;
+    const rows: ConsumptionRow[] = list.items.map((consumption) => ({ kind: 'server', key: `${consumption.type}:${consumption.id}`, consumption }));
+    const filter = this.filter();
+    // Newest recorded first: at the same minute, the one recorded later stays on top.
+    for (const item of [...this.queue.items()].reverse().filter((queued) => queuedMatches(queued, filter))) {
+      const consumption = asConsumption(item);
+      const at = rows.findIndex((row) => row.consumption.occurredAt < consumption.occurredAt);
+      rows.splice(at === -1 ? rows.length : at, 0, { kind: 'queued', key: `queued:${item.clientRef}`, consumption, item });
+    }
+    return rows;
+  });
+
+  /** A consumption of the queue was accepted: the list asks the server again. */
+  private sentBefore = this.queue.sent();
+  private readonly reloadWhenSent = effect(() => {
+    const sent = this.queue.sent();
+    if (sent === this.sentBefore) return;
+    this.sentBefore = sent;
+    untracked(() => this.reload());
+  });
+
   protected readonly hasMore = computed(() => this.lastPageFull() && !this.moreFailed());
 
   /**
@@ -178,6 +249,16 @@ export class ConsumptionsPage {
 
   protected async remove(consumption: Consumption): Promise<void> {
     if (await this.actions.delete(consumption)) this.reload();
+  }
+
+  /** A consumption of the queue, discarded after asking. */
+  protected async discard(item: QueuedConsumption): Promise<void> {
+    await this.actions.discard(item);
+  }
+
+  /** A To fix consumption recorded again: another batch, or one-time. */
+  protected async fix(item: QueuedConsumption, oneTime: boolean): Promise<void> {
+    if (await this.actions.fix(item, oneTime)) this.reload();
   }
 
   /** Something was written: the first page again (the older ones are dropped), the bounds, the batches. */

@@ -6,6 +6,7 @@ import { ServerAddress } from '../connection/server-address';
 import { CatalogApi } from '../data/catalog-api';
 import { ReportsApi } from '../data/reports-api';
 import { SettingsApi } from '../data/settings-api';
+import { onStore } from '../storage/app-db';
 
 /**
  * One stored answer (design-android.md, "last data"): what the server answered and when. `v` is the
@@ -25,42 +26,18 @@ export interface LastDataBackend {
   clear(): Promise<void>;
 }
 
-const DB_NAME = 'substance-tracker';
-const STORE = 'last-data';
-
-/** IndexedDB, one object store keyed by server, user and request. */
+/** IndexedDB (storage/app-db.ts), one store keyed by server, user and request. */
 class IndexedDbBackend implements LastDataBackend {
-  private db: Promise<IDBDatabase> | null = null;
-
-  private open(): Promise<IDBDatabase> {
-    this.db ??= new Promise((resolve, reject) => {
-      const request = indexedDB.open(DB_NAME, 1);
-      request.onupgradeneeded = () => request.result.createObjectStore(STORE);
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-    return this.db;
-  }
-
-  private async run<T>(mode: IDBTransactionMode, work: (store: IDBObjectStore) => IDBRequest<T>): Promise<T> {
-    const db = await this.open();
-    return new Promise((resolve, reject) => {
-      const request = work(db.transaction(STORE, mode).objectStore(STORE));
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-  }
-
   get(key: string): Promise<StoredAnswer | undefined> {
-    return this.run('readonly', (store) => store.get(key) as IDBRequest<StoredAnswer | undefined>);
+    return onStore('last-data', 'readonly', (store) => store.get(key) as IDBRequest<StoredAnswer | undefined>);
   }
 
   async put(key: string, answer: StoredAnswer): Promise<void> {
-    await this.run('readwrite', (store) => store.put(answer, key));
+    await onStore('last-data', 'readwrite', (store) => store.put(answer, key));
   }
 
   async clear(): Promise<void> {
-    await this.run('readwrite', (store) => store.clear());
+    await onStore('last-data', 'readwrite', (store) => store.clear());
   }
 }
 

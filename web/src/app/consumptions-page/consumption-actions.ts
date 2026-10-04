@@ -1,4 +1,5 @@
 import { Injectable, inject } from '@angular/core';
+import { from } from 'rxjs';
 
 import { ConfirmDialog, ConfirmDialogData } from '../confirm-dialog/confirm-dialog';
 import { ConsumptionDetails, ConsumptionDetailsData, ConsumptionHeader } from '../consumption-details/consumption-details';
@@ -7,6 +8,8 @@ import { LedgerApi } from '../data/ledger-api';
 import { Settings } from '../data/settings';
 import { EntityDialog, EntityDialogData, EntityDialogResult } from '../entity-dialog/entity-dialog';
 import { HistoryDialogs } from '../history-dialogs';
+import { Queue } from '../queue/queue';
+import { QueuedConsumption } from '../queue/queued-consumption';
 import { LOCALE } from '../locale';
 
 const quantityFormat = new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 3 });
@@ -23,6 +26,7 @@ const quantityFormat = new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 3 
 export class ConsumptionActions {
   private readonly dialogs = inject(HistoryDialogs);
   private readonly ledger = inject(LedgerApi);
+  private readonly queue = inject(Queue);
 
   /** The entity dialog with the empty consumption form. */
   async add(): Promise<boolean> {
@@ -42,6 +46,49 @@ export class ConsumptionActions {
       { ariaLabel: 'New one-time consumption' },
     );
     return result?.kind === 'consumption';
+  }
+
+  /**
+   * A "To fix" consumption of the Android app's queue (design-android.md, "To fix"), recorded again:
+   * the form filled in with it, its substance fixed, another batch or (`oneTime`) a one-time one with
+   * its price. Saved (sent, or queued again), the one to fix leaves the queue.
+   */
+  async fix(item: QueuedConsumption, oneTime: boolean): Promise<boolean> {
+    const body = item.request.body;
+    const result = await this.dialogs.open<EntityDialog, EntityDialogData, EntityDialogResult>(
+      EntityDialog,
+      {
+        kinds: ['consumption'],
+        draft: {
+          substanceId: item.shown.substanceId,
+          quantity: body.quantity,
+          occurredAt: body.occurredAt ?? item.recordedAt,
+          note: body.note ?? null,
+          oneTime,
+          totalPrice: 'totalPrice' in body ? (body.totalPrice ?? null) : null,
+          name: 'name' in body ? (body.name ?? null) : null,
+        },
+      },
+      { ariaLabel: 'Record the consumption again' },
+    );
+    if (result?.kind !== 'consumption') return false;
+    await this.queue.discard(item.clientRef);
+    return true;
+  }
+
+  /** A consumption of the queue, Pending or To fix, discarded after asking: it is never sent. */
+  async discard(item: QueuedConsumption): Promise<boolean> {
+    const discarded = await this.dialogs.open<ConfirmDialog, ConfirmDialogData, true>(
+      ConfirmDialog,
+      {
+        title: 'Discard this consumption?',
+        message: `${quantityFormat.format(item.request.body.quantity as unknown as number)} ${item.shown.unit} of ${item.shown.substanceName} was never sent: it will not be recorded.`,
+        confirm: 'Discard',
+        action: () => from(this.queue.discard(item.clientRef)),
+      },
+      { width: '400px' },
+    );
+    return discarded === true;
   }
 
   /** The consumption form filled in with the consumption. */

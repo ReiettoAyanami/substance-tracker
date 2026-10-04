@@ -6,6 +6,7 @@ import { from } from 'rxjs';
 
 import { ConfirmDialog, ConfirmDialogData } from '../confirm-dialog/confirm-dialog';
 import { HistoryDialogs } from '../history-dialogs';
+import { Queue } from '../queue/queue';
 import { Session } from '../session/session';
 
 const ROOT: IsActiveMatchOptions = { paths: 'exact', queryParams: 'ignored', matrixParams: 'ignored', fragment: 'ignored' };
@@ -31,6 +32,7 @@ export class Sidebar {
   protected readonly session = inject(Session);
   private readonly router = inject(Router);
   private readonly dialogs = inject(HistoryDialogs);
+  private readonly queue = inject(Queue);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   /**
@@ -54,7 +56,7 @@ export class Sidebar {
       ConfirmDialog,
       {
         title: 'Sign out?',
-        message: 'You will have to sign in again on this device.',
+        message: this.signOutMessage(),
         confirm: 'Sign out',
         destructive: false,
         action: () => from(this.session.signOut()),
@@ -67,7 +69,17 @@ export class Sidebar {
       this.host.nativeElement.querySelector<HTMLElement>('[aria-current="page"]')?.focus();
       return;
     }
+    // The Android app's queue goes with the session, after the user was told (proposal).
+    await this.queue.wipe();
     this.navigated.emit();
     await this.router.navigateByUrl('/login');
+  }
+
+  /** What signing out costs: in the Android app, the consumptions not sent yet. */
+  private signOutMessage(): string {
+    const waiting = this.queue.items().length;
+    const lost =
+      waiting === 0 ? '' : ` ${waiting === 1 ? '1 consumption is' : `${waiting} consumptions are`} not sent yet and will be lost.`;
+    return `You will have to sign in again on this device.${lost}`;
   }
 }

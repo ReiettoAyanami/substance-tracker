@@ -1,23 +1,55 @@
 @let item = consumption();
 @let shown = view();
 <!-- A full card opens its details when tapped (lenzi, 2026-10-01); the ⋮ and the pill keep their own taps. -->
-<mat-card appearance="outlined" [class.tappable]="variant() === 'full'" (click)="variant() === 'full' && details.emit()">
+@let waiting = queued();
+<mat-card
+  appearance="outlined"
+  [class.tappable]="variant() === 'full' && !waiting"
+  [class.queued]="!!waiting"
+  (click)="variant() === 'full' && !waiting && details.emit()"
+>
   <mat-card-content>
-    <!-- The same menu in both variants. -->
+    <!-- The same menu in both variants; a consumption of the queue has its own. -->
     <mat-menu #actions="matMenu" xPosition="before">
-      <button mat-menu-item type="button" (click)="details.emit()">
-        <mat-icon>insights</mat-icon>
-        <span>Details</span>
-      </button>
-      <button mat-menu-item type="button" (click)="edit.emit()">
-        <mat-icon>edit</mat-icon>
-        <span>Edit</span>
-      </button>
-      <button mat-menu-item type="button" (click)="remove.emit()">
-        <mat-icon>delete</mat-icon>
-        <span>Delete</span>
-      </button>
+      @if (waiting) {
+        @if (waiting === 'to-fix') {
+          <button mat-menu-item type="button" (click)="fix.emit(false)">
+            <mat-icon>inventory_2</mat-icon>
+            <span>Choose another batch</span>
+          </button>
+          <button mat-menu-item type="button" (click)="fix.emit(true)">
+            <mat-icon>shopping_bag</mat-icon>
+            <span>Make it one-time</span>
+          </button>
+        }
+        <button mat-menu-item type="button" (click)="discard.emit()">
+          <mat-icon>delete</mat-icon>
+          <span>Discard</span>
+        </button>
+      } @else {
+        <button mat-menu-item type="button" (click)="details.emit()">
+          <mat-icon>insights</mat-icon>
+          <span>Details</span>
+        </button>
+        <button mat-menu-item type="button" (click)="edit.emit()">
+          <mat-icon>edit</mat-icon>
+          <span>Edit</span>
+        </button>
+        <button mat-menu-item type="button" (click)="remove.emit()">
+          <mat-icon>delete</mat-icon>
+          <span>Delete</span>
+        </button>
+      }
     </mat-menu>
+
+    @if (waiting) {
+      <div class="queue-tag" [class.to-fix]="waiting === 'to-fix'">
+        <span class="tag">{{ waiting === 'pending' ? 'Pending' : 'To fix' }}</span>
+        @if (waiting === 'to-fix' && reason()) {
+          <span class="reason">{{ reason() }}</span>
+        }
+      </div>
+    }
 
     @switch (variant()) {
       @case ('full') {
@@ -49,7 +81,9 @@
 
         <div class="figures">
           <span class="amount">{{ shown.amount }}</span>
-          <app-delta-pill [consumption]="item" (click)="$event.stopPropagation()" />
+          @if (!waiting) {
+            <app-delta-pill [consumption]="item" (click)="$event.stopPropagation()" />
+          }
         </div>
 
         @if (item.note) {

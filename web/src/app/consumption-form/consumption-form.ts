@@ -11,15 +11,19 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTimepickerModule } from '@angular/material/timepicker';
 import { Observable } from 'rxjs';
 
+import { RUNS_IN_APP } from '../connection/address';
+import { Connectivity } from '../connection/connectivity';
 import { ApiError, SERVER_NOT_REACHABLE, isUnreachable } from '../data/api-error';
 import { newClientRef } from '../data/client-ref';
 import { CatalogApi } from '../data/catalog-api';
-import { Consumption, ConsumptionRecord } from '../data/consumption';
+import { Consumption, ConsumptionRecord, CreateConsumptionInput } from '../data/consumption';
 import { LedgerApi } from '../data/ledger-api';
-import { OneTimeRecord } from '../data/one-time';
+import { CreateOneTimeInput, OneTimeRecord } from '../data/one-time';
 import { ReportsApi } from '../data/reports-api';
 import { SettingsApi } from '../data/settings-api';
 import { LOCALE } from '../locale';
+import { Queue } from '../queue/queue';
+import { QueuedConsumption } from '../queue/queued-consumption';
 import { IdentityColorPipe } from '../ui/identity-color-pipe';
 import { WallTime, instantOf, wallTimeOf } from '../zoned-time';
 
@@ -64,6 +68,23 @@ const dateOfWallTime = ({ day, time }: WallTime) => {
   return date;
 };
 
+/**
+ * A consumption to record again, its fields filled in (a "To fix" consumption of the Android app's
+ * queue, design-android.md): its substance stays, the batch or one-time is chosen again.
+ */
+export interface ConsumptionDraft {
+  substanceId: number;
+  quantity: string;
+  occurredAt: string;
+  note: string | null;
+  oneTime: boolean;
+  totalPrice: string | null;
+  name: string | null;
+}
+
+/** A create, as sent: to a batch, or a one-time consumption of a substance. */
+type CreateRequest = QueuedConsumption['request'];
+
 /** Where the API's field errors go: its field names are the form's, except the instant. */
 const FIELD_OF: Record<string, string> = { occurredAt: 'day', unitPrice: 'totalPrice' };
 
@@ -76,7 +97,9 @@ const FIELD_OF: Record<string, string> = { occurredAt: 'day', unitPrice: 'totalP
  * the substance chosen are offered oldest first, the oldest chosen; with none, the consumption can
  * only be one-time. The day and the time are those of the settings' time zone, "now" at
  * first. In edit mode the kind and the batch are shown, not changed (the API cannot move a
- * consumption). It says `saved` with what the Ledger returned, or `cancelled`.
+ * consumption). It says `saved` with what the Ledger returned, or `cancelled`. In the Android app a
+ * new consumption that gets no answer from the server (or is recorded offline) goes to the queue with
+ * its clientRef, and `saved` says the queued consumption (design-android.md, "queue (Pending)").
  */
 @Component({
   selector: 'app-consumption-form',
@@ -102,9 +125,14 @@ export class ConsumptionForm implements OnInit {
   private readonly reports = inject(ReportsApi);
   private readonly ledger = inject(LedgerApi);
   private readonly settingsApi = inject(SettingsApi);
+  private readonly inApp = inject(RUNS_IN_APP);
+  private readonly connectivity = inject(Connectivity);
+  private readonly queue = inject(Queue);
 
   /** The consumption to edit (an item of the consumptions list); none to record one. */
   readonly consumption = input<Consumption | null>(null);
+  /** A consumption to record again (To fix): filled in, its substance fixed. */
+  readonly draft = input<ConsumptionDraft | null>(null);
   /** A fixed substance: no substance selector. */
   readonly substanceId = input<number | null>(null);
   /** A fixed batch (of the fixed substance): no batch selector, never one-time. */
@@ -114,7 +142,7 @@ export class ConsumptionForm implements OnInit {
   /** The host may show its own title instead. */
   readonly showTitle = input(true);
   /** What the Ledger returned: the recorded or changed consumption. */
-  readonly saved = output<ConsumptionRecord | OneTimeRecord>();
+  readonly saved = output<ConsumptionRecord | OneTimeRecord | QueuedConsumption>();
   readonly cancelled = output<void>();
 
   protected readonly form = new FormGroup({
@@ -204,8 +232,8 @@ export class ConsumptionForm implements OnInit {
       if (!settings || this.prefilled) return;
       this.prefilled = true;
       untracked(() => {
-        const edited = this.consumption();
-        const wall = wallTimeOf(edited ? new Date(edited.occurredAt) : new Date(), settings.timezone);
+        const at = this.consumption()?.occurredAt ?? this.draft()?.occurredAt;
+        const wall = wallTimeOf(at ? new Date(at) : new Date(), settings.timezone);
         this.form.controls.day.setValue(dateOfDay(wall.day));
         this.form.controls.time.setValue(dateOfWallTime(wall));
       });
@@ -238,6 +266,16 @@ export class ConsumptionForm implements OnInit {
       batchId.disable();
       return;
     }
+    const draft = this.draft();
+    if (draft) {
+      substanceId.setValue(draft.substanceId);
+      substanceId.disable();
+      quantity.setValue(asTyped(draft.quantity));
+      note.setValue(draft.note ?? '');
+      if (draft.oneTime) oneTime.setValue(true);
+      if (draft.totalPrice !== null) totalPrice.setValue(asTyped(draft.totalPrice));
+      name.setValue(draft.name ?? '');
+    }
     if (this.substanceId() !== null) substanceId.setValue(this.substanceId());
     if (this.batchId() !== null) {
       batchId.setValue(this.batchId());
@@ -266,13 +304,44 @@ export class ConsumptionForm implements OnInit {
     if (!settings) return;
     this.saving.set(true);
     this.formError.set(null);
+    const queueable = this.inApp && !this.consumption();
+    if (queueable && this.connectivity.offline()) {
+      void this.queueIt(settings.timezone);
+      return;
+    }
     this.request(settings.timezone).subscribe({
       next: (saved) => this.saved.emit(saved),
       error: (error: ApiError) => {
+        // No answer in the app: the same consumption, with the same clientRef, waits in the queue.
+        if (queueable && isUnreachable(error)) {
+          void this.queueIt(settings.timezone);
+          return;
+        }
         this.saving.set(false);
         this.showErrors(error);
       },
     });
+  }
+
+  /** Into the Android app's queue, as it would have been sent, at the time the form shows. */
+  private async queueIt(timeZone: string): Promise<void> {
+    const create = this.createRequest(timeZone, true);
+    const substanceId = this.form.getRawValue().substanceId!;
+    const substance = this.substances.value()?.find((s) => s.id === substanceId);
+    const batch =
+      create.kind === 'batch' && this.batches.hasValue() ? this.batches.value().batches.find((b) => b.id === create.batchId) : undefined;
+    try {
+      const queued = await this.queue.record(create, {
+        substanceId,
+        substanceName: substance?.name ?? '',
+        unit: substance?.unit ?? '',
+        batchName: create.kind === 'batch' ? (batch?.name ?? null) : null,
+      });
+      this.saved.emit(queued);
+    } catch {
+      this.saving.set(false);
+      this.formError.set(SERVER_NOT_REACHABLE);
+    }
   }
 
   private request(timeZone: string): Observable<ConsumptionRecord | OneTimeRecord> {
@@ -295,17 +364,43 @@ export class ConsumptionForm implements OnInit {
       return this.ledger.updateOneTime(edited.id, { quantity, totalPrice: decimal(v.totalPrice), name, note, ...when });
     }
     if (edited) return this.ledger.updateConsumption(edited.id, { quantity, note, ...when });
+    const create = this.createRequest(timeZone, false);
+    return create.kind === 'one-time'
+      ? this.ledger.createOneTime(create.substanceId, create.body)
+      : this.ledger.createConsumption(create.batchId, create.body);
+  }
+
+  /**
+   * The new consumption as it is sent. `recorded`: for the queue, whose consumption keeps the time it
+   * was recorded (the form's, or now), never the time it is sent.
+   */
+  private createRequest(timeZone: string, recorded: boolean): CreateRequest {
+    const v = this.form.getRawValue();
+    const quantity = decimal(v.quantity);
+    const note = v.note.trim() || null;
+    const name = v.name.trim() || null;
+    const occurredAt =
+      v.day && v.time
+        ? instantOf({ day: dayOfDate(v.day), time: `${pad(v.time.getHours())}:${pad(v.time.getMinutes())}` }, timeZone)
+            .toISOString()
+            .replace('.000', '')
+        : recorded
+          ? new Date().toISOString().replace(/\.\d{3}Z$/, 'Z')
+          : undefined;
+    const when = occurredAt === undefined ? {} : { occurredAt };
     if (v.oneTime) {
-      return this.ledger.createOneTime(v.substanceId!, {
+      const body: CreateOneTimeInput = {
         quantity,
         totalPrice: decimal(v.totalPrice),
         ...(name === null ? {} : { name }),
         ...(note === null ? {} : { note }),
         ...when,
         clientRef: this.clientRef,
-      });
+      };
+      return { kind: 'one-time', substanceId: v.substanceId!, body };
     }
-    return this.ledger.createConsumption(v.batchId!, { quantity, ...(note === null ? {} : { note }), ...when, clientRef: this.clientRef });
+    const body: CreateConsumptionInput = { quantity, ...(note === null ? {} : { note }), ...when, clientRef: this.clientRef };
+    return { kind: 'batch', batchId: v.batchId!, body };
   }
 
   /** One-time: no batch, a price is required. */

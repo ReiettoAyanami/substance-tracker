@@ -19,14 +19,25 @@
   @if (error(); as why) {
     <p class="error">Could not load the consumptions: {{ why }}</p>
   } @else if (list(); as shown) {
-    @for (item of shown.items; track item.type + ':' + item.id) {
-      <app-consumption-card
-        [consumption]="item"
-        [settings]="shown.settings"
-        (details)="details(item, shown.settings)"
-        (edit)="edit(item)"
-        (remove)="remove(item)"
-      />
+    @for (row of rows(); track row.key) {
+      @if (row.kind === 'queued') {
+        <app-consumption-card
+          [consumption]="row.consumption"
+          [settings]="shown.settings"
+          [queued]="row.item.state"
+          [reason]="row.item.reason"
+          (discard)="discard(row.item)"
+          (fix)="fix(row.item, $event)"
+        />
+      } @else {
+        <app-consumption-card
+          [consumption]="row.consumption"
+          [settings]="shown.settings"
+          (details)="details(row.consumption, shown.settings)"
+          (edit)="edit(row.consumption)"
+          (remove)="remove(row.consumption)"
+        />
+      }
     } @empty {
       <p class="empty">No consumptions</p>
     }

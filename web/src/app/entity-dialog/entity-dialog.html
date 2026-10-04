@@ -33,6 +33,7 @@
         [consumption]="editedConsumption"
         [substanceId]="data.substanceId ?? null"
         [oneTimeOnly]="data.oneTime ?? false"
+        [draft]="data.draft ?? null"
         [showTitle]="!chooser"
         (saved)="savedConsumption($event)"
         (cancelled)="cancel()"

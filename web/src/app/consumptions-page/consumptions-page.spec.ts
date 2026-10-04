@@ -16,6 +16,9 @@ import { ConsumptionCard } from '../ui/consumption-card/consumption-card';
 import { ConsumptionActions } from './consumption-actions';
 import { ConsumptionFilters } from './consumption-filters/consumption-filters';
 import { ConsumptionsPage } from './consumptions-page';
+import { Queue } from '../queue/queue';
+import { QueuedConsumption } from '../queue/queued-consumption';
+import { signal } from '@angular/core';
 
 const settings: Settings = { timezone: 'Europe/Rome', dayStartsAt: '00:00:00', currency: 'EUR' };
 
@@ -297,5 +300,36 @@ describe('ConsumptionsPage', () => {
     expect(asked.length).toBe(2);
     expect(calls.length).toBe(1);
     expect(scopes.length).toBe(1);
+  });
+
+  it("the Android app's queue: each at its place by date, tagged, and the list asked again once one is sent", async () => {
+    const queued = (n: number, at: string, state: QueuedConsumption['state']): QueuedConsumption => ({
+      v: 1,
+      clientRef: `00000000-0000-4000-8000-00000000000${n}`,
+      server: 'https://tracker.example.com',
+      userId: 7,
+      recordedAt: at,
+      state,
+      reason: state === 'to-fix' ? 'Batch 8 is finished' : null,
+      request: { kind: 'batch', batchId: 8, body: { quantity: '1', occurredAt: at, clientRef: `00000000-0000-4000-8000-00000000000${n}` } },
+      shown: { substanceId: 2, substanceName: 'Sigarette', unit: 'sigaretta', batchName: 'Pack A' },
+    });
+    const sent = signal(0);
+    TestBed.overrideProvider(Queue, {
+      useValue: {
+        items: signal([queued(1, '2026-09-27T20:00:00Z', 'to-fix'), queued(2, '2026-09-30T08:00:00Z', 'pending')]),
+        sent,
+      },
+    });
+    await render();
+
+    const tags = Array.from(element().querySelectorAll('app-consumption-card'), (card) => text(card.querySelector('.queue-tag .tag')) || 'server');
+    // consumption(0) is 28 Sept, consumption(1) 27 Sept 18:00: the Pending one is newest, the To fix one between them.
+    expect(tags).toEqual(['Pending', 'server', 'To fix', 'server']);
+
+    const before = calls.length;
+    sent.set(1);
+    await harness.fixture.whenStable();
+    expect(calls.length).toBe(before + 1);
   });
 });

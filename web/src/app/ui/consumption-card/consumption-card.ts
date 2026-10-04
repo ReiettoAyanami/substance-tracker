@@ -11,6 +11,9 @@ import { DeltaPill } from '../delta-pill/delta-pill';
 import { IdentityColorPipe } from '../identity-color-pipe';
 
 /** full: on the consumptions page; compact: under a batch, where substance and batch are known. */
+/** A consumption of the Android app's queue (design-android.md): waiting to be sent, or refused. */
+export type QueuedState = 'pending' | 'to-fix';
+
 export type ConsumptionCardVariant = 'full' | 'compact';
 
 const quantityFormat = new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 3 });
@@ -71,13 +74,27 @@ export class ConsumptionCard {
   readonly remove = output<void>();
   /** The open button of a compact card: the consumptions page, with this consumption's details open. */
   readonly open = output<void>();
+  /**
+   * A consumption of the Android app's queue: the tag "Pending" or "To fix" at the top, no delta, no
+   * cost computed by the server, and its own ⋮ menu (discard; a To fix one recorded again).
+   */
+  readonly queued = input<QueuedState | null>(null);
+  /** Why the server refused a To fix consumption. */
+  readonly reason = input<string | null>(null);
+  /** "Discard" in the ⋮ menu of a queued consumption. */
+  readonly discard = output<void>();
+  /** A To fix consumption recorded again: from another batch (false) or as a one-time one (true). */
+  readonly fix = output<boolean>();
 
   protected readonly view = computed(() => {
     const consumption = this.consumption();
     const settings = this.settings();
     return {
       when: whenFormat(settings.timezone).format(new Date(consumption.occurredAt)),
-      amount: `${exact(quantityFormat, consumption.quantity)} ${consumption.unit} · ${exact(moneyFormat(settings.currency), consumption.cost)}`,
+      // A queued consumption has no cost of the server's: a one-time one shows the price typed.
+      amount: consumption.cost
+        ? `${exact(quantityFormat, consumption.quantity)} ${consumption.unit} · ${exact(moneyFormat(settings.currency), consumption.cost)}`
+        : `${exact(quantityFormat, consumption.quantity)} ${consumption.unit}`,
     };
   });
 }

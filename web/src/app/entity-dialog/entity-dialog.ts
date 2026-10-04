@@ -4,12 +4,13 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 
 import { BatchForm } from '../batch-form/batch-form';
-import { ConsumptionForm } from '../consumption-form/consumption-form';
+import { ConsumptionDraft, ConsumptionForm } from '../consumption-form/consumption-form';
 import { BatchRecord } from '../data/batch';
 import { Consumption, ConsumptionRecord } from '../data/consumption';
 import { OneTimeRecord } from '../data/one-time';
 import { Substance } from '../data/substance';
 import { Batch } from '../data/substance-batches';
+import { QueuedConsumption } from '../queue/queued-consumption';
 import { User } from '../data/user';
 import { SubstanceForm } from '../substance-form/substance-form';
 import { UserForm } from '../user-form/user-form';
@@ -35,13 +36,15 @@ export interface EntityDialogData {
   substanceId?: number;
   /** A new consumption can only be a one-time one: the consumption form shows neither batches nor its checkbox. */
   oneTime?: boolean;
+  /** A consumption to record again, filled in (a "To fix" one of the Android app's queue). */
+  draft?: ConsumptionDraft;
 }
 
 /** What it closes with: the saved record and its kind. Nothing when cancelled or closed by back. */
 export type EntityDialogResult =
   | { kind: 'substance'; substance: Substance }
   | { kind: 'batch'; record: BatchRecord }
-  | { kind: 'consumption'; record: ConsumptionRecord | OneTimeRecord }
+  | { kind: 'consumption'; record: ConsumptionRecord | OneTimeRecord | QueuedConsumption }
   | { kind: 'user'; user: User };
 
 /**
@@ -82,7 +85,7 @@ export class EntityDialog {
     this.dialog.close({ kind: 'batch', record });
   }
 
-  protected savedConsumption(record: ConsumptionRecord | OneTimeRecord): void {
+  protected savedConsumption(record: ConsumptionRecord | OneTimeRecord | QueuedConsumption): void {
     this.dialog.close({ kind: 'consumption', record });
   }
 

@@ -14,7 +14,16 @@
     <p class="note">Administration is on the website: {{ admin }}</p>
   }
 
+  @if (queued().length; as waiting) {
+    <p class="note queue-note">
+      {{ waiting === 1 ? '1 consumption is' : waiting + ' consumptions are' }} not sent yet: send or discard
+      {{ waiting === 1 ? 'it' : 'them' }} before changing server.
+    </p>
+  }
+
   <div class="actions">
-    <button mat-stroked-button type="button" class="change-server" (click)="changeServer()">Change server</button>
+    <button mat-stroked-button type="button" class="change-server" [disabled]="queued().length > 0" (click)="changeServer()">
+      Change server
+    </button>
   </div>
 </section>

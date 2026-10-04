@@ -10,6 +10,7 @@ import { ServerAddress } from '../../connection/server-address';
 import { VersionApi } from '../../data/version-api';
 import { HistoryDialogs } from '../../history-dialogs';
 import { LastData } from '../../last-data/last-data';
+import { Queue } from '../../queue/queue';
 import { Session } from '../../session/session';
 
 /**
@@ -29,6 +30,8 @@ export class AppSettings {
   private readonly dialogs = inject(HistoryDialogs);
   private readonly router = inject(Router);
   private readonly lastData = inject(LastData);
+  /** "Change server" only with an empty queue (design-android.md, "server address"). */
+  protected readonly queued = inject(Queue).items;
   protected readonly session = inject(Session);
 
   protected readonly address = this.server.address;

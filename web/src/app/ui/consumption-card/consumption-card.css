@@ -157,3 +157,30 @@ mat-card-content {
   outline-offset: 2px;
   border-radius: 4px;
 }
+
+/* A consumption of the Android app's queue (design-android.md): its tag at the top of the card. */
+.queue-tag {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  margin-bottom: 8px;
+}
+
+.queue-tag .tag {
+  padding: 2px 10px;
+  border-radius: 8px;
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+  font: var(--mat-sys-label-large);
+}
+
+.queue-tag.to-fix .tag {
+  background: var(--mat-sys-error-container);
+  color: var(--mat-sys-on-error-container);
+}
+
+.queue-tag .reason {
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}

@@ -214,4 +214,45 @@ describe('ConsumptionCard', () => {
     expect(text(first.querySelector('.when'))).toBe('28 Sept 2026, 08:45');
     expect(text(first.querySelector('.amount'))).toBe('2 capsula · €0.64');
   });
+
+  it('a To fix consumption of the queue: its tag and reason, no pill, no cost, no details; its own ⋮ menu', async () => {
+    fixture = TestBed.createComponent(ConsumptionCard);
+    fixture.componentRef.setInput('consumption', { ...coffee, cost: '' });
+    fixture.componentRef.setInput('settings', settings);
+    fixture.componentRef.setInput('queued', 'to-fix');
+    fixture.componentRef.setInput('reason', 'Batch 8 is finished');
+    await fixture.whenStable();
+    const card = fixture.nativeElement as HTMLElement;
+    const asked: unknown[] = [];
+    fixture.componentInstance.details.subscribe(() => asked.push('details'));
+    fixture.componentInstance.fix.subscribe((oneTime) => asked.push(oneTime ? 'one-time' : 'another batch'));
+    fixture.componentInstance.discard.subscribe(() => asked.push('discard'));
+
+    expect(text(card.querySelector('.queue-tag .tag'))).toBe('To fix');
+    expect(text(card.querySelector('.queue-tag .reason'))).toBe('Batch 8 is finished');
+    expect(pill(card)).toBeNull();
+    expect(text(card.querySelector('.amount'))).not.toContain('€');
+    card.querySelector<HTMLElement>('mat-card')!.click();
+    expect(asked).toEqual([]);
+
+    card.querySelector<HTMLButtonElement>('button.more')!.click();
+    await fixture.whenStable();
+    const items = () => Array.from(document.querySelectorAll<HTMLButtonElement>('.mat-mdc-menu-item'));
+    expect(items().map((b) => text(b))).toEqual(['inventory_2Choose another batch', 'shopping_bagMake it one-time', 'deleteDiscard']);
+    items()[1]!.click();
+    expect(asked).toEqual(['one-time']);
+  });
+
+  it('a Pending consumption: the tag, and only Discard', async () => {
+    fixture = TestBed.createComponent(ConsumptionCard);
+    fixture.componentRef.setInput('consumption', { ...coffee, cost: '' });
+    fixture.componentRef.setInput('settings', settings);
+    fixture.componentRef.setInput('queued', 'pending');
+    await fixture.whenStable();
+    const card = fixture.nativeElement as HTMLElement;
+    expect(text(card.querySelector('.queue-tag'))).toBe('Pending');
+    card.querySelector<HTMLButtonElement>('button.more')!.click();
+    await fixture.whenStable();
+    expect(Array.from(document.querySelectorAll('.mat-mdc-menu-item')).map((b) => text(b))).toEqual(['deleteDiscard']);
+  });
 });
