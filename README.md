@@ -1,12 +1,12 @@
 # substance-tracker
 
-Web app personale (mobile first) per registrare acquisti (lotti) e consumi di qualsiasi sostanza con un'unità, e sapere quanto ne resta, quanto se ne consuma e quanto costa. Multiutente, con app Android.
+A personal, mobile-first web app to log purchases (batches) and consumptions of any substance that has a unit, and see how much is left, how fast it goes and what it costs. Multi-user, with an Android app.
 
-MySQL 8.4 · API Node 22 + Fastify (`api/`) · Angular 21 (`web/`) · tutto in Docker.
+MySQL 8.4 · Node 22 API with Fastify (`api/`) · Angular 21 (`web/`) · everything runs in Docker.
 
-Serve solo **Docker con Compose v2**. Node sull'host non serve.
+All you need is **Docker with Compose v2**. No Node on the host.
 
-## Installare
+## Install
 
 ```sh
 git clone https://github.com/ReiettoAyanami/substance-tracker.git
@@ -14,59 +14,59 @@ cd substance-tracker
 cp .env.example .env
 ```
 
-Nel `.env` imposta almeno:
+In `.env`, set at least:
 
-| Variabile | Cosa |
+| Variable | What |
 |---|---|
-| `MYSQL_ROOT_PASSWORD`, `DB_PASSWORD` | password lunghe, solo lettere e numeri |
+| `MYSQL_ROOT_PASSWORD`, `DB_PASSWORD` | long passwords, letters and digits only |
 | `AUTH_SECRET` | `openssl rand -base64 32` |
-| `APP_URL` | l'indirizzo da cui apri l'app (vedi sotto) |
-| `APP_VERSION` | facoltativa: una versione precisa (`a26.0.0`); senza, l'ultima release |
+| `APP_URL` | the address you open the app at (see below) |
+| `APP_VERSION` | optional: a specific version (`a26.0.0`); unset, the latest release |
 
-Poi:
+Then:
 
 ```sh
 docker compose -f compose.prod.yaml pull
 docker compose -f compose.prod.yaml up -d
 ```
 
-L'app risponde sulla porta `8080` (`APP_PORT`).
+The app listens on port `8080` (`APP_PORT`).
 
-## Primo accesso
+## First sign-in
 
-Al primo avvio viene creato l'amministratore `admin`, con una password generata e scritta in `to_delete.password.txt` nella cartella del progetto.
+On the first start the app creates the administrator `admin`, with a generated password written to `to_delete.password.txt` in the project folder.
 
-1. Apri l'app da `APP_URL` ed entra con `admin` e quella password.
-2. Cancella il file e cambia la password da **Settings**.
+1. Open the app at `APP_URL` and sign in as `admin` with that password.
+2. Delete the file and change the password in **Settings**.
 
-Se il file non c'è (il log lo dice), genera una password nuova:
+If the file is not there (the log says so), generate a new password:
 
 ```sh
 docker compose -f compose.prod.yaml exec app node dist/cli.js reset-password admin
 ```
 
-## L'indirizzo dell'app (`APP_URL`)
+## The app's address (`APP_URL`)
 
-Il login funziona **solo** dall'indirizzo scritto in `APP_URL`, uguale a quello nella barra del browser. Da un altro indirizzo compare *"Signing in works only from the address of the app"*.
+Signing in works **only** from the address in `APP_URL`, exactly as it appears in the browser's address bar. From any other address you get *"Signing in works only from the address of the app"*.
 
-| Come la usi | `APP_URL` |
+| How you use it | `APP_URL` |
 |---|---|
-| solo da questo PC | `http://localhost:8080` |
-| da telefono e altri PC della rete | `http://<IP del PC>:8080`, e usa quell'indirizzo anche dal PC |
-| dietro un dominio | `https://tracker.example.com` |
+| from this PC only | `http://localhost:8080` |
+| from your phone and other devices on the network | `http://<PC's IP>:8080`, and use that address on the PC too |
+| behind a domain | `https://tracker.example.com` |
 
-Dopo averlo cambiato: `docker compose -f compose.prod.yaml up -d`.
+After changing it: `docker compose -f compose.prod.yaml up -d`.
 
-## Aggiornare
+## Update
 
 ```sh
 docker compose -f compose.prod.yaml pull
 docker compose -f compose.prod.yaml up -d
 ```
 
-Il database si aggiorna da solo all'avvio. Fai prima un backup.
+The database migrates itself on start. Take a backup first.
 
-## Backup e ripristino
+## Backup and restore
 
 ```sh
 # Backup -> ./backup.sql
@@ -74,32 +74,32 @@ docker compose -f compose.prod.yaml exec db sh -c 'mysqldump -uroot -p$MYSQL_ROO
 docker compose -f compose.prod.yaml cp db:/tmp/backup.sql ./backup.sql
 docker compose -f compose.prod.yaml exec db rm /tmp/backup.sql
 
-# Ripristino da ./backup.sql
+# Restore from ./backup.sql
 docker compose -f compose.prod.yaml cp ./backup.sql db:/tmp/backup.sql
 docker compose -f compose.prod.yaml exec db sh -c 'mysql -uroot -p$MYSQL_ROOT_PASSWORD < /tmp/backup.sql'
 ```
 
-> **Mai `docker compose -f compose.prod.yaml down -v`**: `-v` cancella il database.
+> **Never run `docker compose -f compose.prod.yaml down -v`**: `-v` deletes the database.
 
-## App Android
+## Android app
 
-Scarica l'APK dalla [pagina delle release](https://github.com/ReiettoAyanami/substance-tracker/releases) o dalla tua istanza su `/download/substance.apk`, installalo e al primo avvio inserisci l'indirizzo del server. L'app accetta solo server **https**: con un'istanza `http://` dal telefono usa il browser. Serve Android 7.0 o più.
+Download the APK from the [releases page](https://github.com/ReiettoAyanami/substance-tracker/releases) or from your instance at `/download/substance.apk`, install it, and enter your server's address on first launch. The app only accepts **https** servers: with an `http://` instance, use the browser on your phone. Requires Android 7.0 or later.
 
-## Comandi utili
+## Useful commands
 
 ```sh
-docker compose -f compose.prod.yaml ps            # stato
-docker compose -f compose.prod.yaml logs -f app   # log
-docker compose -f compose.prod.yaml down          # stop (i dati restano)
+docker compose -f compose.prod.yaml ps            # status
+docker compose -f compose.prod.yaml logs -f app   # logs
+docker compose -f compose.prod.yaml down          # stop (data is kept)
 ```
 
-## Sviluppo
+## Development
 
 ```sh
 cp .env.example .env
-docker compose -f compose.dev.yaml up -d                 # db, api, web
-docker compose -f compose.dev.yaml exec api npm test     # test dell'API
-docker compose -f compose.dev.yaml exec web npx ng test --watch=false   # test del web
+docker compose -f compose.dev.yaml up -d                                 # db, api, web
+docker compose -f compose.dev.yaml exec api npm test                     # API tests
+docker compose -f compose.dev.yaml exec web npx ng test --watch=false    # web tests
 ```
 
-Il sito è su `http://localhost:4200`, l'API su `http://localhost:3001/api/health`. Le modifiche partono dal ramo `dev`.
+The site is at `http://localhost:4200`, the API at `http://localhost:3001/api/health`. Changes start from the `dev` branch.
