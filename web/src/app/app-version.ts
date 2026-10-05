@@ -4,5 +4,5 @@
  * Android app carries its own pages, so it compares these with its server's (design-android.md,
  * "compatibility"); the website always gets the pages of its own server.
  */
-export const APP_VERSION = 'a26.0.0';
+export const APP_VERSION = 'a26.0.0.0001';
 export const APP_API_LEVEL = 1;

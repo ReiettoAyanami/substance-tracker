@@ -21,7 +21,9 @@ In `.env`, set at least:
 | `MYSQL_ROOT_PASSWORD`, `DB_PASSWORD` | long passwords, letters and digits only |
 | `AUTH_SECRET` | `openssl rand -base64 32` |
 | `APP_URL` | the address you open the app at (see below) |
-| `APP_VERSION` | optional: a specific version (`a26.0.0`); unset, the latest release |
+| `APP_VERSION` | optional: a specific version (`a26.0.0.0001`); unset, the latest release |
+
+By default the stack runs its own MySQL (`COMPOSE_PROFILES=db`). To use a MySQL server you already have, see [Your own MySQL](#your-own-mysql).
 
 Then:
 
@@ -45,6 +47,28 @@ If the file is not there (the log says so), generate a new password:
 docker compose -f compose.prod.yaml exec app node dist/cli.js reset-password admin
 ```
 
+## Your own MySQL
+
+The app works with any MySQL 8 server. On the first start it creates the database and all its tables by itself; only the MySQL user has to exist.
+
+1. On the MySQL server, as an administrator:
+   ```sql
+   CREATE USER 'substance'@'%' IDENTIFIED BY '<DB_PASSWORD>';
+   GRANT ALL ON substance_tracker.* TO 'substance'@'%';
+   ```
+2. In `.env`: delete `COMPOSE_PROFILES=db` and set the connection.
+
+   | Variable | What |
+   |---|---|
+   | `DB_HOST` | the server's address, e.g. `192.168.1.5` or `mysql.example.lan` |
+   | `DB_PORT` | its port (default `3306`) |
+   | `DB_NAME` | the database (default `substance_tracker`) |
+   | `DB_USER`, `DB_PASSWORD` | the user from step 1 |
+
+3. `docker compose -f compose.prod.yaml up -d`: the log says `created database ...`, then the migrations.
+
+The address must be reachable from inside the container: `localhost` is the container itself; for a MySQL on the same machine use `host.docker.internal` (Docker Desktop) or the machine's IP.
+
 ## The app's address (`APP_URL`)
 
 Signing in works **only** from the address in `APP_URL`, exactly as it appears in the browser's address bar. From any other address you get *"Signing in works only from the address of the app"*.
@@ -66,7 +90,11 @@ docker compose -f compose.prod.yaml up -d
 
 The database migrates itself on start. Take a backup first.
 
+Updating from `a26.0.0`: add `COMPOSE_PROFILES=db` to `.env` if the stack's own MySQL is the one you use.
+
 ## Backup and restore
+
+With the stack's own MySQL (with your own server, use your usual tools):
 
 ```sh
 # Backup -> ./backup.sql

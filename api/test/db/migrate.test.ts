@@ -5,6 +5,7 @@ import mysql from 'mysql2/promise';
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_MIGRATIONS_DIR,
+  ensureDatabase,
   listMigrationFiles,
   resolveMigrationsDir,
   runMigrations,
@@ -184,5 +185,43 @@ describe('migrations', () => {
   it('the session and the stored instants are UTC', async () => {
     const [row] = await rawRows('SELECT @@session.time_zone AS tz');
     expect(row?.tz).toBe('+00:00');
+  });
+});
+
+describe('ensureDatabase', () => {
+  // A user with the right to create databases: root, only where the tests are given its password
+  // (TEST_DB_ROOT_PASSWORD: the CI, the dev container).
+  const rootPassword = process.env.TEST_DB_ROOT_PASSWORD?.trim();
+  const scratch = 'substance_tracker_ensure_test';
+
+  it('leaves alone a database the user can already see', async () => {
+    expect(await ensureDatabase(testDbConfig())).toBe(false);
+  });
+
+  it('says which GRANT is missing when the user may not create the database', async () => {
+    const config = { ...testDbConfig(), database: 'substance_tracker_not_granted_test' };
+    const error = await ensureDatabase(config).then(() => null, (err: unknown) => err);
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toContain(`cannot create it`);
+    expect((error as Error).message).toContain(`GRANT ALL ON \`substance_tracker_not_granted_test\`.* TO '${config.user}'@'%'`);
+  });
+
+  it.skipIf(!rootPassword)('creates a missing database, utf8mb4, and the migrations can then fill it', async () => {
+    const root = { ...testDbConfig(), user: 'root', password: rootPassword ?? '', database: scratch };
+    const admin = await mysql.createConnection({ ...root, database: undefined });
+    try {
+      await admin.query(`DROP DATABASE IF EXISTS \`${scratch}\``);
+      expect(await ensureDatabase(root)).toBe(true);
+      const [rows] = await admin.query<mysql.RowDataPacket[]>(
+        'SELECT DEFAULT_CHARACTER_SET_NAME AS cs FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?',
+        [scratch],
+      );
+      expect(rows[0]?.cs).toBe('utf8mb4');
+      expect(await runMigrations(root)).toContain('001_init');
+      expect(await ensureDatabase(root)).toBe(false);
+    } finally {
+      await admin.query(`DROP DATABASE IF EXISTS \`${scratch}\``);
+      await admin.end();
+    }
   });
 });

@@ -51,11 +51,31 @@ describe('GET /api/version', () => {
     expect(API_LEVEL).toBeGreaterThanOrEqual(1);
   });
 
-  it('the format: dev may carry a short text, final versions are numbers only', () => {
-    for (const ok of ['dev26.0.0', 'dev26.12.3', 'dev26.0.1-squircle', 'dev26.0.1-new-login', 'a26.0.0', 'b26.1.2', 'v27.3.10']) {
+  it('the format: a four-digit build at the end, dev may carry a short text, final versions are numbers only', () => {
+    for (const ok of [
+      'dev26.0.0.0000',
+      'dev26.12.3.0042',
+      'dev26.0.1.0000-squircle',
+      'dev26.0.1.0003-new-login',
+      'a26.0.0.0001',
+      'b26.1.2.0000',
+      'v27.3.10.9999',
+    ]) {
       expect(ok).toMatch(VERSION_FORMAT);
     }
-    for (const bad of ['26.0.0', 'dev26.0', 'a26.0.1-test', 'v26.x.0', 'dev2026.0.0', 'dev26.0.0-', 'rc26.0.0']) {
+    for (const bad of [
+      '26.0.0.0000',
+      'a26.0.0', // the build is required: before 2026-10-05 it was not there
+      'dev26.0.0-squircle',
+      'a26.0.0.1', // four digits
+      'a26.0.0.00001',
+      'dev26.0.0.0000.0000',
+      'a26.0.1.0000-test',
+      'v26.x.0.0000',
+      'dev2026.0.0.0000',
+      'dev26.0.0.0000-',
+      'rc26.0.0.0000',
+    ]) {
       expect(bad).not.toMatch(VERSION_FORMAT);
     }
   });

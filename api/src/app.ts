@@ -46,8 +46,11 @@ export interface BuildAppOptions {
   apkFile?: string | undefined;
   /** Source of "now" (tests pin it). */
   clock?: Clock;
-  /** Sign-in settings over the environment's (tests: another address, the counters off, shorter waits). */
-  auth?: Partial<AuthConfig> & { rateLimit?: boolean; signInDelay?: SignInDelay };
+  /**
+   * Sign-in settings over the environment's (tests: another address, the counters off, shorter
+   * waits, and the sleep of those waits, to see which ones are asked for).
+   */
+  auth?: Partial<AuthConfig> & { rateLimit?: boolean; signInDelay?: SignInDelay; signInSleep?: (ms: number) => Promise<void> };
 }
 
 declare module 'fastify' {
@@ -180,7 +183,7 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
 
   identityRoutes(app, {
     identity,
-    throttle: new SignInThrottle(pool, opts.auth?.signInDelay ?? SIGN_IN_DELAY),
+    throttle: new SignInThrottle(pool, opts.auth?.signInDelay ?? SIGN_IN_DELAY, Date.now, opts.auth?.signInSleep),
     appUrl: authConfig.appUrl,
     clientIpHeader: authConfig.clientIpHeader,
   });

@@ -32,6 +32,46 @@ export async function listMigrationFiles(dir: string): Promise<string[]> {
 }
 
 /**
+ * Creates the database DB_NAME when the server does not have it yet (a new installation on a MySQL
+ * of one's own), so the migrations can then create its tables. Runs on a connection with no
+ * database chosen. A database the user can already see (any privilege on it) is left alone, so a
+ * user with table privileges only, on a database made by its administrator, works too.
+ * The MySQL user is never created here: that takes root, which the app never holds.
+ * Returns true when it created the database.
+ */
+export async function ensureDatabase(db: DbConfig): Promise<boolean> {
+  const conn = await mysql.createConnection({
+    host: db.host,
+    port: db.port,
+    user: db.user,
+    password: db.password,
+    charset: 'utf8mb4',
+    connectTimeout: 5_000,
+  });
+  try {
+    const [rows] = await conn.query<RowDataPacket[]>(
+      'SELECT 1 FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?',
+      [db.database],
+    );
+    if (rows.length > 0) return false;
+    try {
+      await conn.query(`CREATE DATABASE IF NOT EXISTS ${mysql.escapeId(db.database)} CHARACTER SET utf8mb4`);
+    } catch (err) {
+      if ((err as { code?: unknown }).code !== 'ER_DBACCESS_DENIED_ERROR') throw err;
+      throw new Error(
+        `The database "${db.database}" does not exist (or "${db.user}" has no privilege on it) and "${db.user}" ` +
+          `cannot create it. As a MySQL administrator, run: GRANT ALL ON ${mysql.escapeId(db.database)}.* TO ` +
+          `'${db.user}'@'%'; (or create the database and grant the user its privileges)`,
+        { cause: err },
+      );
+    }
+    return true;
+  } finally {
+    await conn.end().catch(() => undefined);
+  }
+}
+
+/**
  * Applies the pending migrations, in filename order, and records each one in
  * `schema_migrations` after it succeeds. Runs on its own connection with
  * multipleStatements (a migration file is a script), under a server-wide named lock so two
