@@ -1,17 +1,14 @@
 # Security patches for every instance's image (design-accounts.md, "Releases"): weekly, the minor
 # and patch updates of each package grouped in one pull request. Dependabot reads this file from the
-# repository's default branch (main since 2026-10-05).
-#
-# Off for now (lenzi, 2026-10-05: "per ora tenerlo disabilitato"): open-pull-requests-limit 0 opens
-# no pull request. Its pull requests would target main, which holds only final versions. To turn it
-# back on: remove the limits, and add `target-branch: <the dev branch>` to each entry.
+# repository's default branch (main since 2026-10-05), and its pull requests go to `dev`, the branch
+# every change starts from and comes back to (lenzi, 2026-10-05): main holds only final versions.
 version: 2
 updates:
   - package-ecosystem: npm
     directory: /api
     schedule:
       interval: weekly
-    open-pull-requests-limit: 0
+    target-branch: dev
     groups:
       minor-and-patch:
         update-types: [minor, patch]
@@ -20,7 +17,7 @@ updates:
     directory: /web
     schedule:
       interval: weekly
-    open-pull-requests-limit: 0
+    target-branch: dev
     groups:
       minor-and-patch:
         update-types: [minor, patch]
@@ -30,14 +27,14 @@ updates:
     directory: /
     schedule:
       interval: weekly
-    open-pull-requests-limit: 0
+    target-branch: dev
 
   # The actions of the CI.
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
-    open-pull-requests-limit: 0
+    target-branch: dev
     groups:
       actions:
         update-types: [minor, patch]
