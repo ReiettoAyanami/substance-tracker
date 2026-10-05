@@ -12,8 +12,11 @@ import { ApiError, isUnreachable } from '../data/api-error';
 import { VersionApi } from '../data/version-api';
 import { Session } from '../session/session';
 
-/** A substance tracker's version (api/src/version.ts, VERSION_FORMAT), as /api/version answers it. */
-const TRACKER_VERSION = /^(?:dev|[abv])\d{2}\.\d+\.\d+(?:-[a-z0-9-]+)?$/;
+/**
+ * A substance tracker's version (api/src/version.ts, VERSION_FORMAT), as /api/version answers it:
+ * with its build number (from 2026-10-05) or without it (a26.0.0 and earlier servers).
+ */
+const TRACKER_VERSION = /^(?:dev|[abv])\d{2}\.\d+\.\d+(?:\.\d{4})?(?:-[a-z0-9-]+)?$/;
 
 /** What the screen says for each way an address can fail. */
 const MESSAGES = {

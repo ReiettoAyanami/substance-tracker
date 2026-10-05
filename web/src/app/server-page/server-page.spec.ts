@@ -84,6 +84,14 @@ describe('ServerPage', () => {
     expect(server.address()).toBe('http://192.168.1.20:8080');
   });
 
+  it('a server with a build number is a substance tracker too', async () => {
+    await render();
+    await connect('https://tracker.example.com');
+    backend.expectOne('https://tracker.example.com/api/version').flush({ version: 'a26.0.0.0001', apiLevel: 1 });
+    await settle();
+    expect(server.address()).toBe('https://tracker.example.com');
+  });
+
   it('something that is not a substance tracker, or nothing at all, is not kept', async () => {
     await render();
     await connect('https://example.com');

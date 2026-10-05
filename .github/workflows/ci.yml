@@ -40,15 +40,18 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
           case "$branch" in
             main)
-              # Final versions only, numbers only: a26.0.0, b26.1.0, v26.1.2.
-              [[ "$version" =~ ^[abv][0-9]{2}\.[0-9]+\.[0-9]+$ ]] || { echo "::error::on main the version is a, b or v with numbers only, not $version"; exit 1; } ;;
+              # Final versions only, numbers only, the build in four digits: a26.0.0.0001, v26.1.2.0000.
+              [[ "$version" =~ ^[abv][0-9]{2}\.[0-9]+\.[0-9]+\.[0-9]{4}$ ]] || { echo "::error::on main the version is a, b or v with numbers only and a four-digit build, not $version"; exit 1; } ;;
             dev)
               # The integration branch: every change starts from it and comes back to it; it carries
               # the version of the last branch merged into it (lenzi, 2026-10-05).
-              [[ "$version" =~ ^dev[0-9]{2}\.[0-9]+\.[0-9]+(-[a-z0-9]+(-[a-z0-9]+)*)?$ ]] || { echo "::error::on dev the version is a dev version, not $version"; exit 1; } ;;
+              [[ "$version" =~ ^dev[0-9]{2}\.[0-9]+\.[0-9]+\.[0-9]{4}(-[a-z0-9]+(-[a-z0-9]+)*)?$ ]] || { echo "::error::on dev the version is a dev version with a four-digit build, not $version"; exit 1; } ;;
             dev*)
-              # A branch of work, from dev, is named after its new version (dev26.0.1, dev26.0.1-squircle).
-              [ "$version" = "$branch" ] || { echo "::error::the branch $branch carries version $version: they must be the same"; exit 1; } ;;
+              # A branch of work, from dev, is named after its new version without the build
+              # (dev26.0.1 carries dev26.0.1.0000, dev26.0.1-squircle carries dev26.0.1.0000-squircle).
+              [[ "$version" =~ ^dev[0-9]{2}\.[0-9]+\.[0-9]+\.[0-9]{4}(-[a-z0-9]+(-[a-z0-9]+)*)?$ ]] || { echo "::error::$version is not a dev version with a four-digit build"; exit 1; }
+              named=$(sed -E 's/\.[0-9]{4}(-|$)/\1/' <<< "$version")
+              [ "$named" = "$branch" ] || { echo "::error::the branch $branch carries version $version: the branch must be named $named"; exit 1; } ;;
           esac
 
   api:
@@ -143,6 +146,9 @@ jobs:
         working-directory: web
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The whole history: the version code counts the commits.
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -161,16 +167,14 @@ jobs:
           npx cap sync android
       - id: code
         name: The version code, which must always grow (design-android.md, "Release pipeline")
+        # The commits of the history built, on top of a26.0.0's code (26000001, the last one made from
+        # the version, which with a four-digit build no longer fits Android's 2100000000): it grows at
+        # every release on main, never overflows, and `git rev-list --count HEAD` gives it again
+        # anywhere (lenzi, 2026-10-05).
         run: |
-          stage="${VERSION%%[0-9]*}"
-          numbers="${VERSION#"$stage"}"; numbers="${numbers%%-*}"
-          IFS=. read -r year backend frontend <<< "$numbers"
-          case "$stage" in a) s=1 ;; b) s=2 ;; v) s=3 ;; *) s=0 ;; esac
-          if [ "$backend" -ge 100 ] || [ "$frontend" -ge 100 ]; then
-            echo "::error::$VERSION: the backend and frontend numbers must stay below 100 for the version code"; exit 1
-          fi
-          code=$(( 10#$year * 1000000 + backend * 10000 + frontend * 100 + s ))
-          echo "$VERSION -> version code $code"
+          commits=$(git rev-list --count HEAD)
+          code=$(( 26000001 + commits ))
+          echo "$VERSION -> version code $code ($commits commits)"
           echo "code=$code" >> "$GITHUB_OUTPUT"
       # The release key from the secrets, only for a final version on main. Anywhere else (a dev
       # branch, a pull request) the APK is a dry run, signed with a key made here and thrown away:

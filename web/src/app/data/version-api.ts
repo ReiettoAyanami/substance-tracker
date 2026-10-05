@@ -15,7 +15,7 @@ export interface ServerVersion {
 export class VersionApi {
   private readonly http = inject(HttpClient);
 
-  /** GET /api/version: the version of the running instance, e.g. "dev26.0.0". */
+  /** GET /api/version: the version of the running instance, e.g. "dev26.0.0.0001". */
   getVersion(): Observable<string> {
     return this.http.get<{ version: string }>('/api/version').pipe(map((body) => body.version));
   }

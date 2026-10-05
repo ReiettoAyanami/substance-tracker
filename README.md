@@ -21,7 +21,7 @@ In `.env`, set at least:
 | `MYSQL_ROOT_PASSWORD`, `DB_PASSWORD` | long passwords, letters and digits only |
 | `AUTH_SECRET` | `openssl rand -base64 32` |
 | `APP_URL` | the address you open the app at (see below) |
-| `APP_VERSION` | optional: a specific version (`a26.0.0`); unset, the latest release |
+| `APP_VERSION` | optional: a specific version (`a26.0.0.0001`); unset, the latest release |
 
 By default the stack runs its own MySQL (`COMPOSE_PROFILES=db`). To use a MySQL server you already have, see [Your own MySQL](#your-own-mysql).
 
