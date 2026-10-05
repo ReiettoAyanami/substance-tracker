@@ -150,6 +150,14 @@ docker compose -f compose.prod.yaml down
 
 L'app risponde su `http://localhost:8080` (`APP_PORT`), e si apre da `APP_URL`: da un altro indirizzo l'accesso viene rifiutato.
 
+`APP_URL` è l'**unico** indirizzo da cui il login funziona: schema, host e porta devono coincidere con quello che c'è nella barra del browser. `http://localhost:8080` e `http://192.168.1.10:8080` sono due indirizzi diversi anche se portano allo stesso container, e da quello sbagliato il login risponde 403 e la pagina dice *"Signing in works only from the address of the app: this one is not it."*
+
+- **Solo su questo PC**: `APP_URL=http://localhost:8080`.
+- **Da altri dispositivi della rete** (telefono, un altro PC): `APP_URL=http://<IP del PC>:8080`, e da quel momento si apre da quell'indirizzo **anche sul PC stesso**; `localhost` non funziona più. Se l'IP del PC cambia, va cambiato anche `APP_URL`. Su Windows può servire una regola del firewall in ingresso per la porta `APP_PORT`.
+- **Dietro un proxy o un dominio**: l'indirizzo pubblico, es. `https://tracker.example.com`.
+
+Dopo aver cambiato `APP_URL` nel `.env`, `docker compose -f compose.prod.yaml up -d` ricrea l'app (i dati restano). L'app Android della release accetta solo server `https`: con un `APP_URL` `http://` dal telefono si usa il browser.
+
 Ogni risposta porta gli header di sicurezza (`api/src/shared/security-headers.ts`): script solo dall'istanza, stili e font anche da Google Fonts, nessun riquadro (l'app non si apre dentro un iframe di un altro sito, nemmeno di una dashboard), `nosniff`, `Referrer-Policy: same-origin`, e HSTS per un anno quando `APP_URL` è https.
 
 ### Primo avvio: l'amministratore
