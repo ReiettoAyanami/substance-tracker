@@ -1,16 +1,22 @@
-# Production stack: MySQL + app (API that also serves the Angular build).
-#   docker compose -f compose.prod.yaml up -d --build
+# Production stack: app (API that also serves the Angular build) + an optional MySQL.
+#   docker compose -f compose.prod.yaml up -d
 # Secrets come only from .env (gitignored); the stack refuses to start without them.
+# The database: the db service below while .env has COMPOSE_PROFILES=db (the default of
+# .env.example), or any MySQL 8 of one's own through DB_HOST / DB_PORT (then no COMPOSE_PROFILES).
 # NEVER "down -v" here: it deletes the database volume.
 
 name: substance-tracker-prod
 
 services:
   db:
+    # Only with COMPOSE_PROFILES=db in .env. It creates DB_NAME and DB_USER on its first start.
+    profiles: ["db"]
     image: mysql:8.4
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD must be set in .env}
+      # Not checked here (":?" would demand it with a MySQL of one's own too): unset, this
+      # container stops at its first start with "password option is not specified".
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-}
       MYSQL_DATABASE: ${DB_NAME:-substance_tracker}
       MYSQL_USER: ${DB_USER:-substance}
       MYSQL_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set in .env}
@@ -33,8 +39,10 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     environment:
-      DB_HOST: db
-      DB_PORT: "3306"
+      # The MySQL to use: the db service unless .env names another server. A new installation
+      # creates DB_NAME there at its first start (when DB_USER may), then its tables.
+      DB_HOST: ${DB_HOST:-db}
+      DB_PORT: ${DB_PORT:-3306}
       DB_NAME: ${DB_NAME:-substance_tracker}
       DB_USER: ${DB_USER:-substance}
       DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set in .env}
@@ -69,8 +77,11 @@ services:
       retries: 3
       start_period: 30s
     depends_on:
+      # Waited for when it is part of the stack (COMPOSE_PROFILES=db); with a MySQL of one's own
+      # the app retries the connection for about a minute.
       db:
         condition: service_healthy
+        required: false
 
 volumes:
   db-data:

@@ -71,6 +71,7 @@ jobs:
       DB_PORT: '3306'
       DB_NAME: substance_tracker
       TEST_DB_NAME: substance_tracker_test
+      TEST_DB_ROOT_PASSWORD: ci-root
       DB_USER: substance
       DB_PASSWORD: ci-password
       APP_URL: http://localhost:4200

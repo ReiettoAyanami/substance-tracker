@@ -42,6 +42,8 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is not set - copy .env.example to .env}
       # Pinned to DB_NAME (the database db/dev-init created), not to the API's current one.
       TEST_DB_NAME: ${TEST_DB_NAME:-${DB_NAME:-substance_tracker}_test}
+      # Tests only: root may create databases, for the test of a new installation (ensureDatabase).
+      TEST_DB_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       PORT: "3000"
       HOST: 0.0.0.0
       LOG_LEVEL: ${LOG_LEVEL:-info}

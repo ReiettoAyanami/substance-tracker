@@ -1,7 +1,7 @@
 import type { FastifyBaseLogger } from 'fastify';
 import { buildApp } from './app.js';
 import { loadConfig, type AppConfig } from './config.js';
-import { runMigrations } from './db/migrate.js';
+import { ensureDatabase, runMigrations } from './db/migrate.js';
 import { createPool } from './db/pool.js';
 import { ensureFirstAdmin } from './modules/accounts/first-admin.js';
 
@@ -20,6 +20,8 @@ const MAX_ATTEMPTS = 30;
 async function migrateWithRetry(config: AppConfig, log: FastifyBaseLogger): Promise<void> {
   for (let attempt = 1; ; attempt++) {
     try {
+      // A new installation on a MySQL of one's own: the database first, then its tables.
+      if (await ensureDatabase(config.db)) log.info(`created database ${config.db.database}`);
       const applied = await runMigrations(config.db, { dir: config.migrationsDir, log: (m) => log.info(m) });
       if (applied.length > 0) log.info(`applied migrations: ${applied.join(', ')}`);
       return;
