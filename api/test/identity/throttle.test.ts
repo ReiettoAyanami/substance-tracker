@@ -18,20 +18,41 @@ describe('the waits, with the numbers lenzi approved', () => {
 const SHORT: SignInDelay = { afterFailures: 2, firstMs: 300, maxMs: 1_200 };
 const PASSWORD = 'Lenzi-pass-0001';
 
+/**
+ * The waits the throttle asks for, really waited. "No wait" is checked here, never on the clock: how
+ * long an attempt takes without one (the password hash, the database) depends on the machine, and
+ * a busy CI runner made a 250 ms bound fail (2026-10-05). A slow machine only makes the waits that
+ * are checked on the clock (at least so many ms) longer.
+ */
+let asked: number[] = [];
+const recordingSleep = (ms: number) => {
+  asked.push(ms);
+  return new Promise<void>((resolve) => setTimeout(resolve, ms));
+};
+
 let app: FastifyInstance;
 beforeAll(async () => {
-  app = await buildApp({ pool: testPool(), clock: fixedClock, auth: { rateLimit: false, signInDelay: SHORT } });
+  app = await buildApp({
+    pool: testPool(),
+    clock: fixedClock,
+    auth: { rateLimit: false, signInDelay: SHORT, signInSleep: recordingSleep },
+  });
   await app.ready();
 });
 afterAll(async () => {
   await app.close();
 });
 
-/** A sign-in, and how long its answer took. */
-async function timed(username: string, password: string, on: FastifyInstance = app): Promise<{ status: number; ms: number }> {
+/** A sign-in, how long its answer took, and the waits it was made to do (on `app`). */
+async function timed(
+  username: string,
+  password: string,
+  on: FastifyInstance = app,
+): Promise<{ status: number; ms: number; waits: number[] }> {
+  asked = [];
   const started = performance.now();
   const res = await signIn(on, username, password);
-  return { status: res.status, ms: performance.now() - started };
+  return { status: res.status, ms: performance.now() - started, waits: asked };
 }
 
 const lenzi = () => app.identity.createUser({ username: 'lenzi', email: 'lenzi@dev.invalid', password: PASSWORD, role: 'admin' });
@@ -39,14 +60,19 @@ const lenzi = () => app.identity.createUser({ username: 'lenzi', email: 'lenzi@d
 describe('wrong passwords in a row', () => {
   it('slow down the next attempts, the waits doubling', async () => {
     await lenzi();
-    expect((await timed('lenzi', 'Wrong-pass-00001')).ms).toBeLessThan(250);
-    expect((await timed('lenzi', 'Wrong-pass-00002')).ms).toBeLessThan(250);
-    // 2 in a row: the third waits 300 ms, the fourth 600
+    expect((await timed('lenzi', 'Wrong-pass-00001')).waits).toEqual([]);
+    expect((await timed('lenzi', 'Wrong-pass-00002')).waits).toEqual([]);
+    // 2 in a row: the third waits 300 ms, the fourth 600 (counted from the last failure: a little less)
     const third = await timed('lenzi', 'Wrong-pass-00003');
     expect(third).toMatchObject({ status: 401 });
     expect(third.ms).toBeGreaterThanOrEqual(280);
+    expect(third.waits).toHaveLength(1);
+    expect(third.waits[0]).toBeGreaterThan(0);
+    expect(third.waits[0]).toBeLessThanOrEqual(300);
     const fourth = await timed('lenzi', 'Wrong-pass-00004');
     expect(fourth.ms).toBeGreaterThanOrEqual(580);
+    expect(fourth.waits[0]).toBeGreaterThan(300); // doubled
+    expect(fourth.waits[0]).toBeLessThanOrEqual(600);
     expect(await rawRows('SELECT failures FROM sign_in_failures')).toEqual([{ failures: 4 }]);
   });
 
@@ -57,7 +83,7 @@ describe('wrong passwords in a row', () => {
     expect(right.status).toBe(200);
     expect(right.ms).toBeGreaterThanOrEqual(1_000); // 1200 ms after the last failure, the cap
     expect(await rawRows('SELECT failures FROM sign_in_failures')).toEqual([{ failures: 0 }]);
-    expect((await timed('lenzi', 'Wrong-pass-00009')).ms).toBeLessThan(250);
+    expect((await timed('lenzi', 'Wrong-pass-00009')).waits).toEqual([]);
   });
 
   it('a wait already spent between two attempts is not waited again', async () => {
@@ -65,7 +91,9 @@ describe('wrong passwords in a row', () => {
     await timed('lenzi', 'Wrong-pass-00001');
     await timed('lenzi', 'Wrong-pass-00002');
     await new Promise((resolve) => setTimeout(resolve, 350));
-    expect((await timed('lenzi', PASSWORD)).ms).toBeLessThan(250);
+    const right = await timed('lenzi', PASSWORD);
+    expect(right.status).toBe(200);
+    expect(right.waits).toEqual([]);
   });
 
   it('a username nobody has waits the same: the waits do not tell who exists', async () => {
