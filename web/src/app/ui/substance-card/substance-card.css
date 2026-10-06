@@ -58,8 +58,38 @@ mat-card-content {
   font-variant-numeric: tabular-nums;
 }
 
+/* The Android card's line, a toggle of its own (substance-card.ts): a button drawn as the plain
+   figure, as tall as the pill beside it, its word dim as in the delta pill. A long one (a long unit)
+   breaks after the word, not inside the value, instead of pushing the pill away. */
+.measure {
+  align-self: stretch;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: start;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.measure .label {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.measure .value {
+  display: inline-block;
+}
+
+.measure:focus-visible {
+  outline: 2px solid var(--mat-sys-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 /* Its size and shape are those of every toggle (styles.css). */
 .price-mode {
+  flex: none;
   cursor: default;
 }
 

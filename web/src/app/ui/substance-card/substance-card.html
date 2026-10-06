@@ -28,25 +28,45 @@
       </button>
     </mat-menu>
 
+    @let unitPrice = price() | unitPrice: settings().currency : substance().unit;
+    @let byQuantity = measure() === 'quantity';
     <div class="price">
-      <span class="price-value">{{ price() | unitPrice: settings().currency : substance().unit }}</span>
+      @if (inApp) {
+        <!-- The line is its own toggle (Android): price and quantity; its tap never opens the page. -->
+        <button
+          type="button"
+          class="price-value measure"
+          [attr.aria-label]="
+            byQuantity
+              ? 'Quantity left ' + quantity() + '. Show the price per unit'
+              : 'Price per unit ' + unitPrice + '. Show the quantity left'
+          "
+          (click)="switchMeasure($event)"
+        >
+          <span class="label">{{ byQuantity ? 'qty: ' : 'price: ' }}</span>
+          <span class="value">{{ byQuantity ? quantity() : unitPrice }}</span>
+        </button>
+      } @else {
+        <span class="price-value">{{ unitPrice }}</span>
+      }
       <!-- The toggle's tap never opens the page. -->
       <mat-button-toggle-group
         class="price-mode"
         hideSingleSelectionIndicator
-        aria-label="Price per unit"
+        [attr.aria-label]="byQuantity ? 'Quantity left' : 'Price per unit'"
         [value]="mode()"
         (change)="choose($event.value)"
         (click)="$event.stopPropagation()"
       >
         <mat-button-toggle value="last">last</mat-button-toggle>
-        <mat-button-toggle value="avg">average</mat-button-toggle>
+        <mat-button-toggle value="avg">{{ byQuantity ? 'total' : 'average' }}</mat-button-toggle>
       </mat-button-toggle-group>
     </div>
 
     <app-stock-bar
       [segments]="substance().summary.stockBarSegments"
       [max]="substance().summary.stockBarMax"
+      [only]="only()"
       [label]="stockLabel()"
       [unit]="substance().unit"
       [currency]="settings().currency"

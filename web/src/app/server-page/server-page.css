@@ -4,7 +4,8 @@
   min-height: 100dvh;
   display: grid;
   place-items: center;
-  padding: 16px;
+  /* clear of the status and gesture bars in the Android app (app.css) */
+  padding: calc(16px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px));
 }
 
 .card {

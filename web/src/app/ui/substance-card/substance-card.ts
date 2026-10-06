@@ -1,25 +1,33 @@
-import { Component, computed, input, linkedSignal, output } from '@angular/core';
+import { Component, computed, inject, input, linkedSignal, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 
+import { RUNS_IN_APP } from '../../connection/address';
 import { Settings } from '../../data/settings';
 import { Substance } from '../../data/substance';
 import { LOCALE } from '../../locale';
 import { IdentityColorPipe } from '../identity-color-pipe';
-import { StockBar } from '../stock-bar/stock-bar';
+import { OnlyBatch, StockBar } from '../stock-bar/stock-bar';
 import { UnitPricePipe } from '../unit-price-pipe';
 
-/** Which unit price the card shows: the last batch's, or the average of the stock. */
+/**
+ * Which batches the card's figure is of: the last batch's, or the whole stock's (the unit price's
+ * average; on Android also the quantity's total).
+ */
 type PriceMode = 'last' | 'avg';
 
+/** What the line of the Android card shows, switched by a tap on it: the unit price, or the quantity. */
+type Measure = 'price' | 'quantity';
+
 /**
- * The price toggle is a display preference of this browser, per substance: localStorage, never the
+ * The toggles are display preferences of this browser, per substance: localStorage, never the
  * database. Storage can be missing (private mode, blocked site data): then the default applies.
  */
 const priceModeKey = (substanceId: number) => `substance-tracker.price-mode.${substanceId}`;
+const measureKey = (substanceId: number) => `substance-tracker.card-measure.${substanceId}`;
 
 function readPriceMode(substanceId: number): PriceMode {
   try {
@@ -29,18 +37,37 @@ function readPriceMode(substanceId: number): PriceMode {
   }
 }
 
-function writePriceMode(substanceId: number, mode: PriceMode): void {
+function readMeasure(substanceId: number): Measure {
   try {
-    localStorage.setItem(priceModeKey(substanceId), mode);
+    return localStorage.getItem(measureKey(substanceId)) === 'quantity' ? 'quantity' : 'price';
+  } catch {
+    return 'price';
+  }
+}
+
+function remember(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
   } catch {
     // Not remembered: the card still switches.
   }
 }
 
+const quantityFormat = new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 3 });
+
+/** A decimal string of the API, formatted exactly (Intl reads it as a string: no binary rounding). */
+const exact = (value: string) => quantityFormat.format(value as unknown as number);
+
 /**
  * One substance on the substances page (design-frontend.md, "substance card"). Presentational: the substance
  * and its card summary come in, every number is the API's; it only formats them. Its ⋮ menu asks
  * the parent to edit or delete the substance.
+ *
+ * In the Android app (lenzi, 2026-10-07) the line is a toggle of its own: a tap switches it between
+ * the unit price ("price: €8.93/g") and the quantity, what is left of what was bought
+ * ("qty: 7/10 g"; "qty" is the one abbreviation of the app). The pill beside it says "last |
+ * average" for the price and "last | total" for the quantity, and "last" draws only the last batch
+ * in the bar, out of what was bought of it.
  */
 @Component({
   selector: 'app-substance-card',
@@ -69,7 +96,12 @@ export class SubstanceCard {
   /** "Delete" in the ⋮ menu. */
   readonly remove = output<void>();
 
+  /** The Android app: the line is a toggle, and "last" draws only the last batch. */
+  protected readonly inApp = inject(RUNS_IN_APP);
+
   protected readonly mode = linkedSignal<PriceMode>(() => readPriceMode(this.substance().id));
+  /** Always the price on the website: it has no quantity on the card. */
+  protected readonly measure = linkedSignal<Measure>(() => (this.inApp ? readMeasure(this.substance().id) : 'price'));
 
   /**
    * The unit price of the chosen mode (decimal string), or null when there is none: no batches
@@ -78,6 +110,26 @@ export class SubstanceCard {
   protected readonly price = computed(() => {
     const summary = this.substance().summary;
     return (this.mode() === 'avg' ? summary.avgUnitPrice : summary.lastBatch?.unitPrice) ?? null;
+  });
+
+  /**
+   * The quantity of the chosen mode, what is left of what was bought: of the last batch (0 left
+   * once finished), or of the whole stock out of the active batches' total. "—" with nothing bought.
+   */
+  protected readonly quantity = computed(() => {
+    const { summary, unit } = this.substance();
+    if (this.mode() === 'last') {
+      const last = summary.lastBatch;
+      return last ? `${exact(last.remaining)}/${exact(last.quantity)} ${unit}` : '—';
+    }
+    return Number(summary.stockBarMax) > 0 ? `${exact(summary.stock)}/${exact(summary.stockBarMax)} ${unit}` : '—';
+  });
+
+  /** The last batch alone in the bar: in the Android app, on "last". */
+  protected readonly only = computed<OnlyBatch | null>(() => {
+    const last = this.substance().summary.lastBatch;
+    if (!this.inApp || this.mode() !== 'last' || !last) return null;
+    return { batchId: last.id, remaining: last.remaining, quantity: last.quantity };
   });
 
   /**
@@ -97,13 +149,22 @@ export class SubstanceCard {
 
   /** What the stock bar says to a screen reader. */
   protected readonly stockLabel = computed(() => {
-    const quantity = new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 3 });
-    const stock = quantity.format(this.substance().summary.stock as unknown as number);
-    return `Stock: ${stock} ${this.substance().unit}`;
+    const { summary, unit } = this.substance();
+    const only = this.only();
+    if (only) return `Last batch: ${exact(only.remaining)} of ${exact(only.quantity)} ${unit} left`;
+    return `Stock: ${exact(summary.stock)} ${unit}`;
   });
 
   protected choose(mode: PriceMode): void {
     this.mode.set(mode);
-    writePriceMode(this.substance().id, mode);
+    remember(priceModeKey(this.substance().id), mode);
+  }
+
+  /** A tap on the line (Android): the price becomes the quantity and back; it never opens the page. */
+  protected switchMeasure(event: Event): void {
+    event.stopPropagation();
+    const next: Measure = this.measure() === 'price' ? 'quantity' : 'price';
+    this.measure.set(next);
+    remember(measureKey(this.substance().id), next);
   }
 }

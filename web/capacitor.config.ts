@@ -15,8 +15,11 @@ const config: CapacitorConfig = {
   webDir: 'dist/android/browser',
   plugins: {
     CapacitorHttp: { enabled: true },
-    // The pages stay between the system bars (no edge-to-edge), whose icons are light on the dark app.
-    SystemBars: { style: 'DARK' },
+    // Edge to edge (B3): the pages reach under the system bars (index.android.html, viewport-fit=cover),
+    // whose icons are light on the dark app. The hint keeps the first page from moving once the
+    // plugin has read the viewport. On a WebView older than 140 the plugin keeps the pages between
+    // the bars, and the insets are 0.
+    SystemBars: { style: 'DARK', initialViewportFitValueHint: 'cover' },
   },
   ...(liveReload ? { server: { url: liveReload } } : {}),
 };

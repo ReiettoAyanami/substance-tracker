@@ -370,6 +370,12 @@
   border-radius: var(--mat-snack-bar-container-shape, var(--mat-sys-corner-extra-small));
 }
 
+/* Above the gesture bar in the Android app, which runs edge to edge (app.css). Two classes: Material's
+   margin is added after this file. */
+.cdk-overlay-pane .mat-mdc-snack-bar-container {
+  margin-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+}
+
 /* Tooltips (lenzi, 2026-10-02: the batch bar's tooltip "trasparenza blurrata anche su questo";
    later "mettile scure se il tema è scuro"): dark glass like a window, not Material's light inverse
    surface (at 82% its see-through hardly showed): surface-container-high at the windows' glass, the

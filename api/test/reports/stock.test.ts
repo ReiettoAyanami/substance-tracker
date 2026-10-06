@@ -133,7 +133,15 @@ describe('card summary', () => {
       ],
       // old (+2) then Corona (+6) = 8, then -2, then +1: the peak is 8
       peakStock: '8.000',
-      lastBatch: { id: b3.id, name: 'Peroni', occurredAt: '2026-10-02T10:00:00Z', totalPrice: '1.00', unitPrice: '1.000000' },
+      lastBatch: {
+        id: b3.id,
+        name: 'Peroni',
+        occurredAt: '2026-10-02T10:00:00Z',
+        quantity: '1.000',
+        remaining: '1.000',
+        totalPrice: '1.00',
+        unitPrice: '1.000000',
+      },
       // Corona 4 left at 1.20 + old 2 at 1.50 + Peroni 1 at 1.00 = 8.80 over a stock of 7
       avgUnitPrice: '1.257143',
       lastConsumption: { occurredAt: '2026-09-12T21:00:00Z', quantity: '1.000', cost: '5.00' },
@@ -155,6 +163,21 @@ describe('card summary', () => {
 
     const summary = (await api.get(`/api/substances/${s.id}`)).body.summary;
     expect(summary.lastBatch).toMatchObject({ id: last.id, unitPrice: '0.325000' });
+  });
+
+  it('gives what was bought of the last batch and what is left of it: 0 once finished', async () => {
+    const s = await api.substance({ unit: 'g' });
+    await api.batch(s.id, { quantity: 5, totalPrice: '50.00', occurredAt: '2026-08-01T10:00:00Z' });
+    const last = await api.batch(s.id, { quantity: 10, totalPrice: '89.30', occurredAt: '2026-09-20T10:00:00Z' });
+    await api.consume(last.id, { quantity: '2.5', occurredAt: '2026-09-21T20:00:00Z' });
+    await api.adjust(last.id, { delta: '-0.5', reason: 'spilled', occurredAt: '2026-09-22T20:00:00Z' });
+
+    const partly = (await api.get(`/api/substances/${s.id}`)).body.summary;
+    expect(partly.lastBatch).toMatchObject({ id: last.id, quantity: '10.000', remaining: '7.000' });
+
+    await api.consume(last.id, { quantity: 7, occurredAt: '2026-09-23T20:00:00Z' }); // finished: deactivated
+    const finished = (await api.get(`/api/substances/${s.id}`)).body.summary;
+    expect(finished.lastBatch).toMatchObject({ id: last.id, quantity: '10.000', remaining: '0.000' });
   });
 
   it('gives the average unit price of the stock: Σ(remaining × unit price) ÷ stock, active batches only', async () => {

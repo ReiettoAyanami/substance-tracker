@@ -14,7 +14,13 @@
     />
     <title>Substance tracker</title>
     <base href="/" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!--
+      Edge to edge (B3): viewport-fit=cover lets the pages reach under the status and gesture bars
+      (Capacitor's SystemBars passes the bars' insets on to the WebView, capacitor.config.ts), so the
+      scrims cover them too; what must stay readable keeps away from them by
+      env(safe-area-inset-*). The website's index.html has no cover: there the insets are 0.
+    -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   </head>
   <body>
     <app-root></app-root>

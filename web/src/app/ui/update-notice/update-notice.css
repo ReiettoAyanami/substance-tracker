@@ -30,7 +30,8 @@
   display: grid;
   place-items: center;
   box-sizing: border-box;
-  padding: 16px;
+  padding: calc(16px + env(safe-area-inset-top, 0px)) calc(16px + env(safe-area-inset-right, 0px))
+    calc(16px + env(safe-area-inset-bottom, 0px)) calc(16px + env(safe-area-inset-left, 0px));
   background: var(--mat-sys-surface);
 }
 

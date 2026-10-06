@@ -10,7 +10,8 @@
 
 .window {
   position: fixed;
-  inset: 16px;
+  inset: calc(16px + env(safe-area-inset-top, 0px)) calc(16px + env(safe-area-inset-right, 0px))
+    calc(16px + env(safe-area-inset-bottom, 0px)) calc(16px + env(safe-area-inset-left, 0px));
   z-index: 31;
   box-sizing: border-box;
   display: flex;
@@ -132,7 +133,7 @@
     left: 50%;
     translate: -50% -50%;
     width: min(720px, calc(100vw - 96px));
-    max-height: calc(100dvh - 96px);
+    max-height: calc(100dvh - 96px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
     padding: 72px 32px 32px;
   }
 }

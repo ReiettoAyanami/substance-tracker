@@ -1,13 +1,14 @@
-import { Component, computed, input, output } from '@angular/core';
+import { Component, computed, inject, input, output, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 
+import { RUNS_IN_APP } from '../../connection/address';
 import { Consumption } from '../../data/consumption';
 import { Settings } from '../../data/settings';
 import { LOCALE } from '../../locale';
-import { DeltaPill } from '../delta-pill/delta-pill';
+import { DeltaPill, Measure } from '../delta-pill/delta-pill';
 import { IdentityColorPipe } from '../identity-color-pipe';
 
 /** full: on the consumptions page; compact: under a batch, where substance and batch are known. */
@@ -54,7 +55,9 @@ function moneyFormat(currency: string): Intl.NumberFormat {
  * edit it or to delete it. Compact, only when, how much, the cost and the delta pill, then a button
  * that opens it in the consumptions page and the same ⋮ menu (lenzi, 2026-10-03: "il tasto per
  * portarti alla pagina delle consumption con quella consumption aperta", "i tre puntini ... come
- * tutte le altre card").
+ * tutte le altre card"). Compact in the Android app (lenzi, 2026-10-07), the figure is a toggle of
+ * its own, like the substance card's line: the quantity ("qty: 0.25 g") or the cost
+ * ("price: €2.50"), and the delta pill switches with it, so the two share the line under the day.
  */
 @Component({
   selector: 'app-consumption-card',
@@ -86,15 +89,26 @@ export class ConsumptionCard {
   /** A To fix consumption recorded again: from another batch (false) or as a one-time one (true). */
   readonly fix = output<boolean>();
 
+  /** The Android app: a compact card's figure is a toggle. */
+  protected readonly inApp = inject(RUNS_IN_APP);
+  /** What that figure and its pill show, switched by a tap on either; this card only, as the pill. */
+  protected readonly measure = signal<Measure>('quantity');
+
   protected readonly view = computed(() => {
     const consumption = this.consumption();
     const settings = this.settings();
+    const quantity = `${exact(quantityFormat, consumption.quantity)} ${consumption.unit}`;
+    // A queued consumption has no cost of the server's: a one-time one shows the price typed.
+    const cost = consumption.cost ? exact(moneyFormat(settings.currency), consumption.cost) : null;
     return {
       when: whenFormat(settings.timezone).format(new Date(consumption.occurredAt)),
-      // A queued consumption has no cost of the server's: a one-time one shows the price typed.
-      amount: consumption.cost
-        ? `${exact(quantityFormat, consumption.quantity)} ${consumption.unit} · ${exact(moneyFormat(settings.currency), consumption.cost)}`
-        : `${exact(quantityFormat, consumption.quantity)} ${consumption.unit}`,
+      amount: cost ? `${quantity} · ${cost}` : quantity,
+      quantity,
+      cost,
     };
   });
+
+  protected switchMeasure(): void {
+    this.measure.update((measure) => (measure === 'quantity' ? 'price' : 'quantity'));
+  }
 }

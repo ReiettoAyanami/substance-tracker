@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
+import { RUNS_IN_APP } from '../../connection/address';
 import { Settings } from '../../data/settings';
 import { CardSummary, Substance } from '../../data/substance';
 import { IdentityColorPipe } from '../identity-color-pipe';
@@ -38,7 +39,15 @@ const cigarettes = substance(2, {
   stock: '8.000',
   stockBarMax: '20.000',
   stockBarSegments: [{ batchId: 7, name: null, remaining: '8.000', unitPrice: '0.310000' }],
-  lastBatch: { id: 8, name: null, occurredAt: '2026-09-20T10:00:00Z', totalPrice: '6.50', unitPrice: '0.325000' },
+  lastBatch: {
+    id: 8,
+    name: null,
+    occurredAt: '2026-09-20T10:00:00Z',
+    quantity: '20.000',
+    remaining: '0.000',
+    totalPrice: '6.50',
+    unitPrice: '0.325000',
+  },
   avgUnitPrice: '0.310000',
 });
 
@@ -73,7 +82,7 @@ describe('SubstanceCard', () => {
   });
 
   it('rounds half up on the decimal digits (1.005 → 1,01, where toFixed or Math.round give 1.00)', async () => {
-    const lastBatch = { id: 1, name: null, occurredAt: '2026-09-01T10:00:00Z', totalPrice: '1.01', unitPrice: '1.005000' };
+    const lastBatch = { id: 1, name: null, occurredAt: '2026-09-01T10:00:00Z', quantity: '1.000', remaining: '1.000', totalPrice: '1.01', unitPrice: '1.005000' };
     const card = await render(substance(3, { lastBatch }));
 
     expect(text(card.querySelector('.price-value'))).toBe('€1.01/sigaretta');
@@ -103,7 +112,7 @@ describe('SubstanceCard', () => {
     card = await render(substance(5));
     expect(text(card.querySelector('.price-value'))).toBe('—');
 
-    const finished = { id: 11, name: null, occurredAt: '2026-09-05T17:00:00Z', totalPrice: '7.20', unitPrice: '1.200000' };
+    const finished = { id: 11, name: null, occurredAt: '2026-09-05T17:00:00Z', quantity: '6.000', remaining: '0.000', totalPrice: '7.20', unitPrice: '1.200000' };
     localStorage.setItem('substance-tracker.price-mode.6', 'avg');
     card = await render(substance(6, { lastBatch: finished, avgUnitPrice: null }));
     expect(text(card.querySelector('.price-value'))).toBe('—');
@@ -111,7 +120,7 @@ describe('SubstanceCard', () => {
 
   it('shows the date of the last purchase in the settings time zone; with no batches, the creation day', async () => {
     // 22:30 UTC on August 31 is 00:30 on September 1 in Europe/Rome
-    const lastBatch = { id: 1, name: null, occurredAt: '2026-08-31T22:30:00Z', totalPrice: '7.20', unitPrice: '1.200000' };
+    const lastBatch = { id: 1, name: null, occurredAt: '2026-08-31T22:30:00Z', quantity: '1.000', remaining: '1.000', totalPrice: '7.20', unitPrice: '1.200000' };
     let card = await render(substance(1, { lastBatch }));
     expect(text(card.querySelector('.last-purchase'))).toBe('1 Sept 2026');
 
@@ -162,5 +171,136 @@ describe('SubstanceCard', () => {
     expect(segments.length).toBe(1);
     expect(parseFloat(segments[0].style.flexBasis)).toBeCloseTo(40, 6); // 8 of 20
     expect(card.querySelector('app-stock-bar .track')!.getAttribute('aria-label')).toBe('Stock: 8 sigaretta');
+  });
+
+  it('has no quantity on the website: the line is the unit price, not a button', async () => {
+    const card = await render(cigarettes);
+
+    expect(card.querySelector('button.price-value')).toBeNull();
+    expect(text(card.querySelector('.price-value'))).toBe('€0.33/sigaretta');
+  });
+});
+
+describe('SubstanceCard in the Android app', () => {
+  let fixture: ComponentFixture<SubstanceCard>;
+
+  /** 2 g left of an older batch of 5, 6 of the last one, 10 at 8.93 a gram. */
+  const weed = (id = 9): Substance => ({
+    ...substance(id),
+    name: 'Weed',
+    unit: 'g',
+    summary: {
+      ...emptySummary,
+      stock: '8.000',
+      stockBarMax: '15.000',
+      stockBarSegments: [
+        { batchId: 20, name: null, remaining: '2.000', unitPrice: '9.000000' },
+        { batchId: 21, name: null, remaining: '6.000', unitPrice: '8.930000' },
+      ],
+      lastBatch: {
+        id: 21,
+        name: null,
+        occurredAt: '2026-10-06T10:00:00Z',
+        quantity: '10.000',
+        remaining: '6.000',
+        totalPrice: '89.30',
+        unitPrice: '8.930000',
+      },
+      avgUnitPrice: '8.947500',
+    },
+  });
+
+  async function render(value: Substance): Promise<HTMLElement> {
+    fixture = TestBed.createComponent(SubstanceCard);
+    fixture.componentRef.setInput('substance', value);
+    fixture.componentRef.setInput('settings', settings);
+    await fixture.whenStable();
+    return fixture.nativeElement;
+  }
+
+  const text = (element: Element | null) => (element?.textContent ?? '').replace(/\s+/g, ' ').trim();
+  const line = (card: HTMLElement) => card.querySelector<HTMLButtonElement>('button.price-value')!;
+  const pills = (card: HTMLElement) => Array.from(card.querySelectorAll<HTMLButtonElement>('.price-mode button'));
+  const pill = (card: HTMLElement, label: string) => pills(card).find((b) => text(b) === label)!;
+  const segments = (card: HTMLElement) => Array.from(card.querySelectorAll<HTMLElement>('app-stock-bar .segment'));
+
+  async function tap(element: HTMLElement): Promise<void> {
+    element.click();
+    await fixture.whenStable();
+  }
+
+  beforeEach(async () => {
+    localStorage.clear();
+    await TestBed.configureTestingModule({
+      imports: [SubstanceCard],
+      providers: [{ provide: RUNS_IN_APP, useValue: true }],
+    }).compileComponents();
+  });
+
+  it('switches its line on a tap: the unit price, then the quantity left of what was bought, without opening the page', async () => {
+    const card = await render(weed());
+    const tapped: number[] = [];
+    fixture.componentInstance.tapped.subscribe((id) => tapped.push(id));
+
+    expect(text(line(card))).toBe('price: €8.93/g');
+    expect(pills(card).map(text)).toEqual(['last', 'average']);
+
+    await tap(line(card));
+    expect(text(line(card))).toBe('qty: 6/10 g'); // the last batch
+    expect(pills(card).map(text)).toEqual(['last', 'total']);
+    expect(line(card).getAttribute('aria-label')).toBe('Quantity left 6/10 g. Show the price per unit');
+
+    await tap(pill(card, 'total'));
+    expect(text(line(card))).toBe('qty: 8/15 g'); // the stock, of the active batches' total
+
+    await tap(line(card));
+    expect(text(line(card))).toBe('price: €8.95/g'); // the average of the stock
+    expect(tapped).toEqual([]);
+  });
+
+  it('remembers the line for that substance only', async () => {
+    let card = await render(weed());
+    await tap(line(card));
+
+    card = await render(weed()); // e.g. after a reload
+    expect(text(line(card))).toBe('qty: 6/10 g');
+
+    card = await render(weed(10)); // another substance keeps the price
+    expect(text(line(card))).toBe('price: €8.93/g');
+  });
+
+  it('on "last" draws only the last batch, out of what was bought of it; on the other side every batch', async () => {
+    const card = await render(weed());
+    const track = () => card.querySelector('app-stock-bar .track')!;
+
+    let [older, last] = segments(card);
+    expect(older.classList).toContain('away');
+    expect(parseFloat(older.style.flexBasis)).toBe(0);
+    expect(parseFloat(last.style.flexBasis)).toBeCloseTo(60, 6); // 6 of 10
+    expect(track().getAttribute('aria-label')).toBe('Last batch: 6 of 10 g left');
+
+    await tap(pill(card, 'average'));
+    [older, last] = segments(card);
+    expect(older.classList).not.toContain('away');
+    expect(parseFloat(older.style.flexBasis)).toBeCloseTo((2 / 15) * 100, 6);
+    expect(parseFloat(last.style.flexBasis)).toBeCloseTo(40, 6); // 6 of 15
+    expect(track().getAttribute('aria-label')).toBe('Stock: 8 g');
+  });
+
+  it('with the last batch finished, says 0 left of it and empties the bar', async () => {
+    const card = await render(cigarettes); // the last pack finished, 8 left of the older one
+    await tap(line(card));
+
+    expect(text(line(card))).toBe('qty: 0/20 sigaretta');
+    expect(segments(card).every((segment) => segment.classList.contains('away'))).toBe(true);
+  });
+
+  it('says "—" with nothing bought', async () => {
+    const card = await render(substance(4)); // no batches at all
+    await tap(line(card));
+    expect(text(line(card))).toBe('qty: —');
+
+    await tap(pill(card, 'total'));
+    expect(text(line(card))).toBe('qty: —');
   });
 });

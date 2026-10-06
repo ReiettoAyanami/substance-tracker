@@ -7,10 +7,12 @@
   backdrop-filter: var(--app-scrim-filter); /* the page under it blurred (styles.css, "glass") */
 }
 
-/* Phone: almost the whole screen, a small margin shows the backdrop; the pager is a bottom bar. */
+/* Phone: almost the whole screen, a small margin shows the backdrop; the pager is a bottom bar. The
+   margin is inside the safe area: clear of the status and gesture bars in the Android app (app.css). */
 .window {
   position: fixed;
-  inset: 16px;
+  inset: calc(16px + env(safe-area-inset-top, 0px)) calc(16px + env(safe-area-inset-right, 0px))
+    calc(16px + env(safe-area-inset-bottom, 0px)) calc(16px + env(safe-area-inset-left, 0px));
   z-index: 21;
   box-sizing: border-box; /* max-height (desktop) includes the padding */
   display: flex;
@@ -94,8 +96,8 @@ app-substance-card {
     /* always as tall as the screen allows, not as its content: it no longer grows while the
        batches and the panels load (lenzi, 2026-10-02: "piccole e poi grandi"), nor jumps from one
        substance to the next; the content scrolls inside */
-    height: calc(100dvh - 64px);
-    max-height: calc(100dvh - 64px);
+    height: calc(100dvh - 64px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    max-height: calc(100dvh - 64px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
     padding: 72px 32px 32px;
     overflow: visible;
   }

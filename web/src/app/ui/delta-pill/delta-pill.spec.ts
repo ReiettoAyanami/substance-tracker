@@ -119,6 +119,37 @@ describe('DeltaPill', () => {
     expect(pillOf(fixture)).toBeNull();
   });
 
+  it('bare, shows the change alone, and says what it is the change of to a screen reader', async () => {
+    const fixture = await render({ ...coffee, deltaCost: null });
+    fixture.componentRef.setInput('bare', true);
+    await fixture.whenStable();
+
+    expect(text(pillOf(fixture))).toBe('-33.3%');
+    expect(pillOf(fixture)!.getAttribute('aria-label')).toBe(
+      '-33.3%: the change in quantity from the previous consumption. Show the change in price',
+    );
+
+    await tap(fixture);
+    expect(text(pillOf(fixture))).toBe('—');
+    expect(pillOf(fixture)!.getAttribute('aria-label')).toBe(
+      'No change in price to show, the previous consumption was free. Show the change in quantity',
+    );
+  });
+
+  it('shows the measure it is given, and says when a tap changes it', async () => {
+    const fixture = await render(coffee);
+    const changes: string[] = [];
+    fixture.componentInstance.measure.subscribe((measure) => changes.push(measure));
+
+    fixture.componentRef.setInput('measure', 'price');
+    await fixture.whenStable();
+    expect(text(pillOf(fixture))).toBe('price -46.7%');
+
+    await tap(fixture);
+    expect(text(pillOf(fixture))).toBe('quantity -33.3%');
+    expect(changes).toEqual(['quantity']);
+  });
+
   it('has no change in price after a free one: it says so, and still switches back', async () => {
     const fixture = await render({ ...coffee, deltaQuantity: '3.0000', deltaUnitPrice: null, deltaCost: null });
     expect(text(pillOf(fixture))).toBe('quantity +300%');

@@ -20,8 +20,19 @@ export interface CardSummary {
   /** One segment per active batch, oldest first. */
   stockBarSegments: StockBarSegment[];
   peakStock: string;
-  /** The most recent batch, active or finished; `unitPrice` has 6 decimals. */
-  lastBatch: { id: number; name: string | null; occurredAt: string; totalPrice: string; unitPrice: string } | null;
+  /**
+   * The most recent batch, active or finished: what was bought of it and what is left (0 once
+   * finished); `unitPrice` has 6 decimals.
+   */
+  lastBatch: {
+    id: number;
+    name: string | null;
+    occurredAt: string;
+    quantity: string;
+    remaining: string;
+    totalPrice: string;
+    unitPrice: string;
+  } | null;
   /** Average unit price of the stock (active batches); null when the stock is 0. */
   avgUnitPrice: string | null;
   lastConsumption: { occurredAt: string; quantity: string; cost: string } | null;

@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
+import { RUNS_IN_APP } from '../../connection/address';
 import { Consumption } from '../../data/consumption';
 import { Settings } from '../../data/settings';
 import { IdentityColorPipe } from '../identity-color-pipe';
@@ -254,5 +255,67 @@ describe('ConsumptionCard', () => {
     card.querySelector<HTMLButtonElement>('button.more')!.click();
     await fixture.whenStable();
     expect(Array.from(document.querySelectorAll('.mat-mdc-menu-item')).map((b) => text(b))).toEqual(['deleteDiscard']);
+  });
+});
+
+describe('ConsumptionCard in the Android app', () => {
+  let fixture: ComponentFixture<ConsumptionCard>;
+
+  async function render(consumption: Consumption, variant: 'full' | 'compact'): Promise<HTMLElement> {
+    fixture = TestBed.createComponent(ConsumptionCard);
+    fixture.componentRef.setInput('consumption', consumption);
+    fixture.componentRef.setInput('settings', settings);
+    fixture.componentRef.setInput('variant', variant);
+    await fixture.whenStable();
+    return fixture.nativeElement;
+  }
+
+  const text = (element: Element | null) => (element?.textContent ?? '').replace(/\s+/g, ' ').trim();
+  const pill = (card: HTMLElement) => card.querySelector<HTMLButtonElement>('app-delta-pill button');
+  const figure = (card: HTMLElement) => card.querySelector<HTMLButtonElement>('button.amount');
+
+  async function tap(element: HTMLElement): Promise<void> {
+    element.click();
+    await fixture.whenStable();
+  }
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [ConsumptionCard],
+      providers: [{ provide: RUNS_IN_APP, useValue: true }],
+    }).compileComponents();
+  });
+
+  it('compact: the figure is a toggle of its own, quantity or price, and the pill switches with it', async () => {
+    const card = await render(coffee, 'compact');
+
+    expect(card.querySelector('.compact')!.classList).toContain('toggled');
+    expect(text(figure(card))).toBe('qty: 2 capsula');
+    expect(text(pill(card))).toBe('-33.3%');
+    expect(figure(card)!.getAttribute('aria-label')).toBe('Quantity 2 capsula. Show the price');
+
+    await tap(figure(card)!);
+    expect(text(figure(card))).toBe('price: €0.64');
+    expect(text(pill(card))).toBe('-46.7%');
+
+    await tap(pill(card)!);
+    expect(text(figure(card))).toBe('qty: 2 capsula');
+    expect(text(pill(card))).toBe('-33.3%');
+  });
+
+  it('compact: the first consumption, with no pill, still switches its figure', async () => {
+    const card = await render({ ...coffee, deltaQuantity: null, deltaUnitPrice: null, deltaCost: null }, 'compact');
+
+    expect(pill(card)).toBeNull();
+    await tap(figure(card)!);
+    expect(text(figure(card))).toBe('price: €0.64');
+  });
+
+  it('full: as on the website, how much and the cost together and the pill on its own', async () => {
+    const card = await render(coffee, 'full');
+
+    expect(figure(card)).toBeNull();
+    expect(text(card.querySelector('.amount'))).toBe('2 capsula · €0.64');
+    expect(text(pill(card))).toBe('quantity -33.3%');
   });
 });

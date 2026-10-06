@@ -5,16 +5,42 @@
 /* The whole track is the maximum; the part not covered by segments is what was consumed. */
 .track {
   display: flex;
-  gap: 2px; /* the separator between batches */
   height: 12px;
   border-radius: 4px;
   overflow: hidden;
   background-color: var(--mat-sys-surface-container-highest);
 }
 
+/* Going from every batch to one (`only`) and back, the segments grow and shrink in place:
+   Material 3's standard easing, none with reduced motion. */
 .segment {
   flex-grow: 0;
   flex-shrink: 1;
   /* a tiny batch (1 of 391) must stay visible, also under the rounded corner */
   min-width: 6px;
+  transition:
+    flex-basis 300ms cubic-bezier(0.2, 0, 0, 1),
+    min-width 300ms cubic-bezier(0.2, 0, 0, 1),
+    margin-left 300ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* The separator between batches: a margin, not the track's gap, so that it closes with a batch
+   that shrinks away. */
+.segment + .segment {
+  margin-left: 2px;
+}
+
+/* One batch alone: no separator, the others down to nothing. */
+.track.only .segment {
+  margin-left: 0;
+}
+
+.segment.away {
+  min-width: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .segment {
+    transition: none;
+  }
 }

@@ -165,8 +165,19 @@ export interface CardSummary {
   /** One segment per active batch, oldest first: what the card's stock bar draws. */
   stockBarSegments: { batchId: number; name: string | null; remaining: string; unitPrice: string }[];
   peakStock: string;
-  /** The most recent batch, active or finished. */
-  lastBatch: { id: number; name: string | null; occurredAt: string; totalPrice: string; unitPrice: string } | null;
+  /**
+   * The most recent batch, active or finished, with what was bought of it and what is left (0 once
+   * finished, as in the stock bar's batches): the Android card's "last" (design-frontend.md).
+   */
+  lastBatch: {
+    id: number;
+    name: string | null;
+    occurredAt: string;
+    quantity: string;
+    remaining: string;
+    totalPrice: string;
+    unitPrice: string;
+  } | null;
   /** Average unit price of the stock: Σ(remaining × unit price) ÷ stock over the active batches. */
   avgUnitPrice: string | null;
   lastConsumption: { occurredAt: string; quantity: string; cost: string } | null;
@@ -557,6 +568,8 @@ export class ReportsService {
               id: lastBatchRow.id,
               name: lastBatchRow.name,
               occurredAt: toIso(lastBatchRow.occurred_at),
+              quantity: fmtQty(fromDb(lastBatchRow.quantity)),
+              remaining: fmtQty(lastBatchRow.deactivated_at ? ZERO : remainingOf(lastBatchRow)),
               totalPrice: fmtMoney(fromDb(lastBatchRow.total_price)),
               unitPrice: fmtUnitPrice(unitPriceOf(lastBatchRow)),
             }

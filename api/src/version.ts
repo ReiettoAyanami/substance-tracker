@@ -14,7 +14,7 @@
  * (dev26.0.0.0007 -> dev26.1.0.0000). The pages carry a copy of it and of API_LEVEL
  * (web/src/app/app-version.ts, for the Android app): the CI fails when the two differ.
  */
-export const VERSION = 'dev26.0.0.0001';
+export const VERSION = 'dev26.0.0.0002';
 
 /**
  * The API level the Android app compares with its own (design-android.md, "compatibility"): a whole
