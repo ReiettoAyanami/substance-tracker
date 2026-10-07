@@ -121,8 +121,8 @@ mat-card-content {
   margin: 0;
 }
 
-/* Android (consumption-card.ts): the figure, a toggle, and its bare pill flow on one line (.figures,
-   below), the pill under the figure only where they do not fit. */
+/* A compact card's figure, a toggle, and its pill share one line (.figures,
+   ui/consumption-figures), the pill under the figure only where they do not fit. */
 .compact.toggled {
   grid-template-areas: 'when amount amount actions';
 }
@@ -148,7 +148,7 @@ mat-card-content {
     display: none;
   }
 
-  /* Android: under the day, the figure and its pill. */
+  /* Under the day, the figure and its pill. */
   .compact.toggled {
     grid-template-areas:
       'when actions'
@@ -156,33 +156,11 @@ mat-card-content {
   }
 }
 
-.figures {
+/* The same row as the full card's (.figures, above): the figure on the left, the pill on the right. */
+.compact .figures {
   grid-area: amount;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 8px;
+  justify-self: stretch;
   min-width: 0;
-}
-
-/* The figure is a button drawn as plain text: its word dim, as in the pill, the value bright; a long
-   one breaks after the word, not inside the value. */
-.measure {
-  min-width: 0;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: inherit;
-  text-align: start;
-  cursor: pointer;
-}
-
-.measure .label {
-  color: var(--mat-sys-on-surface-variant);
-}
-
-.measure .value {
-  display: inline-block;
 }
 
 /* Smaller and greyer than the figures (lenzi): a remark, not data. */
@@ -194,8 +172,7 @@ mat-card-content {
   overflow-wrap: anywhere;
 }
 
-.substance:focus-visible,
-.measure:focus-visible {
+.substance:focus-visible {
   outline: 2px solid var(--mat-sys-primary);
   outline-offset: 2px;
   border-radius: 4px;

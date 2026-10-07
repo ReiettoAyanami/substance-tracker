@@ -58,7 +58,7 @@ mat-card-content {
   font-variant-numeric: tabular-nums;
 }
 
-/* The Android card's line, a toggle of its own (substance-card.ts): a button drawn as the plain
+/* The card's line, a toggle of its own (substance-card.ts): a button drawn as the plain
    figure, as tall as the pill beside it, its word dim as in the delta pill. A long one (a long unit)
    breaks after the word, not inside the value, instead of pushing the pill away. */
 .measure {

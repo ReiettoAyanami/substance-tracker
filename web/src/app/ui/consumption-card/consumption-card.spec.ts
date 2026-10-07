@@ -1,6 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { RUNS_IN_APP } from '../../connection/address';
 import { Consumption } from '../../data/consumption';
 import { Settings } from '../../data/settings';
 import { IdentityColorPipe } from '../identity-color-pipe';
@@ -66,7 +65,7 @@ describe('ConsumptionCard', () => {
 
   const colour = (id: number, kind: 'substance' | 'batch') => new IdentityColorPipe().transform(id, kind);
 
-  it('shows when, what, from which batch, how much and at what cost, the delta pill and the note', async () => {
+  it('shows when, what, from which batch, how much (a tap: what it cost), the delta pill and the note', async () => {
     const card = await render(coffee);
 
     expect(text(card.querySelector('.when'))).toBe('28 Sept 2026, 08:45'); // Europe/Rome
@@ -74,8 +73,8 @@ describe('ConsumptionCard', () => {
     expect(card.querySelector<HTMLElement>('.head .dot')!.style.backgroundColor).toBe(colour(1, 'substance'));
     expect(text(card.querySelector('.source'))).toBe('Scorta grande');
     expect(card.querySelector<HTMLElement>('.source .dot')!.style.backgroundColor).toBe(colour(6, 'batch'));
-    expect(text(card.querySelector('.amount'))).toBe('2 capsula · €0.64');
-    expect(text(pill(card))).toBe('quantity -33.3%');
+    expect(text(card.querySelector('.figure'))).toBe('qty: 2 capsula');
+    expect(text(pill(card))).toBe('qty -33.3%');
     expect(text(card.querySelector('.note'))).toBe('Before the train');
   });
 
@@ -84,7 +83,7 @@ describe('ConsumptionCard', () => {
 
     expect(text(card.querySelector('.source'))).toBe('One-time · Pinta al pub');
     expect(card.querySelector('.source .dot')).toBeNull();
-    expect(text(pill(card))).toBe('quantity -75%');
+    expect(text(pill(card))).toBe('qty -75%');
     expect(card.querySelector('.note')).toBeNull();
 
     const unnamed = await render({ ...pint, name: null });
@@ -144,12 +143,13 @@ describe('ConsumptionCard', () => {
     expect(asked).toEqual(['details', 'edit', 'remove']);
   });
 
-  it('a tap on the card asks for its details; its ⋮ and its pill do not (lenzi, 2026-10-01)', async () => {
+  it('a tap on the card asks for its details; its ⋮, its figure and its pill do not (lenzi, 2026-10-01)', async () => {
     const card = await render(coffee);
     const asked: string[] = [];
     fixture.componentInstance.details.subscribe(() => asked.push('details'));
 
-    card.querySelector<HTMLElement>('.amount')!.click();
+    card.querySelector<HTMLElement>('.when')!.click();
+    card.querySelector<HTMLButtonElement>('button.figure')!.click();
     card.querySelector<HTMLButtonElement>('button.more')!.click();
     await fixture.whenStable();
     pill(card)!.click();
@@ -165,17 +165,17 @@ describe('ConsumptionCard', () => {
     const asked: string[] = [];
     fixture.componentInstance.details.subscribe(() => asked.push('details'));
 
-    card.querySelector<HTMLElement>('.amount')!.click();
+    card.querySelector<HTMLElement>('.figure')!.click();
 
     expect(asked).toEqual([]);
   });
 
-  it('compact: when, how much, the cost and the delta, then the open button and the ⋮ (lenzi, 2026-10-03)', async () => {
+  it('compact: when, how much (a tap: the cost) and the delta, then the open button and the ⋮ (lenzi, 2026-10-03)', async () => {
     const card = await render(coffee, 'compact');
 
     expect(text(card.querySelector('.when'))).toBe('28 Sept 2026, 08:45');
-    expect(text(card.querySelector('.amount'))).toBe('2 capsula · €0.64');
-    expect(text(pill(card))).toBe('quantity -33.3%');
+    expect(text(card.querySelector('.figure'))).toBe('qty: 2 capsula');
+    expect(text(pill(card))).toBe('qty -33.3%');
     expect(card.querySelector('.substance')).toBeNull();
     expect(card.querySelector('.source')).toBeNull();
     expect(card.querySelector('.note')).toBeNull();
@@ -208,12 +208,12 @@ describe('ConsumptionCard', () => {
     expect(said).toEqual(['open', 'details', 'edit', 'remove']);
   });
 
-  it('compact: has no pill for the first consumption, and still says when, how much and the cost', async () => {
+  it('compact: has no pill for the first consumption, and still says when and how much', async () => {
     const first = await render({ ...coffee, deltaQuantity: null, deltaUnitPrice: null, deltaCost: null }, 'compact');
 
     expect(pill(first)).toBeNull();
     expect(text(first.querySelector('.when'))).toBe('28 Sept 2026, 08:45');
-    expect(text(first.querySelector('.amount'))).toBe('2 capsula · €0.64');
+    expect(text(first.querySelector('.figure'))).toBe('qty: 2 capsula');
   });
 
   it('a To fix consumption of the queue: its tag and reason, no pill, no cost, no details; its own ⋮ menu', async () => {
@@ -258,7 +258,7 @@ describe('ConsumptionCard', () => {
   });
 });
 
-describe('ConsumptionCard in the Android app', () => {
+describe('ConsumptionCard: quantity or price', () => {
   let fixture: ComponentFixture<ConsumptionCard>;
 
   async function render(consumption: Consumption, variant: 'full' | 'compact'): Promise<HTMLElement> {
@@ -272,7 +272,7 @@ describe('ConsumptionCard in the Android app', () => {
 
   const text = (element: Element | null) => (element?.textContent ?? '').replace(/\s+/g, ' ').trim();
   const pill = (card: HTMLElement) => card.querySelector<HTMLButtonElement>('app-delta-pill button');
-  const figure = (card: HTMLElement) => card.querySelector<HTMLButtonElement>('button.amount');
+  const figure = (card: HTMLElement) => card.querySelector<HTMLButtonElement>('button.figure');
 
   async function tap(element: HTMLElement): Promise<void> {
     element.click();
@@ -282,7 +282,6 @@ describe('ConsumptionCard in the Android app', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [ConsumptionCard],
-      providers: [{ provide: RUNS_IN_APP, useValue: true }],
     }).compileComponents();
   });
 
@@ -291,16 +290,16 @@ describe('ConsumptionCard in the Android app', () => {
 
     expect(card.querySelector('.compact')!.classList).toContain('toggled');
     expect(text(figure(card))).toBe('qty: 2 capsula');
-    expect(text(pill(card))).toBe('-33.3%');
+    expect(text(pill(card))).toBe('qty -33.3%');
     expect(figure(card)!.getAttribute('aria-label')).toBe('Quantity 2 capsula. Show the price');
 
     await tap(figure(card)!);
     expect(text(figure(card))).toBe('price: €0.64');
-    expect(text(pill(card))).toBe('-46.7%');
+    expect(text(pill(card))).toBe('price -46.7%');
 
     await tap(pill(card)!);
     expect(text(figure(card))).toBe('qty: 2 capsula');
-    expect(text(pill(card))).toBe('-33.3%');
+    expect(text(pill(card))).toBe('qty -33.3%');
   });
 
   it('compact: the first consumption, with no pill, still switches its figure', async () => {
@@ -311,11 +310,14 @@ describe('ConsumptionCard in the Android app', () => {
     expect(text(figure(card))).toBe('price: €0.64');
   });
 
-  it('full: as on the website, how much and the cost together and the pill on its own', async () => {
+  it('full: the same toggle, which does not open the details', async () => {
     const card = await render(coffee, 'full');
+    const asked: string[] = [];
+    fixture.componentInstance.details.subscribe(() => asked.push('details'));
 
-    expect(figure(card)).toBeNull();
-    expect(text(card.querySelector('.amount'))).toBe('2 capsula · €0.64');
-    expect(text(pill(card))).toBe('quantity -33.3%');
+    await tap(figure(card)!);
+    expect(text(figure(card))).toBe('price: €0.64');
+    expect(text(pill(card))).toBe('price -46.7%');
+    expect(asked).toEqual([]);
   });
 });

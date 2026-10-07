@@ -15,7 +15,7 @@ export interface OnlyBatch {
 /**
  * The segmented stock bar (design.md): one segment per active batch, oldest first, each a batch
  * bar (identity colour, tooltip); the whole track is the maximum (Σ bought quantity of the active
- * batches). Given `only`, it draws that batch alone, out of its own quantity (the Android card's
+ * batches). Given `only`, it draws that batch alone, out of its own quantity (the substance card's
  * "last", design-frontend.md): the other segments shrink away and that one grows to its share, both
  * animated. Presentational: the numbers come from the API; they become numbers here only to size
  * segments.

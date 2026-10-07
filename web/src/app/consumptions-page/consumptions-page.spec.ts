@@ -141,7 +141,7 @@ describe('ConsumptionsPage', () => {
 
   it('a tap on a card opens its details (lenzi, 2026-10-01)', async () => {
     await render('/consumptions');
-    element().querySelector<HTMLElement>('app-consumption-card .amount')!.click();
+    element().querySelector<HTMLElement>('app-consumption-card .source')!.click(); // not its figure: that is a toggle
     expect(asked).toEqual([['details', consumption(0).id, settings.currency]]);
   });
 

@@ -19,11 +19,8 @@
           <span class="item-name" [class.unnamed]="!row.item.name">{{ row.item.name ?? 'Unnamed' }}</span>
           <span class="when">{{ row.when }}</span>
         </div>
-        <!-- How much and what was paid on the left, the delta pill on the right: like a consumption card. -->
-        <div class="facts">
-          <span class="amount"><span class="quantity">{{ row.quantity }}</span> · <span class="price">{{ row.price }}</span></span>
-          <app-delta-pill [consumption]="row.item" />
-        </div>
+        <!-- How much or what was paid, a toggle, with the delta pill on the right: like a consumption card. -->
+        <app-consumption-figures class="facts" [consumption]="row.item" [quantity]="row.quantity" [price]="row.price" />
         @if (row.item.note) {
           <p class="note">{{ row.item.note }}</p>
         }

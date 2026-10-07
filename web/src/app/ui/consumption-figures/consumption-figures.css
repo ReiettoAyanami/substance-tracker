@@ -1,0 +1,38 @@
+/* The figure on the left, the delta pill on the right; the pill wraps below where there is no room
+   for both. */
+:host {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 12px;
+  min-width: 0;
+}
+
+/* The figure is a button drawn as plain text: its word dim, as in the pill, the value bright; a long
+   one breaks after the word, not inside the value. */
+.figure {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: start;
+  font: var(--mat-sys-body-large);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.figure:focus-visible {
+  outline: 2px solid var(--mat-sys-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.label {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.value {
+  display: inline-block;
+}

@@ -119,21 +119,18 @@ describe('DeltaPill', () => {
     expect(pillOf(fixture)).toBeNull();
   });
 
-  it('bare, shows the change alone, and says what it is the change of to a screen reader', async () => {
-    const fixture = await render({ ...coffee, deltaCost: null });
-    fixture.componentRef.setInput('bare', true);
+  it('says "qty" when asked for the short word, and the whole word to a screen reader', async () => {
+    const fixture = await render(coffee);
+    fixture.componentRef.setInput('short', true);
     await fixture.whenStable();
 
-    expect(text(pillOf(fixture))).toBe('-33.3%');
+    expect(text(pillOf(fixture))).toBe('qty -33.3%');
     expect(pillOf(fixture)!.getAttribute('aria-label')).toBe(
-      '-33.3%: the change in quantity from the previous consumption. Show the change in price',
+      'qty -33.3%: the change in quantity from the previous consumption. Show the change in price',
     );
 
     await tap(fixture);
-    expect(text(pillOf(fixture))).toBe('—');
-    expect(pillOf(fixture)!.getAttribute('aria-label')).toBe(
-      'No change in price to show, the previous consumption was free. Show the change in quantity',
-    );
+    expect(text(pillOf(fixture))).toBe('price -46.7%'); // the price keeps its word
   });
 
   it('shows the measure it is given, and says when a tap changes it', async () => {

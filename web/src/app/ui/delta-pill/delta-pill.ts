@@ -21,9 +21,8 @@ const other = (measure: Measure): Measure => (measure === 'quantity' ? 'price' :
  * shows it: both kinds come with the same two ratios, computed by the API (what each is compared
  * with is the API's rule, design.md "delta from previous"). Each pill switches on its own (lenzi,
  * 2026-09-30): a tap changes that card only. No pill for the first consumption: nothing to compare it with.
- * A card can bind the measure (`[(measure)]`) to switch it together with its own figure, which then
- * says what the change is of: the pill is bare, the change alone (the Android app's recent
- * consumptions, lenzi 2026-10-07).
+ * A figure can bind the measure (`[(measure)]`) to switch it together with its own, and ask for the
+ * short word, "qty -20%" (ui/consumption-figures, lenzi 2026-10-07).
  */
 @Component({
   selector: 'app-delta-pill',
@@ -37,8 +36,8 @@ export class DeltaPill {
 
   /** The change this pill shows: the quantity at first. */
   readonly measure = model<Measure>('quantity');
-  /** Only the change, without its word: where the card's own figure says what it is the change of. */
-  readonly bare = input(false);
+  /** "qty" for the quantity, the app's one abbreviation, where the line is short; its label says the whole word. */
+  readonly short = input(false);
 
   /** What the pill says; null when the consumption has nothing before it. */
   protected readonly view = computed(() => {
@@ -49,24 +48,17 @@ export class DeltaPill {
     const next = `Show the change in ${other(measure)}`;
     // Intl reads the decimal string as it is: no binary rounding.
     const change = ratio === null ? null : deltaFormat.format(ratio as unknown as number);
-    const bare = this.bare();
-    // It starts with what the pill reads, so that what is seen is also what it is called; bare, the
-    // measure is said after the change.
-    let label: string;
-    if (change === null) {
-      label = bare
-        ? `No change in ${measure} to show, the previous consumption was free. ${next}`
-        : `${measure}: no change to show, the previous consumption was free. ${next}`;
-    } else {
-      label = bare
-        ? `${change}: the change in ${measure} from the previous consumption. ${next}`
-        : `${measure} ${change}: the change from the previous consumption. ${next}`;
-    }
+    const word = this.short() && measure === 'quantity' ? 'qty' : measure;
     return {
-      word: bare ? '' : measure,
+      word,
       // Only a price can have no ratio: after a consumption that cost nothing. The pill stays, to switch back.
       change: change ?? '—',
-      label,
+      // It starts with what the pill reads, so that what is seen is also what it is called; a short
+      // word is said whole after it.
+      label:
+        change === null
+          ? `${word}: no change to show, the previous consumption was free. ${next}`
+          : `${word} ${change}: the change${word === measure ? '' : ` in ${measure}`} from the previous consumption. ${next}`,
     };
   });
 

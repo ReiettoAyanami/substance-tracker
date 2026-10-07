@@ -120,8 +120,10 @@ describe('OneTimeList', () => {
 
     expect(texts('.item-name')).toEqual(['Bar sotto casa', 'Unnamed']);
     expect(texts('.when')).toEqual(['27 Sept 2026', '26 Sept 2026']);
-    expect(texts('.quantity')).toEqual(['2 bottiglia', '2 bottiglia']);
-    expect(texts('.price')).toEqual(['€9.00', '€9.00']);
+    expect(texts('.figure')).toEqual(['qty: 2 bottiglia', 'qty: 2 bottiglia']);
+    element().querySelector<HTMLButtonElement>('.item .figure')!.click(); // what was paid, one at a time
+    await fixture.whenStable();
+    expect(texts('.figure')).toEqual(['price: €9.00', 'qty: 2 bottiglia']);
     expect(texts('.note')).toEqual(['con Luca']);
     expect(element().querySelector('.more')).toBeNull(); // a page that is not full is the last one
   });
@@ -131,12 +133,13 @@ describe('OneTimeList', () => {
     await expand();
     const pills = () => Array.from(element().querySelectorAll('.item')).map((item) => text(item.querySelector('app-delta-pill')));
 
-    expect(pills()).toEqual(['quantity +100%', '']); // none for the first consumption of the substance
+    expect(pills()).toEqual(['qty +100%', '']); // none for the first consumption of the substance
 
     element().querySelector<HTMLButtonElement>('.item app-delta-pill button')!.click();
     await fixture.whenStable();
 
     expect(pills()).toEqual(['price +500%', '']);
+    expect(texts('.figure')).toEqual(['price: €9.00', 'qty: 2 bottiglia']); // the figure with it
     expect(pages.length).toBe(1); // nothing is asked again for that
   });
 

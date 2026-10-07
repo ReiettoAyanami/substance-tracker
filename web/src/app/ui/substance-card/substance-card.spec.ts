@@ -1,6 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { RUNS_IN_APP } from '../../connection/address';
 import { Settings } from '../../data/settings';
 import { CardSummary, Substance } from '../../data/substance';
 import { IdentityColorPipe } from '../identity-color-pipe';
@@ -78,14 +77,14 @@ describe('SubstanceCard', () => {
     const dot: HTMLElement = card.querySelector('.dot')!;
     expect(dot.style.backgroundColor).toBe(new IdentityColorPipe().transform(2, 'substance'));
     expect(text(card.querySelector('.name'))).toBe('Sigarette');
-    expect(text(card.querySelector('.price-value'))).toBe('€0.33/sigaretta');
+    expect(text(card.querySelector('.price-value'))).toBe('price: €0.33/sigaretta');
   });
 
   it('rounds half up on the decimal digits (1.005 → 1,01, where toFixed or Math.round give 1.00)', async () => {
     const lastBatch = { id: 1, name: null, occurredAt: '2026-09-01T10:00:00Z', quantity: '1.000', remaining: '1.000', totalPrice: '1.01', unitPrice: '1.005000' };
     const card = await render(substance(3, { lastBatch }));
 
-    expect(text(card.querySelector('.price-value'))).toBe('€1.01/sigaretta');
+    expect(text(card.querySelector('.price-value'))).toBe('price: €1.01/sigaretta');
   });
 
   it('switches to the average unit price and remembers the choice for that substance only', async () => {
@@ -95,27 +94,27 @@ describe('SubstanceCard', () => {
     let card = await render(cigarettes);
     toggle(card, 'average').click();
     await fixture.whenStable();
-    expect(text(card.querySelector('.price-value'))).toBe('€0.31/sigaretta');
+    expect(text(card.querySelector('.price-value'))).toBe('price: €0.31/sigaretta');
 
     card = await render(cigarettes); // e.g. after a reload
-    expect(text(card.querySelector('.price-value'))).toBe('€0.31/sigaretta');
+    expect(text(card.querySelector('.price-value'))).toBe('price: €0.31/sigaretta');
     expect(toggle(card, 'average').getAttribute('aria-checked')).toBe('true');
 
     card = await render({ ...cigarettes, id: 5 }); // another substance keeps the default
-    expect(text(card.querySelector('.price-value'))).toBe('€0.33/sigaretta');
+    expect(text(card.querySelector('.price-value'))).toBe('price: €0.33/sigaretta');
   });
 
   it('shows "—" when the chosen price does not exist (no batches; average with stock 0)', async () => {
     let card = await render(substance(4)); // no batches at all
-    expect(text(card.querySelector('.price-value'))).toBe('—');
+    expect(text(card.querySelector('.price-value'))).toBe('price: —');
     localStorage.setItem('substance-tracker.price-mode.5', 'avg');
     card = await render(substance(5));
-    expect(text(card.querySelector('.price-value'))).toBe('—');
+    expect(text(card.querySelector('.price-value'))).toBe('price: —');
 
     const finished = { id: 11, name: null, occurredAt: '2026-09-05T17:00:00Z', quantity: '6.000', remaining: '0.000', totalPrice: '7.20', unitPrice: '1.200000' };
     localStorage.setItem('substance-tracker.price-mode.6', 'avg');
     card = await render(substance(6, { lastBatch: finished, avgUnitPrice: null }));
-    expect(text(card.querySelector('.price-value'))).toBe('—');
+    expect(text(card.querySelector('.price-value'))).toBe('price: —');
   });
 
   it('shows the date of the last purchase in the settings time zone; with no batches, the creation day', async () => {
@@ -164,7 +163,8 @@ describe('SubstanceCard', () => {
     expect(asked).toEqual(['edit', 'remove']);
   });
 
-  it('draws the stock bar of the summary, labelled with the stock', async () => {
+  it('draws the stock bar of the summary on "average", labelled with the stock', async () => {
+    localStorage.setItem('substance-tracker.price-mode.2', 'avg');
     const card = await render(cigarettes);
 
     const segments = card.querySelectorAll<HTMLElement>('app-stock-bar .segment');
@@ -172,16 +172,9 @@ describe('SubstanceCard', () => {
     expect(parseFloat(segments[0].style.flexBasis)).toBeCloseTo(40, 6); // 8 of 20
     expect(card.querySelector('app-stock-bar .track')!.getAttribute('aria-label')).toBe('Stock: 8 sigaretta');
   });
-
-  it('has no quantity on the website: the line is the unit price, not a button', async () => {
-    const card = await render(cigarettes);
-
-    expect(card.querySelector('button.price-value')).toBeNull();
-    expect(text(card.querySelector('.price-value'))).toBe('€0.33/sigaretta');
-  });
 });
 
-describe('SubstanceCard in the Android app', () => {
+describe('SubstanceCard: price or quantity, the last batch or every one', () => {
   let fixture: ComponentFixture<SubstanceCard>;
 
   /** 2 g left of an older batch of 5, 6 of the last one, 10 at 8.93 a gram. */
@@ -233,7 +226,6 @@ describe('SubstanceCard in the Android app', () => {
     localStorage.clear();
     await TestBed.configureTestingModule({
       imports: [SubstanceCard],
-      providers: [{ provide: RUNS_IN_APP, useValue: true }],
     }).compileComponents();
   });
 

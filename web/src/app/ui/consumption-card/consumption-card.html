@@ -79,12 +79,15 @@
           }
         </div>
 
-        <div class="figures">
-          <span class="amount">{{ shown.amount }}</span>
-          @if (!waiting) {
-            <app-delta-pill [consumption]="item" (click)="$event.stopPropagation()" />
-          }
-        </div>
+        <!-- How much or what it cost, a toggle with its pill; a consumption of the queue has no cost
+             of the server's, nor a pill. -->
+        @if (!waiting && shown.cost !== null) {
+          <app-consumption-figures class="figures" [consumption]="item" [quantity]="shown.quantity" [price]="shown.cost" />
+        } @else {
+          <div class="figures">
+            <span class="amount">{{ shown.amount }}</span>
+          </div>
+        }
 
         @if (item.note) {
           <p class="note">{{ item.note }}</p>
@@ -92,27 +95,12 @@
       }
       @case ('compact') {
         <!-- The same columns in every card: the amounts of a list line up, with a pill or without. -->
-        @let toggled = inApp && !waiting && shown.cost !== null;
+        @let toggled = !waiting && shown.cost !== null;
         <div class="compact" [class.toggled]="toggled">
           <span class="when">{{ shown.when }}</span>
           @if (toggled) {
-            <!-- Android: the figure is its own toggle, and the pill, bare, switches with it; one line
-                 where they fit. -->
-            @let byQuantity = measure() === 'quantity';
-            <span class="figures">
-              <button
-                type="button"
-                class="amount measure"
-                [attr.aria-label]="
-                  byQuantity ? 'Quantity ' + shown.quantity + '. Show the price' : 'Price ' + shown.cost + '. Show the quantity'
-                "
-                (click)="switchMeasure()"
-              >
-                <span class="label">{{ byQuantity ? 'qty: ' : 'price: ' }}</span>
-                <span class="value">{{ byQuantity ? shown.quantity : shown.cost }}</span>
-              </button>
-              <app-delta-pill [consumption]="item" [(measure)]="measure" [bare]="true" />
-            </span>
+            <!-- The figure, a toggle, and its pill on one line where they fit. -->
+            <app-consumption-figures class="figures" [consumption]="item" [quantity]="shown.quantity" [price]="shown.cost!" />
           } @else {
             <span class="amount">{{ shown.amount }}</span>
             <app-delta-pill class="delta" [consumption]="item" />

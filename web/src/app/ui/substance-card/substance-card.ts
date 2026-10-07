@@ -1,11 +1,10 @@
-import { Component, computed, inject, input, linkedSignal, output } from '@angular/core';
+import { Component, computed, input, linkedSignal, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 
-import { RUNS_IN_APP } from '../../connection/address';
 import { Settings } from '../../data/settings';
 import { Substance } from '../../data/substance';
 import { LOCALE } from '../../locale';
@@ -15,11 +14,11 @@ import { UnitPricePipe } from '../unit-price-pipe';
 
 /**
  * Which batches the card's figure is of: the last batch's, or the whole stock's (the unit price's
- * average; on Android also the quantity's total).
+ * average, the quantity's total).
  */
 type PriceMode = 'last' | 'avg';
 
-/** What the line of the Android card shows, switched by a tap on it: the unit price, or the quantity. */
+/** What the card's line shows, switched by a tap on it: the unit price, or the quantity. */
 type Measure = 'price' | 'quantity';
 
 /**
@@ -63,11 +62,11 @@ const exact = (value: string) => quantityFormat.format(value as unknown as numbe
  * and its card summary come in, every number is the API's; it only formats them. Its ⋮ menu asks
  * the parent to edit or delete the substance.
  *
- * In the Android app (lenzi, 2026-10-07) the line is a toggle of its own: a tap switches it between
- * the unit price ("price: €8.93/g") and the quantity, what is left of what was bought
- * ("qty: 7/10 g"; "qty" is the one abbreviation of the app). The pill beside it says "last |
- * average" for the price and "last | total" for the quantity, and "last" draws only the last batch
- * in the bar, out of what was bought of it.
+ * The line is a toggle of its own (lenzi, 2026-10-07, first in the Android app, then on the website
+ * too): a tap switches it between the unit price ("price: €8.93/g") and the quantity, what is left
+ * of what was bought ("qty: 7/10 g"; "qty" is the one abbreviation of the app). The pill beside it
+ * says "last | average" for the price and "last | total" for the quantity, and "last" draws only
+ * the last batch in the bar, out of what was bought of it.
  */
 @Component({
   selector: 'app-substance-card',
@@ -96,12 +95,8 @@ export class SubstanceCard {
   /** "Delete" in the ⋮ menu. */
   readonly remove = output<void>();
 
-  /** The Android app: the line is a toggle, and "last" draws only the last batch. */
-  protected readonly inApp = inject(RUNS_IN_APP);
-
   protected readonly mode = linkedSignal<PriceMode>(() => readPriceMode(this.substance().id));
-  /** Always the price on the website: it has no quantity on the card. */
-  protected readonly measure = linkedSignal<Measure>(() => (this.inApp ? readMeasure(this.substance().id) : 'price'));
+  protected readonly measure = linkedSignal<Measure>(() => readMeasure(this.substance().id));
 
   /**
    * The unit price of the chosen mode (decimal string), or null when there is none: no batches
@@ -125,10 +120,10 @@ export class SubstanceCard {
     return Number(summary.stockBarMax) > 0 ? `${exact(summary.stock)}/${exact(summary.stockBarMax)} ${unit}` : '—';
   });
 
-  /** The last batch alone in the bar: in the Android app, on "last". */
+  /** The last batch alone in the bar, on "last". */
   protected readonly only = computed<OnlyBatch | null>(() => {
     const last = this.substance().summary.lastBatch;
-    if (!this.inApp || this.mode() !== 'last' || !last) return null;
+    if (this.mode() !== 'last' || !last) return null;
     return { batchId: last.id, remaining: last.remaining, quantity: last.quantity };
   });
 
@@ -160,7 +155,7 @@ export class SubstanceCard {
     remember(priceModeKey(this.substance().id), mode);
   }
 
-  /** A tap on the line (Android): the price becomes the quantity and back; it never opens the page. */
+  /** A tap on the line: the price becomes the quantity and back; it never opens the page. */
   protected switchMeasure(event: Event): void {
     event.stopPropagation();
     const next: Measure = this.measure() === 'price' ? 'quantity' : 'price';
