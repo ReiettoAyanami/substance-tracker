@@ -1,5 +1,5 @@
-/* The figure on the left, the delta pill on the right; the pill wraps below where there is no room
-   for both. */
+/* The toggle and the figure on the left, the change on the right; the change wraps below where there
+   is no room for both. */
 :host {
   display: flex;
   flex-wrap: wrap;
@@ -9,30 +9,57 @@
   min-width: 0;
 }
 
-/* The figure is a button drawn as plain text: its word dim, as in the pill, the value bright; a long
-   one breaks after the word, not inside the value. */
+/* The pill, then the figure with no word of its own: the pill says what it is. A long figure (a long
+   unit) wraps beside the pill, not under it. */
 .figure {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   min-width: 0;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: inherit;
-  text-align: start;
-  font: var(--mat-sys-body-large);
-  font-variant-numeric: tabular-nums;
-  cursor: pointer;
 }
 
-.figure:focus-visible {
-  outline: 2px solid var(--mat-sys-primary);
-  outline-offset: 2px;
-  border-radius: 4px;
+.value,
+.delta {
+  font: var(--mat-sys-body-large);
+  font-variant-numeric: tabular-nums;
+}
+
+.value {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* "delta:" dim, as the words of the figures were; the change bright, or in the colour of where it
+   went (lenzi, 2026-10-09): green when it fell, red when it rose. The two are a pair for the dark
+   theme, oklch 0.80 and about 0.15 of chroma (a green as bright as the red: Material's own green
+   palette is neon), both above 8:1 on the cards. */
+.delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 1ch;
+  white-space: nowrap;
 }
 
 .label {
   color: var(--mat-sys-on-surface-variant);
 }
 
-.value {
-  display: inline-block;
+.change {
+  display: inline-flex;
+  align-items: center;
+  color: var(--mat-sys-on-surface);
+}
+
+.down .change {
+  color: #6ed889;
+}
+
+.up .change {
+  color: #ff8a80;
+}
+
+/* Material's triangle (arrow_drop_up, arrow_drop_down) is 10 px wide in the middle of its 24 px box:
+   the box's empty sides are trimmed, so it sits close to the number. */
+.arrow {
+  margin: 0 -5px 0 -7px;
 }

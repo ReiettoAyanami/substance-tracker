@@ -1,12 +1,17 @@
 @let byQuantity = measure() === 'quantity';
-<button
-  type="button"
-  class="figure"
-  [attr.aria-label]="byQuantity ? 'Quantity ' + quantity() + '. Show the price' : 'Price ' + price() + '. Show the quantity'"
-  (click)="switchMeasure($event)"
->
-  <span class="label">{{ byQuantity ? 'qty: ' : 'price: ' }}</span>
+<span class="figure">
+  <!-- The toggle switches the figure and the change; its tap never reaches the card. -->
+  <app-measure-toggle [(measure)]="measure" />
   <span class="value">{{ byQuantity ? quantity() : price() }}</span>
-</button>
-<!-- The pill's own tap switches the measure here too (two-way); it never reaches the card. -->
-<app-delta-pill [consumption]="consumption()" [(measure)]="measure" [short]="true" (click)="$event.stopPropagation()" />
+</span>
+@if (delta(); as shown) {
+  <span class="delta" [class.up]="shown.direction === 'up'" [class.down]="shown.direction === 'down'">
+    <span class="label">delta:</span>
+    <span class="change" [attr.title]="shown.label">
+      @if (shown.direction) {
+        <mat-icon class="arrow">{{ shown.direction === 'up' ? 'arrow_drop_up' : 'arrow_drop_down' }}</mat-icon>
+      }
+      <span class="number">{{ shown.change }}</span>
+    </span>
+  </span>
+}

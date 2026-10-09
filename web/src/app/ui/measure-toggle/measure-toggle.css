@@ -1,0 +1,20 @@
+:host {
+  display: inline-flex;
+  flex: none;
+}
+
+/* One pill drawn as the chosen side of the app's toggles (styles.css: 32 px high, round ends;
+   Material's colours of a chosen side): a Material outlined button, so it keeps the ripple and 48 dp
+   to tap. 10 px at the sides of the word instead of the toggles' 14: with the figure beside it, it
+   takes about the room "price: " took before it (2026-10-07), so on a 412 px phone "€8.93/g" still
+   fits beside it, next to the card's other pill. Material's least width of a button (64 px) makes
+   "qty" as wide as "price": the figure does not move when it switches. */
+.pill {
+  --mat-button-outlined-container-height: 32px;
+  --mat-button-outlined-horizontal-padding: 10px;
+  --mat-button-outlined-label-text-color: var(--mat-sys-on-secondary-container);
+  --mat-button-outlined-state-layer-color: var(--mat-sys-on-secondary-container);
+  --mat-button-outlined-ripple-color: color-mix(in srgb, var(--mat-sys-on-secondary-container) 12%, transparent);
+  background-color: var(--mat-sys-secondary-container);
+  white-space: nowrap;
+}

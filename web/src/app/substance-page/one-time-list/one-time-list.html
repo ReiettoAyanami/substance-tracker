@@ -1,7 +1,6 @@
 <mat-expansion-panel class="panel">
   <mat-expansion-panel-header>
     <mat-panel-title>One-time</mat-panel-title>
-    <mat-panel-description class="total">{{ total() }}</mat-panel-description>
   </mat-expansion-panel-header>
 
   <!-- At the top right of the open panel, like "Add batch" in the batch list: there with none too. -->
@@ -28,6 +27,9 @@
     }
   </ul>
 
+  @if (failed()) {
+    <p class="error" role="alert">Could not load the consumptions</p>
+  }
   @if (hasMore()) {
     <button mat-button type="button" class="more" [disabled]="loadingMore()" (click)="showMore()">
       Show more

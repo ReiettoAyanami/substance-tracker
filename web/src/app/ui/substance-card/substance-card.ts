@@ -9,6 +9,7 @@ import { Settings } from '../../data/settings';
 import { Substance } from '../../data/substance';
 import { LOCALE } from '../../locale';
 import { IdentityColorPipe } from '../identity-color-pipe';
+import { Measure, MeasureToggle } from '../measure-toggle/measure-toggle';
 import { OnlyBatch, StockBar } from '../stock-bar/stock-bar';
 import { UnitPricePipe } from '../unit-price-pipe';
 
@@ -18,9 +19,6 @@ import { UnitPricePipe } from '../unit-price-pipe';
  * 2026-10-07: a stored "last" reads as "selected".
  */
 type PriceMode = 'selected' | 'avg';
-
-/** What the card's line shows, switched by a tap on it: the unit price, or the quantity. */
-type Measure = 'price' | 'quantity';
 
 /**
  * The toggles are display preferences of this browser, per substance: localStorage, never the
@@ -63,14 +61,16 @@ const exact = (value: string) => quantityFormat.format(value as unknown as numbe
  * and its card summary come in, every number is the API's; it only formats them. Its ⋮ menu asks
  * the parent to edit or delete the substance.
  *
- * The line is a toggle of its own (lenzi, 2026-10-07, first in the Android app, then on the website
- * too): a tap switches it between the unit price ("price: €8.93/g") and the quantity, what is left
- * of what was bought ("qty: 7/10 g"; "qty" is the one abbreviation of the app). The pill beside it
- * says "selected | average" for the price and "selected | total" for the quantity; "selected" is
- * the batch tapped in the bar, the last one until then, and draws only that batch in the bar, out of
- * what was bought of it (lenzi, the same day: "al click del segmento fai in modo di selezionarlo e
- * al posto di last mettiamo selected"). A tap on a segment selects its batch and turns the pill to
- * "selected"; the choice of a batch lasts until the page is left.
+ * The line is the price/qty toggle (ui/measure-toggle) and its figure, with no word of its own
+ * (lenzi, 2026-10-09; from 2026-10-07 the line was a toggle itself, "price: €8.93/g" or
+ * "qty: 7/10 g"): the unit price ("€8.93/g"), or the quantity, what is left of what was bought
+ * ("7/10 g"). The pill beside it says "selected | average" for the price and "selected | total" for
+ * the quantity; "selected" is the batch tapped in the bar, the last one until then, and draws only
+ * that batch in the bar, out of what was bought of it (lenzi, 2026-10-07: "al click del segmento fai
+ * in modo di selezionarlo e al posto di last mettiamo selected"). A tap on a segment selects its
+ * batch and turns the pill to "selected"; a tap on the selected one, alone in the bar, goes back to
+ * every batch (lenzi, 2026-10-09: "clicking back on the selected should bring me back to the normal
+ * view"). The choice of a batch lasts until the page is left.
  */
 @Component({
   selector: 'app-substance-card',
@@ -81,6 +81,7 @@ const exact = (value: string) => quantityFormat.format(value as unknown as numbe
     MatCardModule,
     MatIconModule,
     MatMenuModule,
+    MeasureToggle,
     StockBar,
     UnitPricePipe,
   ],
@@ -176,17 +177,23 @@ export class SubstanceCard {
     remember(priceModeKey(this.substance().id), mode);
   }
 
-  /** A batch tapped in the bar: it is the selected one, and the pill turns to "selected". */
+  /**
+   * A batch tapped in the bar: it is the selected one, and the pill turns to "selected". The selected
+   * one again (alone in the bar) goes back to every batch, the pill to "average" / "total".
+   */
   protected pick(batchId: number): void {
+    if (this.mode() === 'selected' && this.selected()?.id === batchId) {
+      this.picked.set(null);
+      this.choose('avg');
+      return;
+    }
     this.picked.set(batchId);
     if (this.mode() !== 'selected') this.choose('selected');
   }
 
-  /** A tap on the line: the price becomes the quantity and back; it never opens the page. */
-  protected switchMeasure(event: Event): void {
-    event.stopPropagation();
-    const next: Measure = this.measure() === 'price' ? 'quantity' : 'price';
-    this.measure.set(next);
-    remember(measureKey(this.substance().id), next);
+  /** The price/qty toggle switched: the line shows the other one, remembered for this substance. */
+  protected chooseMeasure(measure: Measure): void {
+    this.measure.set(measure);
+    remember(measureKey(this.substance().id), measure);
   }
 }

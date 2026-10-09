@@ -45,46 +45,33 @@ mat-card-content {
   border-radius: 4px;
 }
 
-/* Price on the left, its toggle on the right: the same layout at 390 px and on desktop. */
+/* The price/qty toggle and the figure on the left, the pill of the batches on the right: the same
+   layout at 390 px and on desktop. The two toggles stay on one line, also when the figure goes
+   under its toggle. */
 .price {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
 }
 
+/* The toggle, then the figure with no word of its own: the toggle says what it is. Where the two do
+   not fit side by side (a long unit on a phone, "€0.32/capsula" beside the pill), the figure goes
+   whole under the toggle, as the value went under "price:" before (2026-10-07), instead of breaking
+   inside a word; it breaks inside one only when a unit is longer than the line. */
+.figure {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  min-width: 0;
+}
+
 .price-value {
+  min-width: 0;
   font: var(--mat-sys-body-large);
   font-variant-numeric: tabular-nums;
-}
-
-/* The card's line, a toggle of its own (substance-card.ts): a button drawn as the plain
-   figure, as tall as the pill beside it, its word dim as in the delta pill. A long one (a long unit)
-   breaks after the word, not inside the value, instead of pushing the pill away. */
-.measure {
-  align-self: stretch;
-  min-width: 0;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: inherit;
-  text-align: start;
   overflow-wrap: anywhere;
-  cursor: pointer;
-}
-
-.measure .label {
-  color: var(--mat-sys-on-surface-variant);
-}
-
-.measure .value {
-  display: inline-block;
-}
-
-.measure:focus-visible {
-  outline: 2px solid var(--mat-sys-primary);
-  outline-offset: 2px;
-  border-radius: 4px;
 }
 
 /* Its size and shape are those of every toggle (styles.css). */

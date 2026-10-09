@@ -2,16 +2,6 @@
   display: block;
 }
 
-/* The title stays on one line; the total wraps if it must. */
-mat-panel-title {
-  flex: none;
-}
-
-.total {
-  justify-content: flex-end;
-  font-variant-numeric: tabular-nums;
-}
-
 /* "Add one-time" at the top right of the open panel. */
 .tools {
   display: flex;
@@ -47,7 +37,7 @@ mat-panel-title {
   min-width: 0;
 }
 
-/* The pill wraps below the amount where there is no room for both. */
+/* The change wraps below the amount where there is no room for both. */
 .facts {
   flex-wrap: wrap;
   align-items: center;

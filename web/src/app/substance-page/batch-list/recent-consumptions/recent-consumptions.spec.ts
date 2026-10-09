@@ -115,11 +115,12 @@ describe('RecentConsumptions', () => {
     await render();
 
     expect(calls).toEqual([{ filter: { batchId: 8 }, page: { limit: 5 } }]);
-    const parts = (card: Element) => ['.when', '.figure', 'app-delta-pill'].map((part) => text(card.querySelector(part)));
+    const parts = (card: Element) =>
+      ['.when', 'app-measure-toggle', '.figure .value', '.delta .number'].map((part) => text(card.querySelector(part)));
     expect(cards().map(parts)).toEqual([
-      ['28 Sept 2026, 20:00', 'qty: 4 sigaretta', 'qty +33.3%'],
-      ['27 Sept 2026, 20:00', 'qty: 3 sigaretta', 'qty -40%'],
-      ['26 Sept 2026, 20:00', 'qty: 5 sigaretta', ''], // the first of the batch
+      ['28 Sept 2026, 20:00', 'qty', '4 sigaretta', '+33.3%'],
+      ['27 Sept 2026, 20:00', 'qty', '3 sigaretta', '-40%'],
+      ['26 Sept 2026, 20:00', 'qty', '5 sigaretta', ''], // the first of the batch
     ]);
     expect(element().querySelector('app-consumption-card .note')).toBeNull();
     // open in the consumptions page, and the ⋮ of every card (lenzi, 2026-10-03)
@@ -156,13 +157,13 @@ describe('RecentConsumptions', () => {
     expect(told).toBe(1);
   });
 
-  it('a tap on a pill switches that card only to the price, its figure with it', async () => {
+  it('a tap on a toggle switches that card only to the price, its change with it', async () => {
     await render();
-    const figures = () => cards().map((card) => text(card.querySelector('.figure')));
+    const figures = () => cards().map((card) => text(card.querySelector('.figure .value')));
 
-    cards()[1]!.querySelector<HTMLButtonElement>('app-delta-pill button')!.click();
+    cards()[1]!.querySelector<HTMLButtonElement>('app-measure-toggle button')!.click();
     await fixture.whenStable();
-    expect(figures()).toEqual(['qty: 4 sigaretta', 'price: €0.93', 'qty: 5 sigaretta']);
+    expect(figures()).toEqual(['4 sigaretta', '€0.93', '5 sigaretta']);
     expect(calls.length).toBe(1); // nothing is asked again for that
   });
 

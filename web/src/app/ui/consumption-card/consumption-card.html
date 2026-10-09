@@ -79,8 +79,8 @@
           }
         </div>
 
-        <!-- How much or what it cost, a toggle with its pill; a consumption of the queue has no cost
-             of the server's, nor a pill. -->
+        <!-- How much or what it cost, with its toggle and its change; a consumption of the queue has
+             no cost of the server's, nor a change. -->
         @if (!waiting && shown.cost !== null) {
           <app-consumption-figures class="figures" [consumption]="item" [quantity]="shown.quantity" [price]="shown.cost" />
         } @else {
@@ -94,16 +94,14 @@
         }
       }
       @case ('compact') {
-        <!-- The same columns in every card: the amounts of a list line up, with a pill or without. -->
-        @let toggled = !waiting && shown.cost !== null;
-        <div class="compact" [class.toggled]="toggled">
+        <!-- The same columns in every card: the amounts of a list line up. -->
+        <div class="compact">
           <span class="when">{{ shown.when }}</span>
-          @if (toggled) {
-            <!-- The figure, a toggle, and its pill on one line where they fit. -->
-            <app-consumption-figures class="figures" [consumption]="item" [quantity]="shown.quantity" [price]="shown.cost!" />
+          @if (!waiting && shown.cost !== null) {
+            <!-- The toggle, the figure and its change on one line where they fit. -->
+            <app-consumption-figures class="figures" [consumption]="item" [quantity]="shown.quantity" [price]="shown.cost" />
           } @else {
             <span class="amount">{{ shown.amount }}</span>
-            <app-delta-pill class="delta" [consumption]="item" />
           }
           <span class="actions">
             <button

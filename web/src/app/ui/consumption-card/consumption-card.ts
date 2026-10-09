@@ -8,7 +8,6 @@ import { Consumption } from '../../data/consumption';
 import { Settings } from '../../data/settings';
 import { LOCALE } from '../../locale';
 import { ConsumptionFigures } from '../consumption-figures/consumption-figures';
-import { DeltaPill } from '../delta-pill/delta-pill';
 import { IdentityColorPipe } from '../identity-color-pipe';
 
 /** full: on the consumptions page; compact: under a batch, where substance and batch are known. */
@@ -51,17 +50,17 @@ function moneyFormat(currency: string): Intl.NumberFormat {
  * One consumption (design-frontend.md, "consumption card"). Presentational: every number is the
  * API's (the cost, the change from the previous consumption); it only formats them. Full, it says
  * when, what, from which batch (or "One-time"), how much, what it cost, the change from the
- * previous one (a delta pill) and the note, with a ⋮ menu that asks the parent for its details (so does a tap on a full card), to
- * edit it or to delete it. Compact, only when, how much, the cost and the delta pill, then a button
+ * previous one and the note, with a ⋮ menu that asks the parent for its details (so does a tap on a full card), to
+ * edit it or to delete it. Compact, only when, how much, the cost and the change, then a button
  * that opens it in the consumptions page and the same ⋮ menu (lenzi, 2026-10-03: "il tasto per
  * portarti alla pagina delle consumption con quella consumption aperta", "i tre puntini ... come
- * tutte le altre card"). In both, how much and what it cost are one toggle with the delta pill,
- * "qty: 0.25 g" or "price: €2.50" (ui/consumption-figures; lenzi, 2026-10-07); compact, the two
- * share the line under the day.
+ * tutte le altre card"). In both, how much or what it cost, with its change, one at a time behind
+ * the price/qty toggle, "[qty] 0.25 g … delta: -20%" (ui/consumption-figures; lenzi, 2026-10-07
+ * and 2026-10-09); compact, they share the line under the day.
  */
 @Component({
   selector: 'app-consumption-card',
-  imports: [ConsumptionFigures, DeltaPill, IdentityColorPipe, MatButtonModule, MatCardModule, MatIconModule, MatMenuModule],
+  imports: [ConsumptionFigures, IdentityColorPipe, MatButtonModule, MatCardModule, MatIconModule, MatMenuModule],
   templateUrl: './consumption-card.html',
   styleUrl: './consumption-card.css',
 })

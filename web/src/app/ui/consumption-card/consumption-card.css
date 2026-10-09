@@ -68,7 +68,8 @@ mat-card-content {
   white-space: nowrap;
 }
 
-/* Amount on the left, the delta pill on the right; on a narrow screen the pill wraps below. */
+/* The toggle and the amount on the left, the change on the right; on a narrow screen the change
+   wraps below. */
 .figures {
   display: flex;
   flex-wrap: wrap;
@@ -82,16 +83,16 @@ mat-card-content {
   font-variant-numeric: tabular-nums;
 }
 
-/* Compact, on one line: when, how much, the delta pill, then the open button and the ⋮. The first
-   column is as wide in every card, so the amounts of a list line up; the line is as tall as a pill
-   also without one. */
+/* Compact, on one line: when, how much with its toggle and its change, then the open button and the
+   ⋮. The first column is as wide in every card, so the amounts of a list line up; the line is as
+   tall as the toggle also without one (a consumption of the queue). */
 .compact {
   display: grid;
-  grid-template-columns: 10rem 1fr auto auto;
-  grid-template-areas: 'when amount delta actions';
+  grid-template-columns: 10rem 1fr auto;
+  grid-template-areas: 'when amount actions';
   align-items: center;
   gap: 4px 12px;
-  min-height: 28px;
+  min-height: 32px;
 }
 
 /* On a phone the day and the time share the line with the two buttons: the time goes under the day. */
@@ -102,10 +103,6 @@ mat-card-content {
 
 .compact .amount {
   grid-area: amount;
-}
-
-.compact .delta {
-  grid-area: delta;
 }
 
 /* 48 dp to tap each, without making the line taller; the ⋮ in the corner, like the full card's. */
@@ -121,42 +118,24 @@ mat-card-content {
   margin: 0;
 }
 
-/* A compact card's figure, a toggle, and its pill share one line (.figures,
-   ui/consumption-figures), the pill under the figure only where they do not fit. */
-.compact.toggled {
-  grid-template-areas: 'when amount amount actions';
-}
-
-/* Where they do not fit on a line (a phone): one under the other, the pill last, the buttons at the
-   right of the first line. */
+/* Where they do not fit on a line (a phone): the toggle, the figure and its change under the day,
+   the buttons at the right of the day. */
 @container (max-width: 26rem) {
   .compact {
     grid-template-columns: 1fr auto;
     grid-template-areas:
       'when actions'
-      'amount amount'
-      'delta delta';
+      'amount amount';
     justify-items: start;
   }
 
   .actions {
     justify-self: end;
   }
-
-  /* No pill (the first consumption): no empty line for it. */
-  .compact .delta:empty {
-    display: none;
-  }
-
-  /* Under the day, the figure and its pill. */
-  .compact.toggled {
-    grid-template-areas:
-      'when actions'
-      'amount amount';
-  }
 }
 
-/* The same row as the full card's (.figures, above): the figure on the left, the pill on the right. */
+/* The same row as the full card's (.figures, above): the toggle and the figure on the left, the
+   change on the right. */
 .compact .figures {
   grid-area: amount;
   justify-self: stretch;

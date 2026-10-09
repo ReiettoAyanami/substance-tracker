@@ -60,12 +60,15 @@ describe('ConsumptionCard', () => {
   }
 
   const text = (element: Element | null) => (element?.textContent ?? '').replace(/\s+/g, ' ').trim();
-  /** The delta pill of a card: a button, when the consumption has one before it. */
-  const pill = (card: HTMLElement) => card.querySelector<HTMLButtonElement>('app-delta-pill button');
+  /** The price/qty toggle of the figures, the figure, and the change when there is one before it. */
+  const toggle = (card: HTMLElement) => card.querySelector<HTMLButtonElement>('app-measure-toggle button');
+  const value = (card: HTMLElement) => card.querySelector('.figure .value');
+  const delta = (card: HTMLElement) => card.querySelector('.delta');
+  const change = (card: HTMLElement) => card.querySelector('.delta .number');
 
   const colour = (id: number, kind: 'substance' | 'batch') => new IdentityColorPipe().transform(id, kind);
 
-  it('shows when, what, from which batch, how much (a tap: what it cost), the delta pill and the note', async () => {
+  it('shows when, what, from which batch, how much behind its toggle, its change and the note', async () => {
     const card = await render(coffee);
 
     expect(text(card.querySelector('.when'))).toBe('28 Sept 2026, 08:45'); // Europe/Rome
@@ -73,8 +76,9 @@ describe('ConsumptionCard', () => {
     expect(card.querySelector<HTMLElement>('.head .dot')!.style.backgroundColor).toBe(colour(1, 'substance'));
     expect(text(card.querySelector('.source'))).toBe('Scorta grande');
     expect(card.querySelector<HTMLElement>('.source .dot')!.style.backgroundColor).toBe(colour(6, 'batch'));
-    expect(text(card.querySelector('.figure'))).toBe('qty: 2 capsula');
-    expect(text(pill(card))).toBe('qty -33.3%');
+    expect(text(toggle(card))).toBe('qty');
+    expect(text(value(card))).toBe('2 capsula');
+    expect(text(change(card))).toBe('-33.3%');
     expect(text(card.querySelector('.note'))).toBe('Before the train');
   });
 
@@ -83,7 +87,7 @@ describe('ConsumptionCard', () => {
 
     expect(text(card.querySelector('.source'))).toBe('One-time · Pinta al pub');
     expect(card.querySelector('.source .dot')).toBeNull();
-    expect(text(pill(card))).toBe('qty -75%');
+    expect(text(change(card))).toBe('-75%');
     expect(card.querySelector('.note')).toBeNull();
 
     const unnamed = await render({ ...pint, name: null });
@@ -95,23 +99,23 @@ describe('ConsumptionCard', () => {
     expect(text(card.querySelector('.source'))).toBe('Unnamed batch');
   });
 
-  it('shows one change at a time: a tap on the pill switches it to the price, without asking anything of the parent', async () => {
+  it('shows one change at a time: the toggle switches it to the price, without asking anything of the parent', async () => {
     const card = await render(coffee);
     const asked: string[] = [];
     fixture.componentInstance.details.subscribe(() => asked.push('details'));
     fixture.componentInstance.edit.subscribe(() => asked.push('edit'));
     fixture.componentInstance.remove.subscribe(() => asked.push('remove'));
 
-    pill(card)!.click();
+    toggle(card)!.click();
     await fixture.whenStable();
 
-    expect(text(pill(card))).toBe('price -46.7%');
+    expect(text(change(card))).toBe('-46.7%');
     expect(asked).toEqual([]);
   });
 
-  it('has no pill for the first consumption', async () => {
+  it('has no change for the first consumption', async () => {
     const first = await render({ ...coffee, deltaQuantity: null, deltaUnitPrice: null, deltaCost: null });
-    expect(pill(first)).toBeNull();
+    expect(delta(first)).toBeNull();
   });
 
   it('asks for its details, to edit it or to delete it from its ⋮ menu', async () => {
@@ -143,21 +147,22 @@ describe('ConsumptionCard', () => {
     expect(asked).toEqual(['details', 'edit', 'remove']);
   });
 
-  it('a tap on the card asks for its details; its ⋮, its figure and its pill do not (lenzi, 2026-10-01)', async () => {
+  it('a tap on the card asks for its details, on its figures too; its ⋮ and its toggle do not (lenzi, 2026-10-01)', async () => {
     const card = await render(coffee);
     const asked: string[] = [];
     fixture.componentInstance.details.subscribe(() => asked.push('details'));
 
     card.querySelector<HTMLElement>('.when')!.click();
-    card.querySelector<HTMLButtonElement>('button.figure')!.click();
+    card.querySelector<HTMLElement>('.figure .value')!.click(); // plain text since 2026-10-09: the toggle switches
+    card.querySelector<HTMLElement>('.delta')!.click();
     card.querySelector<HTMLButtonElement>('button.more')!.click();
     await fixture.whenStable();
-    pill(card)!.click();
+    toggle(card)!.click();
     // the keyboard way in: the substance's name is a button, its click reaches the card
     expect(card.querySelector('button.substance')).not.toBeNull();
     card.querySelector<HTMLButtonElement>('button.substance')!.click();
 
-    expect(asked).toEqual(['details', 'details']);
+    expect(asked).toEqual(['details', 'details', 'details', 'details']);
   });
 
   it('compact: a tap asks for nothing', async () => {
@@ -170,12 +175,13 @@ describe('ConsumptionCard', () => {
     expect(asked).toEqual([]);
   });
 
-  it('compact: when, how much (a tap: the cost) and the delta, then the open button and the ⋮ (lenzi, 2026-10-03)', async () => {
+  it('compact: when, how much behind its toggle and its change, then the open button and the ⋮ (lenzi, 2026-10-03)', async () => {
     const card = await render(coffee, 'compact');
 
     expect(text(card.querySelector('.when'))).toBe('28 Sept 2026, 08:45');
-    expect(text(card.querySelector('.figure'))).toBe('qty: 2 capsula');
-    expect(text(pill(card))).toBe('qty -33.3%');
+    expect(text(toggle(card))).toBe('qty');
+    expect(text(value(card))).toBe('2 capsula');
+    expect(text(change(card))).toBe('-33.3%');
     expect(card.querySelector('.substance')).toBeNull();
     expect(card.querySelector('.source')).toBeNull();
     expect(card.querySelector('.note')).toBeNull();
@@ -208,15 +214,15 @@ describe('ConsumptionCard', () => {
     expect(said).toEqual(['open', 'details', 'edit', 'remove']);
   });
 
-  it('compact: has no pill for the first consumption, and still says when and how much', async () => {
+  it('compact: has no change for the first consumption, and still says when and how much', async () => {
     const first = await render({ ...coffee, deltaQuantity: null, deltaUnitPrice: null, deltaCost: null }, 'compact');
 
-    expect(pill(first)).toBeNull();
+    expect(delta(first)).toBeNull();
     expect(text(first.querySelector('.when'))).toBe('28 Sept 2026, 08:45');
-    expect(text(first.querySelector('.figure'))).toBe('qty: 2 capsula');
+    expect(text(value(first))).toBe('2 capsula');
   });
 
-  it('a To fix consumption of the queue: its tag and reason, no pill, no cost, no details; its own ⋮ menu', async () => {
+  it('a To fix consumption of the queue: its tag and reason, no toggle, no change, no cost, no details; its own ⋮ menu', async () => {
     fixture = TestBed.createComponent(ConsumptionCard);
     fixture.componentRef.setInput('consumption', { ...coffee, cost: '' });
     fixture.componentRef.setInput('settings', settings);
@@ -231,7 +237,8 @@ describe('ConsumptionCard', () => {
 
     expect(text(card.querySelector('.queue-tag .tag'))).toBe('To fix');
     expect(text(card.querySelector('.queue-tag .reason'))).toBe('Batch 8 is finished');
-    expect(pill(card)).toBeNull();
+    expect(toggle(card)).toBeNull();
+    expect(delta(card)).toBeNull();
     expect(text(card.querySelector('.amount'))).not.toContain('€');
     card.querySelector<HTMLElement>('mat-card')!.click();
     expect(asked).toEqual([]);
@@ -271,8 +278,9 @@ describe('ConsumptionCard: quantity or price', () => {
   }
 
   const text = (element: Element | null) => (element?.textContent ?? '').replace(/\s+/g, ' ').trim();
-  const pill = (card: HTMLElement) => card.querySelector<HTMLButtonElement>('app-delta-pill button');
-  const figure = (card: HTMLElement) => card.querySelector<HTMLButtonElement>('button.figure');
+  const toggle = (card: HTMLElement) => card.querySelector<HTMLButtonElement>('app-measure-toggle button');
+  const value = (card: HTMLElement) => card.querySelector('.figure .value');
+  const change = (card: HTMLElement) => card.querySelector('.delta .number');
 
   async function tap(element: HTMLElement): Promise<void> {
     element.click();
@@ -285,29 +293,29 @@ describe('ConsumptionCard: quantity or price', () => {
     }).compileComponents();
   });
 
-  it('compact: the figure is a toggle of its own, quantity or price, and the pill switches with it', async () => {
+  it('compact: the toggle on the left switches the figure and its change together', async () => {
     const card = await render(coffee, 'compact');
 
-    expect(card.querySelector('.compact')!.classList).toContain('toggled');
-    expect(text(figure(card))).toBe('qty: 2 capsula');
-    expect(text(pill(card))).toBe('qty -33.3%');
-    expect(figure(card)!.getAttribute('aria-label')).toBe('Quantity 2 capsula. Show the price');
+    expect(text(toggle(card))).toBe('qty');
+    expect(text(value(card))).toBe('2 capsula');
+    expect(text(change(card))).toBe('-33.3%');
 
-    await tap(figure(card)!);
-    expect(text(figure(card))).toBe('price: €0.64');
-    expect(text(pill(card))).toBe('price -46.7%');
+    await tap(toggle(card)!);
+    expect(text(toggle(card))).toBe('price');
+    expect(text(value(card))).toBe('€0.64');
+    expect(text(change(card))).toBe('-46.7%');
 
-    await tap(pill(card)!);
-    expect(text(figure(card))).toBe('qty: 2 capsula');
-    expect(text(pill(card))).toBe('qty -33.3%');
+    await tap(toggle(card)!);
+    expect(text(value(card))).toBe('2 capsula');
+    expect(text(change(card))).toBe('-33.3%');
   });
 
-  it('compact: the first consumption, with no pill, still switches its figure', async () => {
+  it('compact: the first consumption, with no change, still switches its figure', async () => {
     const card = await render({ ...coffee, deltaQuantity: null, deltaUnitPrice: null, deltaCost: null }, 'compact');
 
-    expect(pill(card)).toBeNull();
-    await tap(figure(card)!);
-    expect(text(figure(card))).toBe('price: €0.64');
+    expect(change(card)).toBeNull();
+    await tap(toggle(card)!);
+    expect(text(value(card))).toBe('€0.64');
   });
 
   it('full: the same toggle, which does not open the details', async () => {
@@ -315,9 +323,9 @@ describe('ConsumptionCard: quantity or price', () => {
     const asked: string[] = [];
     fixture.componentInstance.details.subscribe(() => asked.push('details'));
 
-    await tap(figure(card)!);
-    expect(text(figure(card))).toBe('price: €0.64');
-    expect(text(pill(card))).toBe('price -46.7%');
+    await tap(toggle(card)!);
+    expect(text(value(card))).toBe('€0.64');
+    expect(text(change(card))).toBe('-46.7%');
     expect(asked).toEqual([]);
   });
 });

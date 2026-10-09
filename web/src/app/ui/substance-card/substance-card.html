@@ -31,20 +31,11 @@
     @let unitPrice = price() | unitPrice: settings().currency : substance().unit;
     @let byQuantity = measure() === 'quantity';
     <div class="price">
-      <!-- The line is its own toggle: price and quantity; its tap never opens the page. -->
-      <button
-        type="button"
-        class="price-value measure"
-        [attr.aria-label]="
-          byQuantity
-            ? 'Quantity left ' + quantity() + '. Show the price per unit'
-            : 'Price per unit ' + unitPrice + '. Show the quantity left'
-        "
-        (click)="switchMeasure($event)"
-      >
-        <span class="label">{{ byQuantity ? 'qty: ' : 'price: ' }}</span>
-        <span class="value">{{ byQuantity ? quantity() : unitPrice }}</span>
-      </button>
+      <!-- The price/qty toggle and its figure, with no word of its own; the toggle's tap never opens the page. -->
+      <div class="figure">
+        <app-measure-toggle [measure]="measure()" (measureChange)="chooseMeasure($event)" />
+        <span class="price-value">{{ byQuantity ? quantity() : unitPrice }}</span>
+      </div>
       <!-- The toggle's tap never opens the page. -->
       <mat-button-toggle-group
         class="price-mode"
