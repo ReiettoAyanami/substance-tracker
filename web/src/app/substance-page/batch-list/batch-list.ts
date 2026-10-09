@@ -42,7 +42,7 @@ function writeShareMode(mode: ShareMode): void {
 
 /**
  * The active batches of a substance, in its page (design.md, "stock bar": one sub-card per batch,
- * oldest first). Closed, it is the total: how many batches and the stock they make up. Open, one
+ * oldest first). Closed, how many active batches, nothing else ("2 active batches"). Open, one
  * sub-card per batch, with its own bar (maximum = what was bought, filled = what is left), its
  * prices and its share of the stock, by quantity or by value, a ⋮ menu to open its page
  * (Details), edit or delete it, and its recent consumptions, shown on demand (design-frontend.md,
@@ -115,7 +115,11 @@ export class BatchList {
     return format.format(value as unknown as number);
   }
 
-  /** The closed panel: the total of the active batches. */
+  /**
+   * The closed panel: how many active batches, and nothing else (lenzi, 2026-10-09: "'No active
+   * batches', 'X active batches' é ok da avere, ma niente altro"; until then also their stock, "2
+   * batches · 201 / 300 capsula").
+   */
   protected readonly total = computed(() => {
     const failure = this.batches.error();
     if (failure) {
@@ -124,11 +128,9 @@ export class BatchList {
       return `Could not load the batches${error.status ? ` (${error.status})` : ''}`;
     }
     if (!this.batches.hasValue()) return '…';
-    const { batches, stock, stockBarMax } = this.batches.value();
-    if (batches.length === 0) return 'No active batches';
-    const quantity = this.formats().quantity;
-    const count = batches.length === 1 ? '1 batch' : `${batches.length} batches`;
-    return `${count} · ${this.exact(quantity, stock)} / ${this.exact(quantity, stockBarMax)} ${this.unit()}`;
+    const count = this.batches.value().batches.length;
+    if (count === 0) return 'No active batches';
+    return count === 1 ? '1 active batch' : `${count} active batches`;
   });
 
   /** One sub-card per active batch, oldest first. */

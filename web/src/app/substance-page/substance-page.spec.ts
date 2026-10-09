@@ -126,10 +126,10 @@ describe('SubstancePage', () => {
     expect(text(page()?.querySelector('.position'))).toBe('2 / 3');
   });
 
-  it('shows the total of the active batches below the card; the one-time consumptions, only their title', async () => {
+  it('shows how many active batches below the card; the one-time consumptions, only their title', async () => {
     await open('/lenzi/substances/1');
 
-    expect(text(page()?.querySelector('app-batch-list .total'))).toBe('1 batch · 4 / 10 g');
+    expect(text(page()?.querySelector('app-batch-list .total'))).toBe('1 active batch');
     expect(text(page()?.querySelector('app-one-time-list mat-expansion-panel-header'))).toBe('One-time');
   });
 

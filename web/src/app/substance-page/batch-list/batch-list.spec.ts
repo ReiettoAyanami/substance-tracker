@@ -132,11 +132,11 @@ describe('BatchList', () => {
     }).compileComponents();
   });
 
-  it('closed, is the total: how many active batches and their stock out of what was bought', async () => {
+  it('closed, says how many active batches and nothing else (lenzi, 2026-10-09)', async () => {
     await render();
 
     expect(text(element().querySelector('mat-panel-title'))).toBe('Active batches');
-    expect(text(element().querySelector('.total'))).toBe('2 batches · 201 / 300 capsula');
+    expect(text(element().querySelector('.total'))).toBe('2 active batches');
   });
 
   it('opens into one sub-card per batch, oldest first, with its own bar, what is left and its prices', async () => {
