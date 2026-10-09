@@ -27,8 +27,8 @@ describe('StockBar', () => {
   it('draws one batch bar per batch, in order, in its colour, as wide as its share of the maximum', async () => {
     const segments = await render(
       [
-        { batchId: 1, name: 'Lavazza', remaining: '1.000', unitPrice: '0.350000' },
-        { batchId: 6, name: null, remaining: '200.000', unitPrice: '0.320000' },
+        { batchId: 1, name: 'Lavazza', quantity: '100.000', remaining: '1.000', unitPrice: '0.350000' },
+        { batchId: 6, name: null, quantity: '291.000', remaining: '200.000', unitPrice: '0.320000' },
       ],
       '391.000',
     );
@@ -44,8 +44,8 @@ describe('StockBar', () => {
 
   it('draws only one batch, out of its own quantity, the others shrunk away; then every one again', async () => {
     const all = [
-      { batchId: 1, name: 'Lavazza', remaining: '1.000', unitPrice: '0.350000' },
-      { batchId: 6, name: null, remaining: '150.000', unitPrice: '0.320000' },
+      { batchId: 1, name: 'Lavazza', quantity: '100.000', remaining: '1.000', unitPrice: '0.350000' },
+      { batchId: 6, name: null, quantity: '200.000', remaining: '150.000', unitPrice: '0.320000' },
     ];
     fixture.componentRef.setInput('only', { batchId: 6, remaining: '150.000', quantity: '200.000' });
     let [older, last] = await render(all, '300.000');
@@ -67,10 +67,53 @@ describe('StockBar', () => {
 
   it('empties the track for a batch that is not among its segments (finished)', async () => {
     fixture.componentRef.setInput('only', { batchId: 9, remaining: '0.000', quantity: '20.000' });
-    const segments = await render([{ batchId: 1, name: null, remaining: '8.000', unitPrice: '0.310000' }], '20.000');
+    const segments = await render([{ batchId: 1, name: null, quantity: '20.000', remaining: '8.000', unitPrice: '0.310000' }], '20.000');
 
     expect(segments[0].classList).toContain('away');
     expect(parseFloat(segments[0].style.flexBasis)).toBe(0);
+  });
+
+  const two = [
+    { batchId: 1, name: 'Lavazza', quantity: '100.000', remaining: '1.000', unitPrice: '0.350000' },
+    { batchId: 6, name: null, quantity: '291.000', remaining: '200.000', unitPrice: '0.320000' },
+  ];
+
+  /** Taps that reached the parent (the card, which opens its page). */
+  function reachingParent(): () => number {
+    let reached = 0;
+    (fixture.nativeElement as HTMLElement).parentElement!.addEventListener('click', () => reached++);
+    return () => reached;
+  }
+
+  it('selectable: a tap on a segment, or Enter on it, says which batch, and goes no further', async () => {
+    fixture.componentRef.setInput('selectable', true);
+    const chosen: number[] = [];
+    fixture.componentInstance.batchSelect.subscribe((id) => chosen.push(id));
+    const [older, newer] = await render(two, '391.000');
+    const reached = reachingParent();
+
+    newer.querySelector<HTMLElement>('.fill')!.click();
+    older.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+
+    expect(chosen).toEqual([6, 1]);
+    expect(reached()).toBe(0);
+    expect(fixture.nativeElement.querySelector('.track').getAttribute('role')).toBe('group');
+    expect(newer.getAttribute('role')).toBe('button');
+    expect(newer.getAttribute('tabindex')).toBe('0');
+    expect(older.getAttribute('aria-label')).toBe('Select the batch Lavazza');
+  });
+
+  it('not selectable, a tap says nothing and goes on to the parent', async () => {
+    const chosen: number[] = [];
+    fixture.componentInstance.batchSelect.subscribe((id) => chosen.push(id));
+    const [older] = await render(two, '391.000');
+    const reached = reachingParent();
+
+    older.querySelector<HTMLElement>('.fill')!.click();
+
+    expect(chosen).toEqual([]);
+    expect(reached()).toBe(1);
+    expect(older.getAttribute('role')).toBeNull();
   });
 
   it('is an image with the label it is given; with no batches the track is empty', async () => {

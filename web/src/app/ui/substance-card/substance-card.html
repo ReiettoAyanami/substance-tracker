@@ -54,7 +54,7 @@
         (change)="choose($event.value)"
         (click)="$event.stopPropagation()"
       >
-        <mat-button-toggle value="last">last</mat-button-toggle>
+        <mat-button-toggle value="selected">selected</mat-button-toggle>
         <mat-button-toggle value="avg">{{ byQuantity ? 'total' : 'average' }}</mat-button-toggle>
       </mat-button-toggle-group>
     </div>
@@ -63,6 +63,8 @@
       [segments]="substance().summary.stockBarSegments"
       [max]="substance().summary.stockBarMax"
       [only]="only()"
+      [selectable]="true"
+      (batchSelect)="pick($event)"
       [label]="stockLabel()"
       [unit]="substance().unit"
       [currency]="settings().currency"

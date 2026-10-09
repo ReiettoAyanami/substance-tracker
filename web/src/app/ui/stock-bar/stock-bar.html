@@ -1,8 +1,19 @@
-<div class="track" role="img" [class.only]="only() !== null" [attr.aria-label]="label()">
+<div
+  class="track"
+  [attr.role]="selectable() ? 'group' : 'img'"
+  [class.only]="only() !== null"
+  [attr.aria-label]="label()"
+>
   @for (bar of bars(); track bar.batchId) {
     <app-batch-bar
       class="segment"
       [class.away]="!bar.shown"
+      [attr.data-batch]="bar.batchId"
+      [attr.role]="selectable() ? 'button' : null"
+      [attr.tabindex]="selectable() && bar.shown ? 0 : null"
+      [attr.aria-label]="selectable() ? 'Select the batch ' + (bar.name ?? 'without a name') : null"
+      (keydown.enter)="pressed($event, bar.batchId)"
+      (keydown.space)="pressed($event, bar.batchId)"
       [style.flex-basis.%]="bar.widthPercent"
       [batchId]="bar.batchId"
       [name]="bar.name"

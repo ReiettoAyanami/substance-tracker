@@ -13,10 +13,11 @@ import { OnlyBatch, StockBar } from '../stock-bar/stock-bar';
 import { UnitPricePipe } from '../unit-price-pipe';
 
 /**
- * Which batches the card's figure is of: the last batch's, or the whole stock's (the unit price's
- * average, the quantity's total).
+ * Which batches the card's figure is of: the selected batch's (the one tapped in the bar, else the
+ * last one), or the whole stock's (the unit price's average, the quantity's total). "last" before
+ * 2026-10-07: a stored "last" reads as "selected".
  */
-type PriceMode = 'last' | 'avg';
+type PriceMode = 'selected' | 'avg';
 
 /** What the card's line shows, switched by a tap on it: the unit price, or the quantity. */
 type Measure = 'price' | 'quantity';
@@ -30,9 +31,9 @@ const measureKey = (substanceId: number) => `substance-tracker.card-measure.${su
 
 function readPriceMode(substanceId: number): PriceMode {
   try {
-    return localStorage.getItem(priceModeKey(substanceId)) === 'avg' ? 'avg' : 'last';
+    return localStorage.getItem(priceModeKey(substanceId)) === 'avg' ? 'avg' : 'selected';
   } catch {
-    return 'last';
+    return 'selected';
   }
 }
 
@@ -65,8 +66,11 @@ const exact = (value: string) => quantityFormat.format(value as unknown as numbe
  * The line is a toggle of its own (lenzi, 2026-10-07, first in the Android app, then on the website
  * too): a tap switches it between the unit price ("price: €8.93/g") and the quantity, what is left
  * of what was bought ("qty: 7/10 g"; "qty" is the one abbreviation of the app). The pill beside it
- * says "last | average" for the price and "last | total" for the quantity, and "last" draws only
- * the last batch in the bar, out of what was bought of it.
+ * says "selected | average" for the price and "selected | total" for the quantity; "selected" is
+ * the batch tapped in the bar, the last one until then, and draws only that batch in the bar, out of
+ * what was bought of it (lenzi, the same day: "al click del segmento fai in modo di selezionarlo e
+ * al posto di last mettiamo selected"). A tap on a segment selects its batch and turns the pill to
+ * "selected"; the choice of a batch lasts until the page is left.
  */
 @Component({
   selector: 'app-substance-card',
@@ -98,33 +102,50 @@ export class SubstanceCard {
   protected readonly mode = linkedSignal<PriceMode>(() => readPriceMode(this.substance().id));
   protected readonly measure = linkedSignal<Measure>(() => readMeasure(this.substance().id));
 
+  /** The batch tapped in the bar; it stays while the substance does (its numbers may reload). */
+  private readonly picked = linkedSignal<number, number | null>({
+    source: () => this.substance().id,
+    computation: () => null,
+  });
+
+  /**
+   * The batch of "selected": the one tapped, while it is still among the active ones, else the last
+   * one (active or finished: 0 left once finished); null with no batches.
+   */
+  protected readonly selected = computed(() => {
+    const { stockBarSegments, lastBatch } = this.substance().summary;
+    const picked = stockBarSegments.find((segment) => segment.batchId === this.picked());
+    if (picked) return { ...picked, id: picked.batchId };
+    return lastBatch;
+  });
+
   /**
    * The unit price of the chosen mode (decimal string), or null when there is none: no batches
    * yet, or the average with the stock at 0. A substance stores no price of its own.
    */
   protected readonly price = computed(() => {
     const summary = this.substance().summary;
-    return (this.mode() === 'avg' ? summary.avgUnitPrice : summary.lastBatch?.unitPrice) ?? null;
+    return (this.mode() === 'avg' ? summary.avgUnitPrice : this.selected()?.unitPrice) ?? null;
   });
 
   /**
-   * The quantity of the chosen mode, what is left of what was bought: of the last batch (0 left
-   * once finished), or of the whole stock out of the active batches' total. "—" with nothing bought.
+   * The quantity of the chosen mode, what is left of what was bought: of the selected batch, or of
+   * the whole stock out of the active batches' total. "—" with nothing bought.
    */
   protected readonly quantity = computed(() => {
     const { summary, unit } = this.substance();
-    if (this.mode() === 'last') {
-      const last = summary.lastBatch;
-      return last ? `${exact(last.remaining)}/${exact(last.quantity)} ${unit}` : '—';
+    if (this.mode() === 'selected') {
+      const batch = this.selected();
+      return batch ? `${exact(batch.remaining)}/${exact(batch.quantity)} ${unit}` : '—';
     }
     return Number(summary.stockBarMax) > 0 ? `${exact(summary.stock)}/${exact(summary.stockBarMax)} ${unit}` : '—';
   });
 
-  /** The last batch alone in the bar, on "last". */
+  /** The selected batch alone in the bar, on "selected". */
   protected readonly only = computed<OnlyBatch | null>(() => {
-    const last = this.substance().summary.lastBatch;
-    if (this.mode() !== 'last' || !last) return null;
-    return { batchId: last.id, remaining: last.remaining, quantity: last.quantity };
+    const batch = this.selected();
+    if (this.mode() !== 'selected' || !batch) return null;
+    return { batchId: batch.id, remaining: batch.remaining, quantity: batch.quantity };
   });
 
   /**
@@ -146,13 +167,19 @@ export class SubstanceCard {
   protected readonly stockLabel = computed(() => {
     const { summary, unit } = this.substance();
     const only = this.only();
-    if (only) return `Last batch: ${exact(only.remaining)} of ${exact(only.quantity)} ${unit} left`;
+    if (only) return `Selected batch: ${exact(only.remaining)} of ${exact(only.quantity)} ${unit} left`;
     return `Stock: ${exact(summary.stock)} ${unit}`;
   });
 
   protected choose(mode: PriceMode): void {
     this.mode.set(mode);
     remember(priceModeKey(this.substance().id), mode);
+  }
+
+  /** A batch tapped in the bar: it is the selected one, and the pill turns to "selected". */
+  protected pick(batchId: number): void {
+    this.picked.set(batchId);
+    if (this.mode() !== 'selected') this.choose('selected');
   }
 
   /** A tap on the line: the price becomes the quantity and back; it never opens the page. */

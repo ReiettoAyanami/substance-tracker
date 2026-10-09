@@ -99,7 +99,7 @@ export class BatchPage {
         ? 'Finished'
         : `${exact(quantityFormat, batch.remaining)} of ${exact(quantityFormat, batch.quantity)} ${unit} left`,
       /** Its own bar: its remaining out of what was bought. */
-      segments: [{ batchId: batch.id, name: batch.name, remaining: batch.remaining, unitPrice: batch.unitPrice }],
+      segments: [{ batchId: batch.id, name: batch.name, quantity: batch.quantity, remaining: batch.remaining, unitPrice: batch.unitPrice }],
     };
   });
 

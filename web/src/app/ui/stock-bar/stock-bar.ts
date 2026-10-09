@@ -1,4 +1,4 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, ElementRef, computed, inject, input, output } from '@angular/core';
 
 import { StockBarSegment } from '../../data/substance';
 import { BatchBar } from '../batch-bar/batch-bar';
@@ -16,15 +16,16 @@ export interface OnlyBatch {
  * The segmented stock bar (design.md): one segment per active batch, oldest first, each a batch
  * bar (identity colour, tooltip); the whole track is the maximum (Σ bought quantity of the active
  * batches). Given `only`, it draws that batch alone, out of its own quantity (the substance card's
- * "last", design-frontend.md): the other segments shrink away and that one grows to its share, both
- * animated. Presentational: the numbers come from the API; they become numbers here only to size
- * segments.
+ * "selected", design-frontend.md): the other segments shrink away and that one grows to its share,
+ * both animated. Selectable, a tap on a segment says which batch it is (`batchSelect`). Presentational:
+ * the numbers come from the API; they become numbers here only to size segments.
  */
 @Component({
   selector: 'app-stock-bar',
   imports: [BatchBar],
   templateUrl: './stock-bar.html',
   styleUrl: './stock-bar.css',
+  host: { '[class.selectable]': 'selectable()', '(click)': 'tapped($event)' },
 })
 export class StockBar {
   readonly segments = input.required<StockBarSegment[]>();
@@ -41,6 +42,17 @@ export class StockBar {
    * among the segments (finished) leaves the track empty.
    */
   readonly only = input<OnlyBatch | null>(null);
+  /**
+   * Its batches can be tapped (the substance card; lenzi, 2026-10-07: "al click del segmento fai in
+   * modo di selezionarlo"): a tap on a segment, or just above or below it (the track is 12 px high),
+   * says which batch and goes no further; anywhere else it reaches the parent. From the keyboard,
+   * each segment is a button. A long press only shows the batch's tooltip (BatchBar).
+   */
+  readonly selectable = input(false);
+  /** The batch whose segment was tapped. */
+  readonly batchSelect = output<number>();
+
+  private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
 
   protected readonly bars = computed(() => {
     const only = this.only();
@@ -55,4 +67,27 @@ export class StockBar {
       };
     });
   });
+
+  /** A tap on the bar: on a segment, or above or below one, it is that batch's. */
+  protected tapped(event: MouseEvent): void {
+    if (!this.selectable()) return;
+    let segment = (event.target as Element | null)?.closest<HTMLElement>('.segment');
+    if (!segment) {
+      // In the room above or below the track: the segment at the same x, in the track's middle.
+      const track = this.host.nativeElement.querySelector('.track')!.getBoundingClientRect();
+      segment = document.elementFromPoint(event.clientX, track.top + track.height / 2)?.closest<HTMLElement>('.segment');
+    }
+    const batchId = Number(segment?.dataset['batch']);
+    if (!segment || Number.isNaN(batchId)) return; // the part consumed: the parent's tap
+    event.stopPropagation();
+    this.batchSelect.emit(batchId);
+  }
+
+  /** Enter or Space on a segment, from the keyboard. */
+  protected pressed(event: Event, batchId: number): void {
+    if (!this.selectable()) return;
+    event.preventDefault();
+    event.stopPropagation();
+    this.batchSelect.emit(batchId);
+  }
 }

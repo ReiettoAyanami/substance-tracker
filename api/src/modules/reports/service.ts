@@ -162,8 +162,8 @@ export function peakStock(
 export interface CardSummary {
   stock: string;
   stockBarMax: string;
-  /** One segment per active batch, oldest first: what the card's stock bar draws. */
-  stockBarSegments: { batchId: number; name: string | null; remaining: string; unitPrice: string }[];
+  /** One segment per active batch, oldest first, with what was bought of it: what the card's stock bar draws. */
+  stockBarSegments: { batchId: number; name: string | null; quantity: string; remaining: string; unitPrice: string }[];
   peakStock: string;
   /**
    * The most recent batch, active or finished, with what was bought of it and what is left (0 once
@@ -559,6 +559,7 @@ export class ReportsService {
         stockBarSegments: active.map((b) => ({
           batchId: b.id,
           name: b.name,
+          quantity: fmtQty(fromDb(b.quantity)),
           remaining: fmtQty(remainingOf(b)),
           unitPrice: fmtUnitPrice(unitPriceOf(b)),
         })),

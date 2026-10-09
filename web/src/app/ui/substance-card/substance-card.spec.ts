@@ -37,7 +37,7 @@ function substance(id: number, summary: Partial<CardSummary> = {}): Substance {
 const cigarettes = substance(2, {
   stock: '8.000',
   stockBarMax: '20.000',
-  stockBarSegments: [{ batchId: 7, name: null, remaining: '8.000', unitPrice: '0.310000' }],
+  stockBarSegments: [{ batchId: 7, name: null, quantity: '20.000', remaining: '8.000', unitPrice: '0.310000' }],
   lastBatch: {
     id: 8,
     name: null,
@@ -174,7 +174,7 @@ describe('SubstanceCard', () => {
   });
 });
 
-describe('SubstanceCard: price or quantity, the last batch or every one', () => {
+describe('SubstanceCard: price or quantity, the selected batch or every one', () => {
   let fixture: ComponentFixture<SubstanceCard>;
 
   /** 2 g left of an older batch of 5, 6 of the last one, 10 at 8.93 a gram. */
@@ -187,8 +187,8 @@ describe('SubstanceCard: price or quantity, the last batch or every one', () => 
       stock: '8.000',
       stockBarMax: '15.000',
       stockBarSegments: [
-        { batchId: 20, name: null, remaining: '2.000', unitPrice: '9.000000' },
-        { batchId: 21, name: null, remaining: '6.000', unitPrice: '8.930000' },
+        { batchId: 20, name: null, quantity: '5.000', remaining: '2.000', unitPrice: '9.000000' },
+        { batchId: 21, name: null, quantity: '10.000', remaining: '6.000', unitPrice: '8.930000' },
       ],
       lastBatch: {
         id: 21,
@@ -235,11 +235,11 @@ describe('SubstanceCard: price or quantity, the last batch or every one', () => 
     fixture.componentInstance.tapped.subscribe((id) => tapped.push(id));
 
     expect(text(line(card))).toBe('price: €8.93/g');
-    expect(pills(card).map(text)).toEqual(['last', 'average']);
+    expect(pills(card).map(text)).toEqual(['selected', 'average']);
 
     await tap(line(card));
-    expect(text(line(card))).toBe('qty: 6/10 g'); // the last batch
-    expect(pills(card).map(text)).toEqual(['last', 'total']);
+    expect(text(line(card))).toBe('qty: 6/10 g'); // the selected batch: the last one, none tapped
+    expect(pills(card).map(text)).toEqual(['selected', 'total']);
     expect(line(card).getAttribute('aria-label')).toBe('Quantity left 6/10 g. Show the price per unit');
 
     await tap(pill(card, 'total'));
@@ -261,7 +261,7 @@ describe('SubstanceCard: price or quantity, the last batch or every one', () => 
     expect(text(line(card))).toBe('price: €8.93/g');
   });
 
-  it('on "last" draws only the last batch, out of what was bought of it; on the other side every batch', async () => {
+  it('on "selected" draws only the selected batch, out of what was bought of it; on the other side every batch', async () => {
     const card = await render(weed());
     const track = () => card.querySelector('app-stock-bar .track')!;
 
@@ -269,7 +269,7 @@ describe('SubstanceCard: price or quantity, the last batch or every one', () => 
     expect(older.classList).toContain('away');
     expect(parseFloat(older.style.flexBasis)).toBe(0);
     expect(parseFloat(last.style.flexBasis)).toBeCloseTo(60, 6); // 6 of 10
-    expect(track().getAttribute('aria-label')).toBe('Last batch: 6 of 10 g left');
+    expect(track().getAttribute('aria-label')).toBe('Selected batch: 6 of 10 g left');
 
     await tap(pill(card, 'average'));
     [older, last] = segments(card);
@@ -279,7 +279,7 @@ describe('SubstanceCard: price or quantity, the last batch or every one', () => 
     expect(track().getAttribute('aria-label')).toBe('Stock: 8 g');
   });
 
-  it('with the last batch finished, says 0 left of it and empties the bar', async () => {
+  it('with the last batch finished and none tapped, says 0 left of it and empties the bar', async () => {
     const card = await render(cigarettes); // the last pack finished, 8 left of the older one
     await tap(line(card));
 
@@ -294,5 +294,31 @@ describe('SubstanceCard: price or quantity, the last batch or every one', () => 
 
     await tap(pill(card, 'total'));
     expect(text(line(card))).toBe('qty: —');
+  });
+
+  it('a tap on a segment selects its batch: the pill turns to "selected", the line and the bar are its own, the page does not open', async () => {
+    const card = await render(weed());
+    const tapped: number[] = [];
+    fixture.componentInstance.tapped.subscribe((id) => tapped.push(id));
+    await tap(pill(card, 'average')); // every batch in the bar
+
+    await tap(segments(card)[0].querySelector<HTMLElement>('.fill')!); // the older batch: 2 g left of 5, at 9.00
+    expect(pill(card, 'selected').getAttribute('aria-checked')).toBe('true');
+    expect(text(line(card))).toBe('price: €9.00/g');
+    const [older, last] = segments(card);
+    expect(parseFloat(older.style.flexBasis)).toBeCloseTo(40, 6); // 2 of 5
+    expect(last.classList).toContain('away');
+
+    await tap(line(card));
+    expect(text(line(card))).toBe('qty: 2/5 g');
+    expect(tapped).toEqual([]);
+    expect(localStorage.getItem('substance-tracker.price-mode.9')).toBe('selected');
+  });
+
+  it('reads a "last" remembered before the rename as "selected"', async () => {
+    localStorage.setItem('substance-tracker.price-mode.9', 'last');
+    const card = await render(weed());
+
+    expect(pill(card, 'selected').getAttribute('aria-checked')).toBe('true');
   });
 });

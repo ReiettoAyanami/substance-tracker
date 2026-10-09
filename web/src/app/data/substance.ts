@@ -41,10 +41,11 @@ export interface CardSummary {
   spendThisMonth: string;
 }
 
-/** One segment of the stock bar: an active batch, what is left of it and its unit price. */
+/** One segment of the stock bar: an active batch, what was bought of it, what is left and its unit price. */
 export interface StockBarSegment {
   batchId: number;
   name: string | null;
+  quantity: string;
   remaining: string;
   /** 6 decimals. */
   unitPrice: string;

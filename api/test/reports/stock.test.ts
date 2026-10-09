@@ -127,9 +127,9 @@ describe('card summary', () => {
       stock: '7.000',
       stockBarMax: '9.000',
       stockBarSegments: [
-        { batchId: old.id, name: 'old', remaining: '2.000', unitPrice: '1.500000' },
-        { batchId: b1.id, name: 'Corona', remaining: '4.000', unitPrice: '1.200000' },
-        { batchId: b3.id, name: 'Peroni', remaining: '1.000', unitPrice: '1.000000' },
+        { batchId: old.id, name: 'old', quantity: '2.000', remaining: '2.000', unitPrice: '1.500000' },
+        { batchId: b1.id, name: 'Corona', quantity: '6.000', remaining: '4.000', unitPrice: '1.200000' },
+        { batchId: b3.id, name: 'Peroni', quantity: '1.000', remaining: '1.000', unitPrice: '1.000000' },
       ],
       // old (+2) then Corona (+6) = 8, then -2, then +1: the peak is 8
       peakStock: '8.000',
@@ -218,8 +218,8 @@ describe('card summary', () => {
     const summary = (await api.get(`/api/substances/${s.id}`)).body.summary;
     expect(summary.stockBarMax).toBe('300.000');
     expect(summary.stockBarSegments).toEqual([
-      { batchId: older.id, name: 'Lavazza', remaining: '1.000', unitPrice: '0.350000' },
-      { batchId: newer.id, name: null, remaining: '200.000', unitPrice: '0.320000' },
+      { batchId: older.id, name: 'Lavazza', quantity: '100.000', remaining: '1.000', unitPrice: '0.350000' },
+      { batchId: newer.id, name: null, quantity: '200.000', remaining: '200.000', unitPrice: '0.320000' },
     ]);
   });
 });

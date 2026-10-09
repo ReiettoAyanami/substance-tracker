@@ -39,6 +39,19 @@
   min-width: 0;
 }
 
+/* Selectable (stock-bar.ts): 10 px above and below the track take the tap too, without moving
+   anything; a segment focused from the keyboard has its ring inside it (the track clips it). */
+:host(.selectable) {
+  padding: 10px 0;
+  margin: -10px 0;
+  cursor: pointer;
+}
+
+:host(.selectable) .segment:focus-visible {
+  outline: 2px solid var(--mat-sys-on-surface);
+  outline-offset: -2px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .segment {
     transition: none;

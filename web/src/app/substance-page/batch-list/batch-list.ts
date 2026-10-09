@@ -139,7 +139,7 @@ export class BatchList {
     return this.batches.value().batches.map((batch) => ({
       batch,
       /** The batch's own bar: its remaining out of what was bought. */
-      segments: [{ batchId: batch.id, name: batch.name, remaining: batch.remaining, unitPrice: batch.unitPrice }],
+      segments: [{ batchId: batch.id, name: batch.name, quantity: batch.quantity, remaining: batch.remaining, unitPrice: batch.unitPrice }],
       bought: formats.date.format(new Date(batch.occurredAt)),
       left: `${this.exact(formats.quantity, batch.remaining)} / ${this.exact(formats.quantity, batch.quantity)} ${this.unit()}`,
       totalPrice: this.exact(formats.money, batch.totalPrice),

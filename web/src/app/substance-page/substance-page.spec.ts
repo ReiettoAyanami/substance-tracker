@@ -241,7 +241,7 @@ describe('SubstancePage', () => {
       ...restocked.summary,
       stock: '4.000',
       stockBarMax: '10.000',
-      stockBarSegments: [{ batchId: 21, name: null, remaining: '4.000', unitPrice: '1.000000' }],
+      stockBarSegments: [{ batchId: 21, name: null, quantity: '6.000', remaining: '4.000', unitPrice: '1.000000' }],
     };
     TestBed.inject(HttpTestingController).expectOne('/api/substances/1').flush(restocked);
     await harness.fixture.whenStable();

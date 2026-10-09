@@ -193,7 +193,7 @@ describe('SubstancesPage', () => {
       ...restocked.summary,
       stock: '5.000',
       stockBarMax: '5.000',
-      stockBarSegments: [{ batchId: 60, name: null, remaining: '5.000', unitPrice: '10.000000' }],
+      stockBarSegments: [{ batchId: 60, name: null, quantity: '5.000', remaining: '5.000', unitPrice: '10.000000' }],
     };
     backend.expectOne('/api/substances/3').flush(restocked);
     await fixture.whenStable();
