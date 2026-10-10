@@ -1,4 +1,4 @@
-import { Component, DestroyRef, ElementRef, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, ElementRef, afterNextRender, computed, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { ActivatedRouteSnapshot, Router } from '@angular/router';
 
@@ -51,17 +51,23 @@ export class PullToRefresh {
   private start: { x: number; y: number } | null = null;
 
   constructor() {
-    const area = (inject(ElementRef).nativeElement as HTMLElement).parentElement;
-    if (!area) return;
+    const host = inject(ElementRef).nativeElement as HTMLElement;
+    const destroyRef = inject(DestroyRef);
     const listeners: [string, (event: TouchEvent) => void][] = [
       ['touchstart', (event) => this.touchStart(event)],
       ['touchmove', (event) => this.touchMove(event)],
       ['touchend', () => void this.touchEnd()],
       ['touchcancel', () => this.letGo()],
     ];
-    for (const [type, listener] of listeners) area.addEventListener(type, listener as EventListener, { passive: true });
-    inject(DestroyRef).onDestroy(() => {
-      for (const [type, listener] of listeners) area.removeEventListener(type, listener as EventListener);
+    // Once rendered: in the shell's @if the host is not in the page yet while it is constructed, and
+    // has no parent (2026-10-10, on the Pixel 9 the pull did nothing).
+    afterNextRender(() => {
+      const area = host.parentElement;
+      if (!area) return;
+      for (const [type, listener] of listeners) area.addEventListener(type, listener as EventListener, { passive: true });
+      destroyRef.onDestroy(() => {
+        for (const [type, listener] of listeners) area.removeEventListener(type, listener as EventListener);
+      });
     });
   }
 

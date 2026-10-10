@@ -8,12 +8,18 @@ import { PULL_THRESHOLD_PX, PullToRefresh } from './pull-to-refresh';
 @Component({ template: '' })
 class Page {}
 
-/** The shell's content, the area whose touches the pull watches. */
+/** The shell's content, the area whose touches the pull watches; there, the pull sits in an @if. */
 @Component({
   imports: [PullToRefresh],
-  template: `<div class="area"><app-pull-to-refresh /></div>`,
+  template: `<div class="area">
+    @if (shown) {
+      <app-pull-to-refresh />
+    }
+  </div>`,
 })
-class Shell {}
+class Shell {
+  shown = true;
+}
 
 /** A touch event with one finger at `y` (x stays put). */
 function touch(type: string, y: number, x = 100): Event {
