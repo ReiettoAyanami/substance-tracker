@@ -14,6 +14,7 @@ import { Session } from './session/session';
 import { Sidebar } from './sidebar/sidebar';
 import { Appearance } from './ui/appearance';
 import { OfflineBar } from './ui/offline-bar/offline-bar';
+import { PullToRefresh } from './ui/pull-to-refresh/pull-to-refresh';
 import { UpdateNotice } from './ui/update-notice/update-notice';
 import { VersionLabel } from './ui/version-label/version-label';
 import { ViewingAsBar } from './ui/viewing-as-bar/viewing-as-bar';
@@ -48,6 +49,7 @@ function routeIsBare(route: ActivatedRouteSnapshot): boolean {
     MatSidenavModule,
     MatToolbarModule,
     OfflineBar,
+    PullToRefresh,
     RouterOutlet,
     Sidebar,
     UpdateNotice,

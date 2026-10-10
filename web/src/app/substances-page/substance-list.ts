@@ -1,7 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
-import { catchError, distinctUntilChanged, forkJoin, map, of, shareReplay, switchMap } from 'rxjs';
+import { Subject, catchError, combineLatest, distinctUntilChanged, finalize, forkJoin, map, of, shareReplay, startWith, switchMap } from 'rxjs';
 
 import { ApiError } from '../data/api-error';
 import { CatalogApi } from '../data/catalog-api';
@@ -27,23 +27,39 @@ export class SubstanceList {
   private readonly catalog = inject(CatalogApi);
   private readonly current = signal<SubstanceListState>({ status: 'loading' });
   readonly state = this.current.asReadonly();
+  private readonly asking = signal(false);
+  /** A refresh is on its way (the list shown stays until it arrives). */
+  readonly isLoading = this.asking.asReadonly();
+  private readonly again = new Subject<void>();
 
   constructor() {
-    // The settings are asked once; the substances, for every search. The list shown stays until the next one arrives.
-    const settings = inject(SettingsApi).getSettings().pipe(shareReplay(1));
-    inject(ActivatedRoute)
-      .queryParamMap.pipe(
-        map((query) => searchOf(query.get('q'))),
-        distinctUntilChanged(),
-        switchMap((q) =>
-          forkJoin([settings, this.catalog.listSubstances(q ? { q } : {})]).pipe(
+    // The settings are asked once, and again at a refresh; the substances, for every search and at a
+    // refresh. The list shown stays until the next one arrives.
+    const settingsApi = inject(SettingsApi);
+    let settings = settingsApi.getSettings().pipe(shareReplay(1));
+    const search = inject(ActivatedRoute).queryParamMap.pipe(
+      map((query) => searchOf(query.get('q'))),
+      distinctUntilChanged(),
+    );
+    combineLatest([search, this.again.pipe(startWith(undefined))])
+      .pipe(
+        switchMap(([q]) => {
+          if (this.asking()) settings = settingsApi.getSettings().pipe(shareReplay(1));
+          return forkJoin([settings, this.catalog.listSubstances(q ? { q } : {})]).pipe(
             map(([settings, substances]): SubstanceListState => ({ status: 'loaded', settings, substances })),
             catchError((error: ApiError) => of<SubstanceListState>({ status: 'failed', error })),
-          ),
-        ),
+            finalize(() => this.asking.set(false)),
+          );
+        }),
         takeUntilDestroyed(),
       )
       .subscribe((state) => this.current.set(state));
+  }
+
+  /** The pull-to-refresh of the Android app (2.11): the settings and the substances of the search, asked again. */
+  refresh(): void {
+    this.asking.set(true);
+    this.again.next();
   }
 
   /** A substance just created (the 201 of POST): shown right away, where the API would list it. */

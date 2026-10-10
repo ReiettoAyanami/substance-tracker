@@ -13,6 +13,7 @@ import { Settings } from '../../data/settings';
 import { ViewItem } from '../../data/view-item';
 import { ViewsApi } from '../../data/views-api';
 import { Chart } from '../chart/chart';
+import { refreshOnPull } from '../../refresh/page-refresh';
 import { keptValue } from '../kept-value';
 
 /**
@@ -81,6 +82,10 @@ export class Widget {
   protected readonly shownSeries = keptValue(this.series, () =>
     JSON.stringify([this.item().id, this.item().metric, this.substanceIds(), this.by()]),
   );
+
+  constructor() {
+    refreshOnPull([this.series]);
+  }
 
   /**
    * The icon by the title (the reference photo: an icon at the head of every card), from what the

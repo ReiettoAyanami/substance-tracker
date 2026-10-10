@@ -1,0 +1,44 @@
+/* The disc waits tucked under the top bar (64 px high, 8 px under the status bar: app.css) and comes
+   down from under it with the pull: under the bar (z-index 5), above the page, under the "+" (10)
+   and the windows (20). Material 3's pull-to-refresh: a 40 px disc, a circle of its surface. */
+.disc {
+  position: fixed;
+  top: calc(8px + env(safe-area-inset-top, 0px) + 64px - 40px);
+  left: calc(50% - 20px);
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  color: var(--mat-sys-primary);
+  background-color: var(--mat-sys-surface-container-high);
+  box-shadow: var(--mat-sys-level2);
+  pointer-events: none;
+  transition:
+    transform 200ms ease-out,
+    opacity 200ms ease-out;
+}
+
+/* Under the finger: no easing, the disc goes where the pull is. */
+.disc.dragging {
+  transition: none;
+}
+
+.disc mat-icon {
+  width: 24px;
+  height: 24px;
+  font-size: 24px;
+}
+
+/* Released: the arrow spins until the page has its data, or the server did not answer. */
+.disc.spinning mat-icon {
+  animation: spin 900ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

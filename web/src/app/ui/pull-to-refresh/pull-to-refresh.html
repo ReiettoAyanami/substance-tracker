@@ -1,0 +1,12 @@
+<div
+  class="disc"
+  [class.dragging]="dragging()"
+  [class.spinning]="refreshing()"
+  [style.transform]="'translateY(' + distance() + 'px)'"
+  [style.opacity]="refreshing() ? 1 : progress()"
+  [attr.role]="refreshing() ? 'progressbar' : null"
+  [attr.aria-label]="refreshing() ? 'Refreshing' : null"
+  [attr.aria-hidden]="refreshing() ? null : 'true'"
+>
+  <mat-icon [style.transform]="refreshing() ? null : 'rotate(' + progress() * 270 + 'deg)'">refresh</mat-icon>
+</div>

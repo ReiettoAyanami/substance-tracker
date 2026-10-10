@@ -11,6 +11,7 @@ import { MetricsApi } from '../../data/metrics-api';
 import { Settings } from '../../data/settings';
 import { ViewsApi } from '../../data/views-api';
 import { Session } from '../../session/session';
+import { refreshOnPull } from '../../refresh/page-refresh';
 import { keptValue } from '../kept-value';
 import { MetricReading, MetricValuePipe } from '../metric-value-pipe';
 import { PERIODS, PeriodScale, periodLabel } from '../period-scale/period-scale';
@@ -119,6 +120,11 @@ export class MetricsPanel {
 
   /** The numbers on screen: the last ones stay while another scale or period loads (same entity). */
   private readonly shownMetrics = keptValue(this.metrics, () => `${this.scope()}/${this.consumptionType()}/${this.entityId()}`);
+
+  constructor() {
+    // A pull (2.11): nothing while the panel was never opened (the resources are idle).
+    refreshOnPull([this.catalog, this.items, this.metrics]);
+  }
 
   /** The scale of the numbers shown (until the new ones come, the one they were asked in). */
   protected readonly reading = computed<MetricReading>(() => ({

@@ -11,6 +11,7 @@ import { SeriesDefinition } from '../data/series';
 import { SettingsApi } from '../data/settings-api';
 import { ViewItem } from '../data/view-item';
 import { ViewsApi } from '../data/views-api';
+import { refreshOnPull } from '../refresh/page-refresh';
 import { Session } from '../session/session';
 import { PERIODS, PeriodScale } from '../ui/period-scale/period-scale';
 import { Widget } from '../ui/widget/widget';
@@ -54,6 +55,11 @@ export class StatisticsPage {
   protected readonly catalog = rxResource({ stream: () => this.metricsApi.getCatalog() });
   protected readonly items = rxResource({ stream: () => this.views.list('statistics') });
   protected readonly settings = rxResource({ stream: () => this.settingsApi.getSettings() });
+
+  constructor() {
+    // A pull (2.11): what the page lists; each chart asks its own series (Widget).
+    refreshOnPull([this.catalog, this.items, this.settings]);
+  }
 
   /** The charts by section, each with its series; null while loading (the settings too: a chart needs them). */
   protected readonly sections = computed<Section<{ item: ViewItem; definition: SeriesDefinition }>[] | null>(() => {

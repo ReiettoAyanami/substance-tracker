@@ -8,6 +8,7 @@ import { MatInputModule } from '@angular/material/input';
 import { ActivatedRoute, Router, RouterOutlet } from '@angular/router';
 import { Subject, debounceTime, map } from 'rxjs';
 
+import { refreshOnPull } from '../refresh/page-refresh';
 import { Session } from '../session/session';
 import { PageHistoryState } from '../substance-page/substance-page';
 import { AddButton } from '../ui/add-button/add-button';
@@ -74,6 +75,8 @@ export class SubstancesPage {
   });
 
   constructor() {
+    // A pull (2.11): the cards; the metrics and the charts beside them ask their own.
+    refreshOnPull([{ reload: () => this.list.refresh(), isLoading: this.list.isLoading }]);
     effect(() => {
       const query = this.query();
       // what is being typed is left alone: the URL only has it without the blanks around it

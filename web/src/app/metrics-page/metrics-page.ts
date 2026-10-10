@@ -20,6 +20,7 @@ import { ViewsApi } from '../data/views-api';
 import { LOCALE } from '../locale';
 import { Session } from '../session/session';
 import { PageHistoryState } from '../substance-page/substance-page';
+import { refreshOnPull } from '../refresh/page-refresh';
 import { keptValue } from '../ui/kept-value';
 import { MetricsTable, isBatch, isConsumption } from '../ui/metrics-table/metrics-table';
 import { PERIODS, PeriodScale } from '../ui/period-scale/period-scale';
@@ -165,6 +166,10 @@ export class MetricsPage {
   protected readonly shownTable = keptValue(this.table, () =>
     JSON.stringify([this.query().table, (this.columns() ?? []).map((c) => c.key)]),
   );
+
+  constructor() {
+    refreshOnPull([this.catalog, this.items, this.settings, this.substances, this.batches, this.table]);
+  }
 
   /** The period: the substances' numbers follow it, and it picks the batches (those bought in it). */
   protected readonly hasPeriod = computed(

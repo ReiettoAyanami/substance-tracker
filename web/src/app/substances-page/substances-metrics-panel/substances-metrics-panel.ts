@@ -13,6 +13,7 @@ import { MetricsApi } from '../../data/metrics-api';
 import { Settings } from '../../data/settings';
 import { ViewsApi } from '../../data/views-api';
 import { Session } from '../../session/session';
+import { refreshOnPull } from '../../refresh/page-refresh';
 import { keptValue } from '../../ui/kept-value';
 import { MetricsTable } from '../../ui/metrics-table/metrics-table';
 import { PERIODS, PeriodScale, periodLabel } from '../../ui/period-scale/period-scale';
@@ -91,6 +92,11 @@ export class SubstancesMetricsPanel {
 
   /** The table on screen: the last one stays while another scale or period loads (same columns). */
   protected readonly shownTable = keptValue(this.table, () => (this.columns() ?? []).map((c) => c.key).join());
+
+  constructor() {
+    // A pull (2.11): nothing while the panel was never opened (the resources are idle).
+    refreshOnPull([this.catalog, this.items, this.table]);
+  }
 
   protected readonly hasPeriod = computed(() => (this.columns() ?? []).some((m) => m.period));
   protected readonly hasScales = computed(() => (this.columns() ?? []).some((m) => m.scales.length > 0));

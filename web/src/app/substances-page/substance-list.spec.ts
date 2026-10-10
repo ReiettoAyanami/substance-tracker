@@ -76,6 +76,19 @@ describe('SubstanceList', () => {
     backend.expectOne('/api/substances').flush([substance(4, 'Birra'), substance(3, 'Erba')]);
     expect(order()).toEqual(['Birra#4', 'Erba#3']);
   });
+
+  it('at a refresh (a pull, 2.11), asks the settings and the substances again, keeping those shown until they arrive', () => {
+    list.refresh();
+    expect(list.isLoading()).toBe(true);
+
+    backend.expectOne('/api/settings').flush({ ...settings, currency: 'CHF' });
+    expect(order()).toEqual(['Birra#4', 'Erba#3', 'Sigarette#2']);
+    backend.expectOne('/api/substances').flush([substance(3, 'Erba')]);
+    expect(order()).toEqual(['Erba#3']);
+    const state = list.state();
+    expect(state.status === 'loaded' && state.settings.currency).toBe('CHF');
+    expect(list.isLoading()).toBe(false);
+  });
 });
 
 describe('SubstanceList, opened by a link with a search', () => {

@@ -68,6 +68,8 @@ export const routes: Routes = [
           {
             path: ':id',
             loadComponent: () => import('./substance-page/substance-page').then((m) => m.SubstancePage),
+            // A window, not a page: no pull-to-refresh in it, nor under it (2.11), its batch's neither.
+            data: { pullToRefresh: false },
             // A batch's page opens over its substance's (design-statistics.md, "batch page").
             children: [
               { path: 'batches/:batchId', loadComponent: () => import('./batch-page/batch-page').then((m) => m.BatchPage) },
@@ -94,6 +96,8 @@ export const routes: Routes = [
         path: 'settings',
         loadComponent: () => import('./settings-page/settings-page').then((m) => m.SettingsPage),
         title: 'Settings',
+        // Nothing there to ask again: no pull-to-refresh (2.11, lenzi 2026-10-05).
+        data: { pullToRefresh: false },
       },
       // The admin view (design-accounts.md, "Web: /<username>/admin"): under the administrator's own
       // username, so that `admin` is a username like any other (lenzi, 2026-10-03: the first

@@ -40,6 +40,11 @@
       <app-offline-bar />
     }
 
+    <!-- The Android app: a pull from the top of a page asks it again (2.11). -->
+    @if (inApp && !bare()) {
+      <app-pull-to-refresh />
+    }
+
     <router-outlet />
   </mat-sidenav-content>
 </mat-sidenav-container>

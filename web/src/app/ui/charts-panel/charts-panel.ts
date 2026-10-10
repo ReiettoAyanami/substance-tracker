@@ -11,6 +11,7 @@ import { SeriesDefinition } from '../../data/series';
 import { Settings } from '../../data/settings';
 import { ViewItem } from '../../data/view-item';
 import { ViewsApi } from '../../data/views-api';
+import { refreshOnPull } from '../../refresh/page-refresh';
 import { Session } from '../../session/session';
 import { PERIODS, PeriodScale, periodLabel } from '../period-scale/period-scale';
 import { readPreference, writePreference } from '../preferences';
@@ -61,6 +62,11 @@ export class ChartsPanel {
     params: () => (this.wasOpened() ? this.surface() : undefined),
     stream: ({ params }) => this.views.list(params),
   });
+
+  constructor() {
+    // A pull (2.11): nothing while the panel was never opened (the resources are idle); the charts ask their own series (Widget).
+    refreshOnPull([this.catalog, this.items]);
+  }
 
   /** The charts the substance page lists, each with its series (one the catalog no longer has is left out). */
   protected readonly charts = computed<{ item: ViewItem; definition: SeriesDefinition }[] | null>(() => {

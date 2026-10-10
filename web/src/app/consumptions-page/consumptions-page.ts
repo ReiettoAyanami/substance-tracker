@@ -14,6 +14,7 @@ import { Queue } from '../queue/queue';
 import { QueuedConsumption } from '../queue/queued-consumption';
 import { ConsumptionCard } from '../ui/consumption-card/consumption-card';
 import { keptValue } from '../ui/kept-value';
+import { refreshOnPull } from '../refresh/page-refresh';
 import { ConsumptionActions } from './consumption-actions';
 import { ConsumptionFilters } from './consumption-filters/consumption-filters';
 
@@ -206,6 +207,15 @@ export class ConsumptionsPage {
     this.sentBefore = sent;
     untracked(() => this.reload());
   });
+
+  constructor() {
+    // A pull (2.11): the settings and the substances too, besides what a write asks again.
+    refreshOnPull([this.settings, this.substances, this.batches, this.bounds, this.firstPage], () => {
+      this.settings.reload();
+      this.substances.reload();
+      this.reload();
+    });
+  }
 
   protected readonly hasMore = computed(() => this.lastPageFull() && !this.moreFailed());
 

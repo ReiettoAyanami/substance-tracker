@@ -11,6 +11,7 @@ import { MetricsApi } from '../data/metrics-api';
 import { SeriesDefinition } from '../data/series';
 import { ChartChange, Surface, ViewItem } from '../data/view-item';
 import { ViewsApi } from '../data/views-api';
+import { refreshOnPull } from '../refresh/page-refresh';
 import { ChartList, NewChart } from './chart-list/chart-list';
 import { ViewItemList } from './view-item-list/view-item-list';
 
@@ -163,6 +164,7 @@ export class StatisticsEditPage {
   });
 
   constructor() {
+    refreshOnPull([this.catalog, ...Object.values(this.surfaces)]);
     // Opened for one place (`?section=`): the page starts at it, once it is there.
     const section = inject(ActivatedRoute).snapshot.queryParamMap.get('section');
     const host = inject(ElementRef<HTMLElement>);
