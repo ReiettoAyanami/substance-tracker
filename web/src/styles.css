@@ -1,3 +1,11 @@
+/* No tap highlight (lenzi, 2026-10-10): on a touch screen Chromium (the Android WebView, Chrome on a
+   phone) paints a blue box over the outermost element with a pointer cursor around the touch, so a
+   tap on the price/qty toggle or the batch bar lit up the whole card. Material's own state layers
+   are the feedback. */
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
 /* The batch bar's tooltip (BatchBar): the name on the first line, the unit price on the second. The
    tooltip lives in the overlay, outside the component's styles. */
 .batch-bar-tooltip .mat-mdc-tooltip-surface {
